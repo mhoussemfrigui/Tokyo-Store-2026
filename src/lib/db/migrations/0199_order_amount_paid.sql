@@ -1,0 +1,12 @@
+-- 0199 — Manual payment tracking: the amount actually received on an order.
+--
+-- Powers the admin « Paiement manuel » control (gated by the
+-- orders.manual_payment_enabled setting): an operator can mark an order Payée,
+-- Partiellement payée (a deposit / installment) or Non payée.
+--   NULL        → no manual partial recorded; payment state derives from paid_at
+--                 (paid_at set = fully paid = amount due; null = unpaid).
+--   0 < X < due → the amount received so far (partial); paid_at stays NULL.
+--   = due       → fully paid (paid_at is also stamped).
+-- "due" = total_cents − credit_applied_cents (the cash to collect). Full payment
+-- still keys off paid_at (revenue + loyalty), so this column is supplementary.
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "amount_paid_cents" integer;

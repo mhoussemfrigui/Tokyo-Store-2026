@@ -1,0 +1,13 @@
+-- 0098 — functional index for the case-insensitive order-number lookup.
+--
+-- `findOrderByNumber` (admin warranty / SAV search) matches
+-- `upper(order_number) = upper($1)`. The existing `orders_order_number_unique`
+-- index is on the RAW column, so wrapping it in `upper()` made the planner fall
+-- back to a sequential scan. This expression index on `upper(order_number)`
+-- makes that lookup index-backed again. The Drizzle schema declares the matching
+-- index in lockstep. IF NOT EXISTS keeps re-apply idempotent.
+--
+-- (Non-CONCURRENTLY so it runs inside the migration transaction — fine for the
+-- current order volume. On a very large `orders` table, build it manually with
+-- CREATE INDEX CONCURRENTLY outside a transaction instead.)
+CREATE INDEX IF NOT EXISTS "orders_order_number_upper_idx" ON "orders" (upper(order_number));

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800" role="img" aria-label="Image indisponible">
+  <rect width="800" height="800" fill="#f1f5f9"/>
+  <g fill="none" stroke="#cbd5e1" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="220" y="250" width="360" height="300" rx="24"/>
+    <circle cx="320" cy="350" r="34"/>
+    <path d="M250 520l120-120 90 90 70-70 100 100"/>
+  </g>
+  <text x="400" y="640" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-size="42" font-weight="600" fill="#94a3b8" text-anchor="middle">Tokyo Store</text>
+</svg>

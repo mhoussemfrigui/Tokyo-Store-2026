@@ -1,0 +1,12 @@
+-- 0099 — per-user opt-in for OAuth auto-linking (closes the 2FA-bypass-via-
+-- Google-link vector).
+--
+-- By default a verified-email Google sign-in could SILENTLY link onto an
+-- existing email/password account (Better Auth `trustedProviders`), minting a
+-- session WITHOUT the account's TOTP second factor. We now gate that silent
+-- merge behind this per-user flag (default FALSE = secure): the auth
+-- `account.create.before` hook blocks an OAuth account from linking onto a user
+-- that already has a password account unless that user opted in here. Fresh
+-- Google sign-ups (no password account) are unaffected. To LINK Google later,
+-- the user enables this from their profile, then signs in with Google.
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "oauth_autolink" boolean NOT NULL DEFAULT false;

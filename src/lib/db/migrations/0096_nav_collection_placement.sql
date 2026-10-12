@@ -1,0 +1,11 @@
+-- Mega-menu "Collections" nav root: a dedicated, admin-editable featured-image
+-- banner placement for the new top-level "Collections" dropdown (sits between
+-- Marques and Fidélité). Mirrors the per-root nav_* placements added in 0085 so
+-- the Collections dropdown's featured panel is set independently in
+-- CMS → Bannières and resolved through the médiathèque.
+--
+-- PostgreSQL 12+ (we run 16.14) permits ALTER TYPE ... ADD VALUE inside a
+-- transaction block; the new label is only USED by later, separate transactions
+-- (the storefront read + the demo seed), so this is safe here. IF NOT EXISTS
+-- keeps it idempotent on re-apply.
+ALTER TYPE "banner_placement" ADD VALUE IF NOT EXISTS 'nav_collection';

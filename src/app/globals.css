@@ -1,0 +1,1738 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * TOKYO STORE — Design System
+ * The admin/global default palette (below) is overridden for the storefront by
+ * the `.storefront` luxury scope at the END of this file (warm ivory / onyx /
+ * olive / gold + Playfair + Montserrat). The admin panel keeps the neutral
+ * default palette below.
+ */
+
+@theme inline {
+  /* Routed through :root vars (not literals) so the admin theme panel can
+     rescale the whole radius system by overriding the single --radius base —
+     each step is derived from it via calc() below. Identical px at the default
+     (--radius:16px → 8/12/18/24/32). */
+  --radius-sm: var(--radius-sm-v);
+  --radius-md: var(--radius-md-v);
+  --radius-lg: var(--radius-lg-v);
+  --radius-xl: var(--radius-xl-v);
+  --radius-2xl: var(--radius-2xl-v);
+  /* 3xl is Tailwind's built-in (1.5rem). The storefront leans on rounded-3xl for
+     most cards, so theme it too — else the radius slider visibly misses them. */
+  --radius-3xl: var(--radius-3xl-v);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+
+  --font-display: var(--font-heading);
+  --font-sans: var(--font-body);
+  --font-serif: var(--font-heading);
+  /* Monospace (code / diagnostics / the error-page reference + stack). */
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Storefront luxury accent tokens — real values set under `.storefront`. */
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-olive: var(--olive);
+  --color-olive-foreground: var(--olive-foreground);
+  --color-cherry: var(--cherry);
+  --color-cherry-foreground: var(--cherry-foreground);
+
+  --shadow-soft: 0 1px 2px oklch(0.2 0.02 220 / 0.04), 0 4px 16px -8px oklch(0.2 0.02 220 / 0.08);
+  --shadow-lift: 0 2px 4px oklch(0.2 0.02 220 / 0.04), 0 12px 32px -12px oklch(0.2 0.02 220 / 0.12);
+  /* Tokyo two-layer soft neutral lift (matches the Tokyo-Store-UI reference). The
+     `shadow-card` utility is used ONLY by the storefront (hero, footer, page-top
+     envelope); admin/legacy use shadow-lift / shadow-soft, so this is safe. */
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.03), 0 12px 32px -16px oklch(0 0 0 / 0.1);
+
+  /* ───────────────────────────────────────────────────────────────────────
+     TOKYO STOREFRONT — additive tokens for the `.tokyo` scope (the new
+     storefront design). Routed through :root vars (neutral defaults below;
+     real crimson values under `.tokyo`). NONE of these names existed before,
+     so admin + the legacy `.storefront` scope are unaffected.
+     ─────────────────────────────────────────────────────────────────────── */
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-ink: var(--primary-hover);
+  --color-graphite: var(--graphite);
+  --color-graphite-soft: var(--graphite-soft);
+  --color-surface-warm: var(--surface-warm);
+  --color-surface-beige: var(--surface-beige);
+  --color-ink: var(--ink);
+  --color-product-media: var(--product-media);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-rating: var(--rating);
+
+  --radius-island: 1.75rem; /* 28 — panels, banners, sheets, menus, lightbox */
+  --radius-card: 1.5rem; /* 24 — product cards, tiles, list rows */
+  --radius-inner: 1rem; /* 16 — nested in an island/envelope */
+  --radius-media: 0.875rem; /* 14 — media inside a card */
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --shadow-pop: 0 12px 48px -16px oklch(0.4 0.18 20 / 0.22);
+  --shadow-float: 0 8px 24px -18px rgb(15 15 15 / 0.18);
+  --shadow-pill: 0 10px 26px -18px rgb(15 15 15 / 0.22);
+  --shadow-island: 0 10px 30px -20px rgb(15 15 15 / 0.35);
+  --shadow-overlay: 0 28px 70px -30px rgb(15 15 15 / 0.45);
+  --shadow-cta: 0 14px 30px -14px oklch(0.55 0.22 22 / 0.55);
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+  /* Border-radius base — the storefront theme panel overrides this single
+     value; the scale below is derived from it (calc), so one slider rescales
+     every rounded-* utility. */
+  --radius: 16px;
+  --radius-sm-v: calc(var(--radius) * 0.5);    /* 8px  */
+  --radius-md-v: calc(var(--radius) * 0.75);   /* 12px */
+  --radius-lg-v: calc(var(--radius) * 1.125);  /* 18px */
+  --radius-xl-v: calc(var(--radius) * 1.5);    /* 24px */
+  --radius-2xl-v: calc(var(--radius) * 2);     /* 32px */
+  --radius-3xl-v: calc(var(--radius) * 1.5);   /* 24px (Tailwind default 1.5rem) */
+
+  --background: oklch(0.995 0.002 220);          /* near white */
+  --foreground: #2B2825;                         /* Noir Onyx */
+
+  --surface: oklch(0.975 0.005 265);             /* soft panel */
+  --surface-2: oklch(0.95 0.008 265);            /* hover */
+
+  --card: #ffffff;
+  --card-foreground: #2B2825;
+
+  --popover: #ffffff;
+  --popover-foreground: #2B2825;
+
+  --primary: #4E6F3D;                            /* Vert Olive */
+  --primary-foreground: #F6F3F0;
+
+  --secondary: oklch(0.96 0.005 240);
+  --secondary-foreground: #2B2825;
+
+  --muted: oklch(0.96 0.004 240);
+  --muted-foreground: oklch(0.52 0.012 250);
+
+  /* Brand accent — gold / warm brown */
+  --accent: #886E5C;
+  --accent-foreground: #F6F3F0;
+
+  --destructive: oklch(0.6 0.2 25);
+  --destructive-foreground: #ffffff;
+
+  --border: oklch(0.92 0.005 240);
+  --input: oklch(0.94 0.006 240);
+  --ring: #4E6F3D;
+
+  /* Font roles — global/admin default to Manrope; the storefront overrides
+     these to Playfair (headings) + Montserrat (body) under `.storefront`. */
+  --font-heading: var(--font-manrope), system-ui, sans-serif;
+  --font-body: var(--font-manrope), system-ui, sans-serif;
+
+  /* Luxury accent tokens — neutral global defaults so admin utilities never
+     break; the real watch-store values live in `.storefront`. */
+  --gold: oklch(0.55 0.05 70);
+  --gold-foreground: #ffffff;
+  --olive: oklch(0.48 0.06 135);
+  --olive-foreground: #ffffff;
+  --cherry: oklch(0.45 0.16 20);
+  --cherry-foreground: #ffffff;
+
+  /* Tokyo storefront token defaults — neutral fallbacks so the shared @theme
+     tokens never resolve to nothing outside `.tokyo` (real values are set in
+     the `.tokyo` scope at the end of this file). */
+  --primary-hover: var(--primary);
+  --graphite: var(--foreground);
+  --graphite-soft: var(--muted-foreground);
+  --surface-warm: var(--surface);
+  --surface-beige: var(--background);
+  --ink: var(--foreground);
+  --product-media: #ffffff;
+  --success: oklch(0.5 0.12 160);
+  --success-foreground: #ffffff;
+  --rating: oklch(0.79 0.16 75);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   ADMIN PANEL — "Tokyo Admin" high-tech crimson design, scoped to `.admin`
+   (applied on the admin shell root + /admin-login). Overriding the semantic
+   tokens here means every existing admin Tailwind class (bg-surface, bg-card,
+   text-primary, border-border, font-display …) adopts the new look with NO
+   per-class edits. Admin is always light. The admin-EDITABLE subset
+   (admin accent / secondary / font) is injected OVER these defaults by
+   `buildAdminThemeCss` from DB settings — see lib/theme/admin-config.ts — so
+   nothing is hardcoded that the operator can't retune.
+   ───────────────────────────────────────────────────────────────────────── */
+.admin {
+  --radius: 14px;
+
+  --background: #f6f2ed;           /* warm paper canvas — the ADMIN UI design */
+  --foreground: #0e1218;           /* ink */
+
+  --surface: #f6f2ed;             /* content scroll area */
+  --surface-2: #efe9e3;           /* hover / scrollbar (warm) */
+
+  --card: #ffffff;
+  --card-foreground: #0e1218;
+  --popover: #ffffff;
+  --popover-foreground: #0e1218;
+
+  --primary: #d40530;             /* Tokyo crimson — admin accent */
+  --primary-foreground: #ffffff;
+
+  --secondary: #efe9e3;           /* warm subtle fill / outline-button surface */
+  --secondary-foreground: #0e1218;
+
+  --muted: #efe9e3;
+  --muted-foreground: #5b5d62;    /* primary muted ink (lighter captions use #8a857f) */
+
+  --accent: #fdecef;             /* crimson tint — icon tiles / active chips */
+  --accent-foreground: #d40530;
+
+  --destructive: #d40530;         /* crimson (matches the storefront system) */
+  --destructive-foreground: #ffffff;
+
+  --border: #efe9e3;              /* warm hairline */
+  --input: #ece6df;              /* field border */
+  --ring: #d40530;
+
+  /* Figtree everywhere (loaded app-wide on <html> as --font-figtree, the same
+     family the ADMIN UI mockup uses). The admin theme injector only overrides
+     these when the operator picks a known stack (none maps to the defaults). */
+  --font-heading: var(--font-figtree), system-ui, sans-serif;
+  --font-body: var(--font-figtree), system-ui, sans-serif;
+
+  --gold: #d40530;               /* section labels (crimson) */
+  --gold-foreground: #ffffff;
+  --olive: #d40530;              /* legacy token name — now Tokyo crimson */
+  --olive-foreground: #ffffff;
+
+  /* Admin-only design tokens consumed by the reskinned shell + primitives. */
+  --admin-accent-strong: #b8042a;
+  --admin-accent-soft: #fdecef;
+  --admin-side-bg: #ffffff;
+  --admin-side-fg: #3d4046;
+  --admin-side-muted: #8a857f;
+  --admin-side-border: #efe9e3;
+  --admin-side-active-bg: #fdecef;
+  --admin-side-active-fg: #d40530;
+  --admin-topbar-bg: #ffffff;
+
+  color: var(--foreground);
+  background-color: var(--background);
+  font-family: var(--font-body);
+}
+
+/* ---------------------------------------------------------------------------
+   ADMIN TYPOGRAPHY SYSTEM (variable-driven, applies to ALL /admin pages)
+
+   The global `@layer base` rule forces every h1–h4 to the serif display font at
+   weight 700. The admin design wants the OPPOSITE default: section/card headings
+   are the sans UI font at 600 — the serif is reserved for a few DISPLAY moments
+   (brand, topbar page-title, greeting, KPI numbers) which opt in via the
+   `.font-display` utility. So admin headings DEFAULT to `--font-body`, and
+   `.font-display` (which lives in `@layer utilities` and therefore wins over
+   this base rule) restores `--font-heading` where wanted. Both fonts come from
+   the admin theme variables (`admin.theme.font` / `admin.theme.heading_font`),
+   so nothing is hardcoded per page — retuning the setting re-fonts every admin
+   heading at once. Kept in `@layer base` ON PURPOSE so utilities still win.
+   --------------------------------------------------------------------------- */
+@layer base {
+  .admin :is(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-body);
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+}
+
+/*
+ * Storefront dark palette. Activated by `html.dark` (set by the storefront
+ * theme-init script — admin pages never run it, so the admin stays light).
+ *
+ * The selector is `html.dark` (specificity 0,1,1) ON PURPOSE: it must override
+ * the DB-driven theme `<style>` that the shop layout injects on `:root`
+ * (specificity 0,1,0, later in the document). So the neutral surfaces flip to
+ * dark here, while the admin-set brand tokens (--primary / --accent / --ring)
+ * are intentionally NOT redefined — they carry through from the injected :root.
+ */
+html.dark {
+  --background: oklch(0.17 0.015 255);
+  --foreground: oklch(0.96 0.01 255);
+
+  --surface: oklch(0.225 0.016 255);
+  --surface-2: oklch(0.27 0.018 255);
+
+  --card: oklch(0.205 0.015 255);
+  --card-foreground: oklch(0.96 0.01 255);
+
+  --popover: oklch(0.205 0.015 255);
+  --popover-foreground: oklch(0.96 0.01 255);
+
+  --secondary: oklch(0.27 0.018 255);
+  --secondary-foreground: oklch(0.96 0.01 255);
+
+  --muted: oklch(0.27 0.018 255);
+  --muted-foreground: oklch(0.70 0.02 255);
+
+  --border: oklch(0.32 0.018 255);
+  --input: oklch(0.34 0.02 255);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html,
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    /* `clip` (not `hidden`): stops horizontal overflow WITHOUT turning the root
+       into a vertical scroll container. `overflow-x: hidden` forces overflow-y
+       to compute as `auto`, making html AND body nested scrollers — which on
+       classic-scrollbar browsers reserves a gutter that nudges mx-auto content
+       to the right and can break the sticky header. */
+    overflow-x: clip;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 25%, transparent);
+    color: var(--foreground);
+  }
+}
+
+@layer utilities {
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-lift { box-shadow: var(--shadow-lift); }
+}
+
+@media (max-width: 640px) {
+  input, textarea, select { font-size: 16px !important; }
+}
+
+.safe-pb { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+.safe-pt { padding-top: max(0px, env(safe-area-inset-top)); }
+
+/* tokyo-store storefront theme v1 */
+/* =========================================================================
+   TOKYO STORE — storefront design system (scoped to `.storefront`)
+   The luxury watch aesthetic: warm ivory/onyx/olive palette, Playfair +
+   Montserrat type, signature micro-interactions. Scoped to the `.storefront`
+   wrapper (applied on the (shop) layout) so the ADMIN panel keeps its own
+   clean Manrope/blue look — nothing here leaks into /admin.
+   ========================================================================= */
+.storefront {
+  /* Fonts: Playfair Display (serif headings) + Montserrat (body/UI). */
+  --font-heading: var(--font-playfair), ui-serif, Georgia, serif;
+  --font-body: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-body);
+  /* `color`/`background` are set explicitly (not just via the vars) because the
+     wrapper inherits the body's already-resolved color — redefining the var
+     alone wouldn't re-tint inherited text. */
+  color: var(--foreground);
+  background-color: var(--background);
+
+  /* A slightly tighter radius reads more refined than the 16px default. */
+  --radius: 12px;
+  /* Re-declare the derived corner scale HERE (not only on :root) so it recomputes
+     from the storefront's own --radius — including the value `buildThemeCss`
+     injects onto this same `.storefront` element from the admin slider. Without
+     this, the -v tokens stay frozen at the :root 16px (derived vars resolve at
+     their declaring element), so the whole rounded-* system would ignore the
+     theme-panel radius control. KEEP THE MULTIPLIERS IN SYNC WITH :root. */
+  --radius-sm-v: calc(var(--radius) * 0.5);
+  --radius-md-v: calc(var(--radius) * 0.75);
+  --radius-lg-v: calc(var(--radius) * 1.125);
+  --radius-xl-v: calc(var(--radius) * 1.5);
+  --radius-2xl-v: calc(var(--radius) * 2);
+  --radius-3xl-v: calc(var(--radius) * 1.5);
+
+  /* Warm luxury palette. The 8 tokens the admin theme drives — `--primary`,
+     `--primary-foreground`, `--foreground`, `--card-foreground`,
+     `--popover-foreground`, `--ring`, `--gold`, `--gold-foreground` — use the
+     EXACT `THEME_DEFAULTS` hex from `src/lib/theme/config.ts`. At runtime
+     `buildThemeCss` injects a `.storefront{…}` <style> that overrides these with
+     the DB theme (or the same THEME_DEFAULTS when unconfigured); declaring the
+     identical values here means a cold-DB render (when the injection is skipped)
+     looks identical instead of silently falling back to a different colour.
+     KEEP IN SYNC WITH THEME_DEFAULTS. The remaining tokens (surface, secondary,
+     muted, accent, border, olive, cherry…) are storefront-only and not theme-
+     driven, so they stay as scope-local hsl() values. */
+  --background: hsl(40 25% 96%);        /* Blanc Ivoire */
+  --foreground: #2B2825;                /* Noir Onyx — THEME_DEFAULTS.foregroundColor */
+  --surface: hsl(38 20% 97%);
+  --surface-2: hsl(30 14% 90%);
+  --card: hsl(38 20% 97%);
+  --card-foreground: #2B2825;           /* = THEME_DEFAULTS.foregroundColor */
+  --popover: hsl(38 20% 97%);
+  --popover-foreground: #2B2825;        /* = THEME_DEFAULTS.foregroundColor */
+  --primary: #4E6F3D;                   /* Vert Olive — THEME_DEFAULTS.primaryColor */
+  --primary-foreground: #F6F3F0;        /* Blanc Ivoire — THEME_DEFAULTS.primaryForeground */
+  --secondary: hsl(80 25% 28%);         /* Vert Olive (scope accent) */
+  --secondary-foreground: hsl(40 25% 96%);
+  --muted: hsl(35 10% 92%);
+  --muted-foreground: hsl(33 6% 48%);
+  --accent: hsl(30 14% 86%);            /* Greige */
+  --accent-foreground: hsl(33 6% 15%);
+  --destructive: hsl(0 72% 32%);
+  --destructive-foreground: hsl(40 25% 96%);
+  --border: hsl(30 10% 84%);
+  --input: hsl(30 10% 84%);
+  --ring: #4E6F3D;                      /* = THEME_DEFAULTS.primaryColor */
+  --gold: #886E5C;                      /* Gold / warm brown — THEME_DEFAULTS.accentColor */
+  --gold-foreground: #F6F3F0;           /* = THEME_DEFAULTS.accentForeground */
+  --olive: hsl(80 25% 28%);             /* scope accent (not theme-driven) */
+  --olive-foreground: hsl(40 25% 96%);
+  --cherry: hsl(2 90% 24%);
+  --cherry-foreground: hsl(40 25% 96%);
+}
+
+/* Storefront dark palette (only the shop ever toggles `.dark`). */
+html.dark .storefront,
+.storefront.dark {
+  --background: hsl(30 8% 6%);
+  --foreground: hsl(40 15% 88%);
+  --surface: hsl(30 6% 12%);
+  --surface-2: hsl(30 6% 16%);
+  --card: hsl(30 8% 9%);
+  --card-foreground: hsl(40 15% 88%);
+  --popover: hsl(30 8% 9%);
+  --popover-foreground: hsl(40 15% 88%);
+  --primary: hsl(35 8% 62%);
+  --primary-foreground: hsl(30 8% 6%);
+  --secondary: hsl(80 20% 42%);
+  --secondary-foreground: hsl(40 15% 92%);
+  --muted: hsl(30 6% 16%);
+  --muted-foreground: hsl(40 8% 60%);
+  --accent: hsl(30 6% 18%);
+  --accent-foreground: hsl(40 15% 88%);
+  --border: hsl(30 6% 20%);
+  --input: hsl(30 6% 22%);
+  --gold: hsl(22 22% 55%);
+  --olive: hsl(80 20% 50%);
+  --cherry: hsl(2 70% 45%);
+}
+
+/* Storefront typography — elegant serif headings at a relaxed weight
+   (overrides the global tight/bold heading rule for the luxury feel). */
+.storefront h1, .storefront h2, .storefront h3, .storefront h4 {
+  font-family: var(--font-heading);
+  letter-spacing: normal;
+  font-weight: 500;
+}
+/* Home (« soft luxury »): the display serif at its BOOK weight. The unlayered rule above
+   beats Tailwind's layered `font-normal`, so this home-scoped rule restores 400 there;
+   the content pages keep 500. */
+.storefront .tk-home :is(h1, h2, h3) { font-weight: 400; }
+
+/* ---- Signature luxury micro-interactions (used by storefront components) ---- */
+@layer components {
+  /* ─────────────────────────────────────────────────────────────────────────
+     BUTTON SYSTEM — one pill geometry, one motion language, focus ring baked in.
+     Two surfaces off one source of truth: these `.btn*` utilities + the <Button>
+     component (src/components/ui/button.tsx). A call-site applies `.btn` + ONE
+     size (.btn-sm|md|lg) + ONE variant (.btn-primary|-primary-onyx|-secondary|
+     -ghost|-link|-destructive|-destructive-ghost), and optionally `.btn-icon`
+     (square), `.btn-on-dark` (onyx/hero bands) and `.btn-ink` (cursor-follow
+     olive glow on a dark fill — use with ink-track ink-track-btn).
+     The legacy `.btn-solid` / `.btn-luxury` / `.btn-ghost-luxury` are grouped
+     into the base + a variant below, so the ~24 existing call-sites keep working
+     and inherit the new focus ring + motion without any change. */
+  .btn,
+  .btn-solid,
+  .btn-luxury,
+  .btn-ghost-luxury {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    font-family: var(--font-body);
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+    isolation: isolate;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease,
+      box-shadow 0.3s ease, filter 0.3s ease,
+      transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  /* The label sits above the ink/glow layer. Direct children are lifted too, so a
+     legacy call-site that doesn't wrap its text in .btn__label still renders above. */
+  .btn__label {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .btn > *,
+  .btn-solid > *,
+  .btn-luxury > *,
+  .btn-ghost-luxury > * { position: relative; z-index: 1; }
+
+  .btn:focus-visible,
+  .btn-solid:focus-visible,
+  .btn-luxury:focus-visible,
+  .btn-ghost-luxury:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px color-mix(in oklab, var(--ring) 55%, transparent);
+  }
+  .btn:active,
+  .btn-solid:active,
+  .btn-luxury:active,
+  .btn-ghost-luxury:active { transform: scale(0.985); }
+  .btn:disabled, .btn[aria-disabled="true"],
+  .btn-solid:disabled, .btn-solid[aria-disabled="true"],
+  .btn-luxury:disabled, .btn-luxury[aria-disabled="true"],
+  .btn-ghost-luxury:disabled, .btn-ghost-luxury[aria-disabled="true"] {
+    opacity: 0.45; pointer-events: none; box-shadow: none; filter: none; transform: none;
+  }
+
+  /* Sizes — height + inline padding + font-size + tracking, so no call-site re-specifies. */
+  .btn-sm { height: 2.25rem; padding-inline: 1rem; font-size: 0.68rem; letter-spacing: 0.14em; }
+  .btn-md { height: 2.75rem; padding-inline: 1.5rem; font-size: 0.72rem; letter-spacing: 0.16em; }
+  .btn-lg { height: 3.25rem; padding-inline: 2rem; font-size: 0.78rem; letter-spacing: 0.18em; }
+  .btn-icon { padding-inline: 0; gap: 0; }
+  .btn-icon.btn-sm { width: 2.25rem; }
+  .btn-icon.btn-md { width: 2.75rem; }
+  .btn-icon.btn-lg { width: 3.25rem; }
+
+  /* Variants (legacy aliases grouped in: btn-solid → primary, btn-luxury /
+     btn-ghost-luxury → secondary). */
+  .btn-primary, .btn-solid { background: var(--primary); color: var(--primary-foreground); }
+  .btn-primary-onyx { background: var(--foreground); color: var(--background); }
+  .btn-secondary, .btn-luxury, .btn-ghost-luxury {
+    background: transparent;
+    color: var(--foreground);
+    border-color: color-mix(in oklab, var(--primary) 35%, transparent);
+  }
+  .btn-ghost { background: transparent; color: color-mix(in oklab, var(--foreground) 68%, transparent); }
+  .btn-destructive { background: var(--destructive); color: var(--destructive-foreground); }
+  .btn-destructive-ghost { background: transparent; color: var(--destructive); }
+  .btn-link {
+    height: auto; min-height: 0; padding: 0; border: 0; border-radius: 4px;
+    background: none; color: var(--primary); text-transform: none; letter-spacing: normal;
+    text-underline-offset: 4px;
+  }
+
+  @media (hover: hover) {
+    .btn-primary:hover, .btn-solid:hover {
+      filter: brightness(1.05); transform: translateY(-1px);
+      box-shadow: 0 4px 14px -6px color-mix(in oklab, var(--foreground) 38%, transparent);
+    }
+    .btn-primary-onyx:hover {
+      filter: brightness(1.12); transform: translateY(-1px);
+      box-shadow: 0 4px 14px -6px color-mix(in oklab, var(--foreground) 45%, transparent);
+    }
+    .btn-secondary:hover, .btn-luxury:hover, .btn-ghost-luxury:hover {
+      color: var(--primary);
+      border-color: color-mix(in oklab, var(--primary) 55%, transparent);
+      background: color-mix(in oklab, var(--primary) 7%, transparent);
+    }
+    .btn-ghost:hover { color: var(--foreground); background: color-mix(in oklab, var(--foreground) 6%, transparent); }
+    .btn-destructive:hover {
+      filter: brightness(1.06); transform: translateY(-1px);
+      box-shadow: 0 4px 14px -6px color-mix(in oklab, var(--destructive) 45%, transparent);
+    }
+    .btn-destructive-ghost:hover { background: color-mix(in oklab, var(--destructive) 9%, transparent); }
+    .btn-link:hover { text-decoration: underline; }
+  }
+  .btn-primary:active, .btn-solid:active { filter: brightness(0.98); transform: translateY(0) scale(0.985); }
+  .btn-primary-onyx:active { filter: brightness(0.95); transform: translateY(0) scale(0.985); }
+  .btn-destructive:active { filter: brightness(0.97); transform: translateY(0) scale(0.985); }
+  .btn-link:focus-visible {
+    box-shadow: none;
+    outline: 2px solid color-mix(in oklab, var(--ring) 55%, transparent);
+    outline-offset: 3px;
+  }
+
+  /* On dark bands (onyx / hero image / olive panel): filled → ivory fill + onyx
+     text; outline/ghost → white; link → gold; focus ring → gold. */
+  .btn-on-dark.btn-primary,
+  .btn-on-dark.btn-primary-onyx,
+  .btn-on-dark.btn-solid { background: var(--primary-foreground); color: var(--foreground); }
+  .btn-on-dark.btn-secondary,
+  .btn-on-dark.btn-luxury,
+  .btn-on-dark.btn-ghost-luxury { color: #fff; border-color: color-mix(in oklab, #fff 35%, transparent); }
+  .btn-on-dark.btn-ghost { color: color-mix(in oklab, #fff 78%, transparent); }
+  .btn-on-dark.btn-link { color: var(--gold); }
+  @media (hover: hover) {
+    .btn-on-dark.btn-secondary:hover,
+    .btn-on-dark.btn-luxury:hover,
+    .btn-on-dark.btn-ghost-luxury:hover {
+      color: #fff;
+      border-color: color-mix(in oklab, #fff 55%, transparent);
+      background: color-mix(in oklab, #fff 12%, transparent);
+    }
+    .btn-on-dark.btn-ghost:hover { color: #fff; background: color-mix(in oklab, #fff 12%, transparent); }
+  }
+  .btn-on-dark:focus-visible {
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--foreground) 85%, transparent), 0 0 0 4px color-mix(in oklab, var(--gold) 70%, transparent);
+  }
+
+  /* Ink — opt-in cursor-follow olive glow on a DARK fill; pair with
+     `ink-track ink-track-btn` (the glow engine) on primary-onyx / on-dark. */
+  .btn-ink { overflow: hidden; }
+
+  .card-luxury {
+    position: relative;
+    background: var(--card);
+    border-radius: var(--radius-2xl-v);
+    border: 1px solid color-mix(in oklab, var(--border) 50%, transparent);
+    overflow: hidden;
+    transition: border-color 0.5s ease, box-shadow 0.5s ease;
+  }
+  .card-luxury:hover {
+    border-color: color-mix(in oklab, var(--primary) 30%, transparent);
+    box-shadow: 0 8px 40px -12px color-mix(in oklab, var(--primary) 10%, transparent);
+  }
+}
+
+.luxury-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklab, var(--olive) 20%, transparent) 20%,
+    color-mix(in oklab, var(--olive) 35%, transparent) 50%,
+    color-mix(in oklab, var(--olive) 20%, transparent) 80%,
+    transparent 100%
+  );
+}
+
+.img-luxury { overflow: hidden; }
+.img-luxury img { transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+.img-luxury:hover img { transform: scale(1.06); }
+/* Home: a MediaFrame photo that is NOT a link (editorial, unlinked banner duo) doesn't zoom;
+   a LINKED one (banner duo slot) gets the home's single slow hover cue, a 2% zoom. */
+.tk-home .img-luxury:hover img { transform: none; }
+.tk-home a > .img-luxury img { transition: transform 1.8s cubic-bezier(0.22, 0.61, 0.36, 1); }
+.tk-home a:hover > .img-luxury img { transform: scale(1.02); }
+@media (prefers-reduced-motion: reduce) {
+  .tk-home a:hover > .img-luxury img { transform: none; }
+}
+
+/* Watch "floats" up on card hover (paired with a soft shadow in the card). */
+.watch-float { transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+.watch-shadow { transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+@media (hover: hover) {
+  .group:hover .watch-float { transform: translateY(-14px); }
+  /* The gentle rest-float pauses on hover so the lift reads as one clean, smooth
+     rise — the float (.watch-bob) runs continuously only when NOT hovered. */
+  .group:hover .watch-bob { animation-play-state: paused; }
+  /* The ground shadow tightens + softens as the watch lifts (source 1:1). */
+  .group:hover .watch-shadow {
+    width: 45% !important;
+    height: 0.35rem !important;
+    opacity: 0.35 !important;
+    bottom: -1.5rem !important;
+    filter: blur(16px) !important;
+  }
+}
+
+/* Watch "tilt" on card hover (home complication cards — the owner's chosen hover): the
+   watch floats up and leans outward, the pair in opposite directions. Hand-written so it
+   always compiles. Unlayered, so it beats the element's own transition utility — it must
+   therefore transition ALL the props the image animates (lift = translate, tilt = rotate).
+   Reduced motion: no lean (the lift utility is motion-safe gated). */
+.watch-tilt-cw, .watch-tilt-ccw {
+  transition:
+    translate 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    scale 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    rotate 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .group:hover .watch-tilt-cw { rotate: 4deg; }
+  .group:hover .watch-tilt-ccw { rotate: -4deg; }
+}
+
+/* NOTE: the home must NOT restyle the shared ProductCard — the rails / grid on the home
+   behave exactly like the product listing (float, lift, ink glow, action bar). */
+/* Home (2026-10): ONE page ground. Every section sits on Ivoire; consecutive sections are
+   separated by ONE very soft hairline in the content column (<HomeRule/>, decided by
+   planSeams in home-blocks.ts): never under the hero, never beside a photo / framed banner,
+   never above the footer. The tk-tone-* bands are Pages-only. */
+.tk-home {
+  /* The ONE soft panel material (ladder cards, brand-tile hover, no-image CTA) — computed
+     here so the storefront dark palette declared on .storefront flows through. */
+  --tk-home-panel: color-mix(in oklab, var(--surface-2) 40%, var(--background));
+  /* The ONE lit vitrine material (packshots + the complication windows). */
+  --tk-vitrine-hi: #fbf8f4;
+  --tk-vitrine-lo: #ebe5dd;
+}
+.tk-home .tk-home-rule {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0,
+    color-mix(in oklab, var(--border) 55%, transparent) 4%,
+    color-mix(in oklab, var(--border) 55%, transparent) 96%,
+    transparent 100%
+  );
+}
+/* Every section owns its rhythm (bottom padding included), so the site footer's own top
+   margin (needed on listings / PDP whose content ends flush) would only double the gap. */
+.storefront:has(.tk-home) > footer { margin-top: 0; }
+/* …and a « Resserré » LAST section is lifted to the standard bottom rhythm, so the page
+   never ends tight against the footer (HomeSection's data-pad hook; unlayered, so it beats
+   the pb-* utilities). */
+.tk-home > section:last-child > [data-pad="tight"] { padding-bottom: 3.5rem; }
+@media (min-width: 640px) { .tk-home > section:last-child > [data-pad="tight"] { padding-bottom: 4rem; } }
+@media (min-width: 1024px) { .tk-home > section:last-child > [data-pad="tight"] { padding-bottom: 5rem; } }
+/* Home: an on-dark outline pill only brightens its border + text — no white fill. */
+@media (hover: hover) {
+  .tk-home .btn-on-dark.btn-secondary:hover { background: transparent; }
+}
+/* Home: the kit eyebrow, quieter — muted ink, tighter tracking, a shorter hairline.
+   (Keyed off the kit's `data-eyebrow` hook, so the content pages stay pixel-identical.) */
+.tk-home [data-eyebrow] { letter-spacing: 0.24em; color: var(--muted-foreground); }
+.tk-home [data-eyebrow] > span[aria-hidden] { width: 1.25rem; opacity: 0.6; }
+
+/* Fine film grain overlay — apply to any positioned container; renders a
+   subtle fractal-noise texture via ::after (source 1:1). */
+.grain-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Cursor-following olive glow — the global InkTrackProvider sets --ink-x/--ink-y
+   (in px) on the hovered `.ink-track` element; default-centred at 50%/50%.
+   Exact reproduction of the source: radii + olive stops + nav/btn/card/soft/olive variants. */
+.ink-track {
+  --ink-x: 50%;
+  --ink-y: 50%;
+  position: relative;
+  overflow: hidden;
+}
+.ink-track::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  background: radial-gradient(
+    400px circle at var(--ink-x) var(--ink-y),
+    color-mix(in oklab, var(--olive) 16%, transparent) 0%,
+    color-mix(in oklab, var(--olive) 8%, transparent) 30%,
+    color-mix(in oklab, var(--olive) 3%, transparent) 55%,
+    transparent 75%
+  );
+}
+@media (hover: hover) {
+  .ink-track:hover::before { opacity: 1; }
+}
+/* Nav variant — largest radius; overflow visible so the mega-menu/search
+   overlay are NOT clipped by the glow container. */
+.ink-track-nav { overflow: visible; }
+.ink-track-nav::before {
+  background: radial-gradient(
+    500px circle at var(--ink-x) var(--ink-y),
+    color-mix(in oklab, var(--olive) 14%, transparent) 0%,
+    color-mix(in oklab, var(--olive) 6%, transparent) 30%,
+    color-mix(in oklab, var(--olive) 2%, transparent) 55%,
+    transparent 75%
+  );
+}
+/* Ink-drop tuned for the dark action-bar buttons (Panier / favori) — a brighter,
+   tighter olive halo that reads on bg-foreground, where the base .ink-track's 16%
+   (calibrated for the light card) would vanish. Applied as `ink-track ink-track-btn`;
+   the button's icon/label must sit at z-10 to stay above the glow. */
+.ink-track-btn::before {
+  background: radial-gradient(
+    200px circle at var(--ink-x) var(--ink-y),
+    color-mix(in oklab, var(--olive) 62%, transparent) 0%,
+    color-mix(in oklab, var(--olive) 34%, transparent) 42%,
+    transparent 72%
+  );
+}
+/* Ink-drop tuned for a product card's INFO block (name / category / brand) on the
+   light card — a tighter radius + a touch more olive than the base .ink-track so
+   the cursor glow reads clearly on the small panel. Applied as `ink-track ink-track-card`. */
+.ink-track-card::before {
+  background: radial-gradient(
+    300px circle at var(--ink-x) var(--ink-y),
+    color-mix(in oklab, var(--olive) 26%, transparent) 0%,
+    color-mix(in oklab, var(--olive) 13%, transparent) 35%,
+    color-mix(in oklab, var(--olive) 4%, transparent) 60%,
+    transparent 78%
+  );
+}
+/* SOFT ink-drop for light content cards (Fidélité steps + FAQ): a gentle,
+   low-opacity olive halo — much lighter than .ink-track-card — so the cursor glow
+   is a whisper, not a wash. Applied as `ink-track ink-track-soft`. */
+.ink-track-soft::before {
+  background: radial-gradient(
+    340px circle at var(--ink-x) var(--ink-y),
+    color-mix(in oklab, var(--olive) 8%, transparent) 0%,
+    color-mix(in oklab, var(--olive) 3%, transparent) 42%,
+    transparent 70%
+  );
+}
+/* Ink-drop for a DARK olive surface (the Fidélité niveau cards): the base olive
+   glow vanishes on an olive gradient, so paint a soft warm light halo (ivory →
+   gold) that lifts with the cursor. Applied as `ink-track ink-track-olive`; the
+   card's content must sit above the glow (z-10). */
+.ink-track-olive::before {
+  background: radial-gradient(
+    460px circle at var(--ink-x) var(--ink-y),
+    color-mix(in oklab, white 20%, transparent) 0%,
+    color-mix(in oklab, var(--gold) 20%, transparent) 32%,
+    color-mix(in oklab, white 4%, transparent) 58%,
+    transparent 76%
+  );
+}
+
+/* Dual-thumb price range (« Prix » filter). Two native range inputs are stacked
+   over one shared rail; each input is transparent and pointer-events:none EXCEPT
+   its thumb, so both thumbs stay independently draggable and neither input steals
+   the other's clicks. The rail + active segment are drawn as separate divs in the
+   markup (category-client.tsx PriceRange). */
+.tk-price-range { position: relative; }
+.tk-price-range input[type="range"] {
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 100%;
+  height: 1.25rem;
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.tk-price-range input[type="range"]:focus-visible { outline: none; }
+.tk-price-range input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  pointer-events: auto;
+  height: 1.15rem;
+  width: 1.15rem;
+  border-radius: 9999px;
+  background: var(--olive);
+  border: 2px solid var(--background);
+  box-shadow: 0 1px 4px color-mix(in oklab, var(--foreground) 25%, transparent);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease;
+}
+.tk-price-range input[type="range"]:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--olive) 35%, transparent);
+}
+.tk-price-range input[type="range"]::-moz-range-thumb {
+  pointer-events: auto;
+  height: 1.15rem;
+  width: 1.15rem;
+  border-radius: 9999px;
+  background: var(--olive);
+  border: 2px solid var(--background);
+  box-shadow: 0 1px 4px color-mix(in oklab, var(--foreground) 25%, transparent);
+  cursor: pointer;
+}
+.tk-price-range input[type="range"]::-moz-range-track { background: transparent; }
+
+/* Shared entrance — one soft, clean, premium reveal used consistently across
+   the storefront (gentle slide + fade, luxury easing). Reduced-motion disables
+   it via the block below. */
+@keyframes tk-fade-in-up {
+  /* Starts at opacity 0.01, NOT 0, ON PURPOSE: Chromium's Largest-Contentful-
+     Paint algorithm ignores any element whose FIRST paint is opacity:0. The hero
+     title is wrapped in `.tk-hero-copy` (home-hero.tsx — same 0.01 start) and IS the LCP element,
+     so a 0-start entrance made Lighthouse/PageSpeed record NO LCP at all
+     ("NO_LCP") — which then errored the whole trace (TBT, minify, unused-CSS, and
+     long-tasks all derive from it). 0.01 is visually identical to 0 but keeps the
+     element an eligible LCP candidate. (An always-opaque hero renders a valid
+     LCP at first paint too — same outcome.) */
+  from { opacity: 0.01; transform: translateY(9px); }
+  to { opacity: 1; transform: none; }
+}
+.tk-fade-in-up { animation: tk-fade-in-up 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
+
+/* Hero watch "bob" — a gentle float + slow rocking tilt for the floating product
+   render. DESKTOP-ONLY; reduced-motion disables it entirely (block further down). */
+@keyframes tk-watch-bob {
+  0%, 100% { transform: translateY(0) rotate(-1.1deg); }
+  50% { transform: translateY(-7px) rotate(1.1deg); }
+}
+
+/* The idle float (.watch-bob) is a DESKTOP-ONLY flourish, gated to
+   hover-capable (mouse) devices. On TOUCH/mobile the watch stays STATIC — no
+   animation at all: one `.watch-bob` runs per product image and its
+   rotate()+drop-shadow defeats GPU layer promotion → it repaints on the main
+   thread every frame, so the throttled mobile Lighthouse run (which emulates
+   touch → `hover: none`) never reached a CPU-quiet window and finalized its
+   trace incomplete → "NO_LCP". Not animating on touch lets mobile paint once and
+   record a valid LCP; desktop keeps the perpetual idle motion + the pause-on-
+   hover above. (Capping the cycle count wasn't enough — ~20s of repaint still
+   spanned the throttled trace window; mobile needs the float fully off.) */
+@media (hover: hover) {
+  .watch-bob { animation: tk-watch-bob 6.8s ease-in-out infinite; will-change: transform; }
+}
+
+/* The Tokyo mascot face (404 + maintenance scenes, see tokyo-face.tsx). The dashed
+   ring spins slowly, and the crimson corner badge pops in on load (CSS so it works
+   without JS + rests visible at scale 1). Both motion-safe — held still (badge just
+   rests visible) under reduced motion. */
+@keyframes tokyo-face-spin { to { transform: rotate(360deg); } }
+.tokyo-face-ring { animation: tokyo-face-spin 26s linear infinite; }
+@keyframes tokyo-badge-pop { 0% { transform: scale(0); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
+.tokyo-badge-pop { animation: tokyo-badge-pop 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) 0.4s backwards; }
+@media (prefers-reduced-motion: reduce) {
+  .tokyo-face-ring { animation: none; }
+  .tokyo-badge-pop { animation: none; }
+}
+
+/* Search overlay reveal — a smooth horizontal expand + fade (NOT a float-up):
+   the search bar morphs open in place rather than sliding up into view. */
+@keyframes search-morph {
+  from { opacity: 0; transform: scaleX(0.96); }
+  to { opacity: 1; transform: none; }
+}
+.search-morph { animation: search-morph 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
+
+/* Home hero autoplay timer — an INVISIBLE 1px element (opacity-0, home-hero.tsx) whose
+   `animationend` advances the slide; the duration is set inline. Hover / focus / offscreen
+   hold it via `animation-play-state` (no drift); reduced motion (below) removes the
+   animation, so it never ends and nothing auto-advances. */
+@keyframes tk-hero-timer {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.tk-hero-timer {
+  animation-name: tk-hero-timer;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+/* Home hero copy entrance — slow and slight (a 4px rise). Starts at 0.01, not 0, for the
+   LCP reason documented on tk-fade-in-up above (the hero h1 IS the LCP element). */
+@keyframes tk-hero-copy {
+  from { opacity: 0.01; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.tk-hero-copy { animation: tk-hero-copy 1.1s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+
+/* Home: ONE lit vitrine material — the warm window of the complication cards, also behind
+   the duo / category packshots, the collection fallback and MediaFrame contain. Literal
+   (via the .tk-home vars) so it reads the same inside the onyx card (tk-tone-dark
+   re-declares --card / --surface-2) and in storefront dark mode (where the multiply blend
+   would otherwise sink every packshot to a silhouette). (0,2,0) beats the global
+   .tk-vitrine; the Pages keep theirs. */
+.tk-home .tk-vitrine,
+.tk-home .tk-vitrine-lit {
+  background: radial-gradient(110% 85% at 50% 30%, var(--tk-vitrine-hi) 0%, transparent 62%), var(--tk-vitrine-lo);
+}
+.tk-home .tk-vitrine-lit img { mix-blend-mode: multiply; }
+
+/* Refined thin scrollbar for the storefront. */
+.storefront ::-webkit-scrollbar { width: 6px; height: 6px; }
+.storefront ::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--primary) 15%, transparent);
+  border-radius: 3px;
+}
+.storefront ::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--primary) 30%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tk-fade-in-up, .tk-hero-copy, .watch-float, .watch-shadow, .search-morph,
+  .watch-bob,
+  .img-luxury img,
+  .btn, .btn__label, .btn-ink,
+  .btn-solid, .btn-luxury, .btn-ghost-luxury {
+    animation: none !important;
+    transition: none !important;
+  }
+  /* No autoplay: the invisible timer never runs, so it never fires animationend. */
+  .tk-hero-timer { animation: none !important; }
+}
+
+/* ── Editorial rich-text (.tk-prose) ───────────────────────────────────────────
+   Luxury editorial treatment for admin-authored CMS / legal / content HTML —
+   hand-written (no typography plugin) so headings, body ink, list markers,
+   drop-cap and the authored hooks all use theme tokens and rescale / dark-flip.
+   Three visual ranks: Greige/Onyx body · Playfair olive headings + strong ·
+   gold list markers & figures. The authored hook classes (.tk-lead / .tk-key /
+   .tk-note / .tk-facts / .tk-pullquote) survive DOMPurify (class is allow-listed)
+   so seeded + admin HTML can reach for them. */
+.tk-prose {
+  color: color-mix(in oklab, var(--foreground) 74%, var(--muted-foreground));
+  font-family: var(--font-body);
+  font-size: 0.975rem;
+  line-height: 1.75;
+  letter-spacing: 0.004em;
+}
+.tk-prose > * + * { margin-top: 1.15em; }
+.tk-prose h2, .tk-prose h3, .tk-prose h4 {
+  font-family: var(--font-display);
+  color: var(--foreground);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.tk-prose h2 { font-size: 1.5rem; margin-top: 2.1em; margin-bottom: 0.55em; color: var(--olive); }
+.tk-prose h3 { font-size: 1.2rem; margin-top: 1.7em; margin-bottom: 0.45em; }
+.tk-prose h4 { font-size: 1.02rem; margin-top: 1.4em; margin-bottom: 0.35em; }
+/* (No `.tk-prose p { margin: 0 }` here — its higher specificity used to cancel the
+   sibling rhythm above, gluing consecutive paragraphs together. Preflight already
+   zeroes the default p margins.) */
+.tk-prose strong, .tk-prose b { color: var(--foreground); font-weight: 600; }
+.tk-prose em, .tk-prose i { font-style: italic; }
+.tk-prose a {
+  color: var(--olive);
+  /* Explicit underline — preflight resets anchors to `text-decoration: inherit`, which
+     left in-prose links indistinguishable from body copy. */
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in oklab, var(--olive) 35%, transparent);
+  transition: text-decoration-color 0.2s ease;
+}
+.tk-prose a:hover { text-decoration-color: var(--olive); }
+.tk-prose ul, .tk-prose ol { margin: 1.1em 0; padding-left: 1.5em; }
+.tk-prose li { margin: 0.4em 0; padding-left: 0.3em; }
+.tk-prose li::marker { color: color-mix(in oklab, var(--gold) 80%, transparent); }
+.tk-prose ul > li { list-style: none; position: relative; }
+.tk-prose ul > li::before {
+  content: "";
+  position: absolute;
+  left: -1.1em;
+  top: 0.62em;
+  width: 0.42em;
+  height: 0.42em;
+  border-radius: 9999px;
+  background: var(--gold);
+}
+.tk-prose ol { list-style: none; counter-reset: tkli; padding-left: 1.7em; }
+.tk-prose ol > li { counter-increment: tkli; position: relative; }
+.tk-prose ol > li::before {
+  content: counter(tkli) ".";
+  position: absolute;
+  left: -1.6em;
+  top: 0;
+  font-family: var(--font-display);
+  color: var(--gold);
+  font-weight: 600;
+}
+.tk-prose blockquote, .tk-prose .tk-pullquote {
+  margin: 1.7em 0;
+  padding-left: 1.25em;
+  border-left: 2px solid color-mix(in oklab, var(--olive) 45%, transparent);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.2rem;
+  line-height: 1.5;
+  color: color-mix(in oklab, var(--foreground) 82%, transparent);
+}
+.tk-prose hr { margin: 2.1em 0; border: 0; height: 1px; background: color-mix(in oklab, var(--border) 80%, transparent); }
+.tk-prose img { border-radius: 1rem; margin: 1.6em 0; }
+.tk-prose table { width: 100%; border-collapse: collapse; margin: 1.6em 0; font-size: 0.9rem; }
+.tk-prose th, .tk-prose td { border: 1px solid color-mix(in oklab, var(--border) 70%, transparent); padding: 0.6em 0.85em; text-align: left; vertical-align: top; }
+.tk-prose th { background: var(--surface); font-family: var(--font-body); font-weight: 600; color: var(--foreground); text-transform: none; }
+
+/* First-paragraph drop-cap — opt-in via .tk-lead on the opening <p>. */
+.tk-prose .tk-lead::first-letter {
+  font-family: var(--font-display);
+  font-size: 3.1em;
+  line-height: 0.78;
+  float: left;
+  margin: 0.06em 0.11em 0 0;
+  color: var(--olive);
+  font-weight: 500;
+}
+
+/* Authored hooks. */
+.tk-prose .tk-key {
+  display: inline-block;
+  padding: 0.02em 0.5em;
+  border-radius: 0.4em;
+  background: color-mix(in oklab, var(--gold) 15%, transparent);
+  color: color-mix(in oklab, var(--gold) 55%, var(--foreground));
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tk-prose .tk-note {
+  margin: 1.6em 0;
+  padding: 0.95em 1.2em;
+  border-left: 3px solid var(--olive);
+  border-radius: 0 0.85em 0.85em 0;
+  background: color-mix(in oklab, var(--olive) 6%, transparent);
+  font-size: 0.92rem;
+}
+.tk-prose .tk-note > * + * { margin-top: 0.6em; }
+.tk-prose .tk-note--warn { border-left-color: var(--destructive); background: color-mix(in oklab, var(--destructive) 6%, transparent); }
+.tk-prose .tk-facts {
+  display: grid;
+  grid-template-columns: 1fr;
+  margin: 1.6em 0;
+  border: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+@media (min-width: 640px) { .tk-prose .tk-facts { grid-template-columns: 1fr 1fr; } }
+.tk-prose .tk-facts > div { padding: 0.85em 1.1em; }
+.tk-prose .tk-facts > div + div { border-top: 1px solid color-mix(in oklab, var(--border) 55%, transparent); }
+@media (min-width: 640px) { .tk-prose .tk-facts > div:nth-child(2) { border-top: 0; } .tk-prose .tk-facts > div:nth-child(odd) { border-right: 1px solid color-mix(in oklab, var(--border) 55%, transparent); } }
+.tk-prose .tk-facts dt { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted-foreground); margin: 0; }
+.tk-prose .tk-facts dd { margin: 0.25em 0 0; color: var(--foreground); font-weight: 500; }
+
+/* ── Content-page section tones (page block composer) ──────────────────────────
+   Pages alternate sections by TONE, not hairlines. `surface` here is a visible warm
+   greige wash (the shared bg-surface/50 is ~invisible on Ivoire). `dark` and `brand`
+   RE-DECLARE the palette locally, so every token-driven child — text-foreground,
+   muted copy, borders, cards, .tk-prose and the .btn variants — flips automatically
+   (no per-block "on dark" special-casing, no invisible onyx-on-onyx headings). */
+.storefront { --tk-brand: var(--primary); }
+.tk-tone-surface { background-color: color-mix(in oklab, var(--surface-2) 45%, var(--background)); }
+.tk-tone-muted { background-color: color-mix(in oklab, var(--muted) 75%, var(--background)); }
+.tk-tone-olive { background-color: color-mix(in oklab, var(--olive) 8%, var(--background)); }
+.tk-tone-dark {
+  --background: #2B2825;
+  --foreground: hsl(40 22% 93%);
+  --surface: hsl(30 6% 18%);
+  --surface-2: hsl(30 6% 23%);
+  --card: hsl(30 6% 19%);
+  --card-foreground: hsl(40 22% 93%);
+  --popover: hsl(30 6% 19%);
+  --popover-foreground: hsl(40 22% 93%);
+  --muted: hsl(30 5% 22%);
+  --muted-foreground: hsl(36 12% 72%);
+  --accent: hsl(30 6% 26%);
+  --accent-foreground: hsl(40 22% 93%);
+  --border: hsl(30 6% 32%);
+  --input: hsl(30 6% 32%);
+  --gold: hsl(28 34% 70%);
+  --olive: hsl(80 24% 66%);
+  /* Primary / ring re-toned for onyx: the theme olive is ~1.6:1 here, so filled
+     buttons, the secondary hover tint and the focus ring would all be unreadable. */
+  --primary: hsl(80 24% 66%);
+  --primary-foreground: #2B2825;
+  --ring: hsl(28 34% 70%);
+  background-color: var(--background);
+  color: var(--foreground);
+}
+/* Content pages (CMS page blocks + their info index): the shared muted-foreground is
+   ~3.6:1 on Ivoire / the greige tone — below WCAG AA for body copy. Darken it for the
+   page scope only (the dark/brand tones re-declare their own, nested, so they win). */
+html:not(.dark) .storefront:not(.dark) .tk-page { --muted-foreground: hsl(33 8% 37%); }
+/* …except the shared ProductCard inside the home rails / grid, which must render exactly as
+   on the product listing: restore the storefront's own (theme-driven) value, captured on
+   .storefront before the page scope darkens it. */
+.storefront { --tk-muted-native: var(--muted-foreground); }
+.tk-page .tk-native-tokens { --muted-foreground: var(--tk-muted-native); }
+.tk-tone-brand {
+  --background: var(--tk-brand);
+  --foreground: #F6F3F0;
+  --card: color-mix(in oklab, #F6F3F0 9%, var(--tk-brand));
+  --card-foreground: #F6F3F0;
+  --muted-foreground: color-mix(in oklab, #F6F3F0 80%, var(--tk-brand));
+  --border: color-mix(in oklab, #F6F3F0 30%, var(--tk-brand));
+  --accent: color-mix(in oklab, #F6F3F0 14%, var(--tk-brand));
+  --primary: #F6F3F0;
+  --primary-foreground: #2B2825;
+  --ring: #F6F3F0;
+  --gold: hsl(40 45% 84%);
+  --olive: #F6F3F0;
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+/* Vitrine — a product packshot presented CONTAINED on a soft lit panel (never cropped
+   by object-cover). A white-background JPG takes on the panel tone via multiply. */
+.tk-vitrine {
+  background:
+    radial-gradient(110% 85% at 50% 30%, color-mix(in oklab, var(--card) 85%, white) 0%, transparent 62%),
+    color-mix(in oklab, var(--surface-2) 70%, var(--background));
+}
+.tk-vitrine img { mix-blend-mode: multiply; }
+.tk-tone-dark .tk-vitrine img { mix-blend-mode: normal; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOKYO STOREFRONT DESIGN SYSTEM  (scope: `.tokyo`)
+   The new storefront (src/storefront/**) renders inside a `.tokyo` wrapper.
+   Ported from Tokyo-Store-UI/src/app/globals.css and rescoped to `.tokyo`, so
+   the admin panel (.admin) and the legacy luxury storefront (.storefront) are
+   untouched. Colours are oklch; crimson brand #C81232. The `@utility`,
+   `@keyframes` and decorative helper classes below are global (unique names,
+   used only by storefront components).
+   ═══════════════════════════════════════════════════════════════════════════ */
+.tokyo {
+  --radius: 1.25rem;
+  --nav-h: 5rem;
+  --banner-h: clamp(220px, calc((100vw - 2rem - 1rem) * 0.375), 760px);
+  --menu-h-banner: calc(var(--banner-h) + 2px - 1.5rem);
+  --gutter: 0.75rem;
+  --envelope-gutter: 0.75rem;
+  --envelope-l: max(var(--envelope-gutter), env(safe-area-inset-left));
+  --envelope-r: max(var(--envelope-gutter), env(safe-area-inset-right));
+  --gutter-l: calc(var(--envelope-l) + var(--gutter) - var(--envelope-gutter));
+  --gutter-r: calc(var(--envelope-r) + var(--gutter) - var(--envelope-gutter));
+  --sticky-top: calc(5rem + env(safe-area-inset-top));
+  --dock-bottom: calc(5rem + env(safe-area-inset-bottom));
+
+  --background: oklch(0.983 0.003 75);
+  --foreground: oklch(0.18 0.014 260);
+  --ink: oklch(0.12 0.012 260);
+  --surface: oklch(1 0 0);
+  --surface-warm: oklch(0.966 0.0035 75);
+  --surface-beige: oklch(0.963 0.0075 75);
+  --product-media: oklch(1 0 0);
+  --graphite: oklch(0.28 0.014 260);
+  --graphite-soft: oklch(0.48 0.012 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.014 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.014 260);
+  --primary: oklch(0.55 0.22 22);
+  --primary-foreground: oklch(0.99 0 0);
+  --primary-hover: oklch(0.5 0.22 22);
+  --success: oklch(0.5 0.12 160);
+  --success-foreground: oklch(0.99 0 0);
+  --rating: oklch(0.79 0.16 75);
+  --secondary: oklch(0.966 0.0035 75);
+  --secondary-foreground: oklch(0.18 0.014 260);
+  --muted: oklch(0.966 0.0035 75);
+  --muted-foreground: oklch(0.5 0.012 260);
+  --accent: oklch(0.966 0.0035 75);
+  --accent-foreground: oklch(0.18 0.014 260);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.912 0.0035 75);
+  --input: oklch(0.935 0.0035 75);
+  --ring: oklch(0.55 0.22 22);
+
+  --font-body: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-outfit), var(--font-figtree), sans-serif;
+  /* The shared @theme maps --font-sans/--font-display to the legacy
+     --font-body/--font-heading and INLINES them to Manrope at :root, so a scope
+     override of --font-body alone doesn't reach them. Re-point --font-sans and
+     --font-display directly to the Tokyo faces so the storefront renders in
+     Figtree (body) + Outfit (display), not Manrope. */
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-outfit), var(--font-figtree), sans-serif;
+
+  background-color: var(--surface-beige);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.005em;
+}
+
+@media (min-width: 640px) {
+  .tokyo { --gutter: 1rem; --envelope-gutter: 1rem; }
+}
+@media (min-width: 768px) {
+  .tokyo {
+    --nav-h: 5.5rem;
+    --gutter: 1.75rem;
+    --dock-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  }
+}
+@media (width < 22.5rem) {
+  .tokyo { --banner-h: 184px; }
+}
+
+html.dark .tokyo,
+.tokyo.dark {
+  --background: oklch(0.14 0.012 260);
+  --foreground: oklch(0.98 0.003 80);
+  --ink: oklch(0.99 0 0);
+  --surface: oklch(0.14 0.012 260);
+  --surface-warm: oklch(0.14 0.012 260);
+  --surface-beige: oklch(0.14 0.012 260);
+  --product-media: oklch(1 0 0);
+  --graphite: oklch(0.85 0.012 260);
+  --graphite-soft: oklch(0.7 0.012 260);
+  --card: oklch(0.14 0.012 260);
+  --card-foreground: oklch(0.98 0.003 80);
+  --popover: oklch(0.14 0.012 260);
+  --popover-foreground: oklch(0.98 0.003 80);
+  --primary: oklch(0.62 0.22 22);
+  --primary-foreground: oklch(0.99 0 0);
+  --primary-hover: oklch(0.58 0.22 22);
+  --success: oklch(0.72 0.14 160);
+  --success-foreground: oklch(0.14 0.012 260);
+  --rating: oklch(0.8 0.16 75);
+  --secondary: oklch(0.14 0.012 260);
+  --secondary-foreground: oklch(0.98 0.003 80);
+  --muted: oklch(0.14 0.012 260);
+  --muted-foreground: oklch(0.7 0.012 260);
+  --accent: oklch(0.14 0.012 260);
+  --accent-foreground: oklch(0.98 0.003 80);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.98 0.003 80);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.62 0.22 22);
+}
+
+/* Base element styles, scoped to the storefront wrapper */
+.tokyo * { border-color: var(--color-border); -webkit-tap-highlight-color: transparent; }
+/* The footer's full-width section dividers — a soft hairline instead of the
+   default `--border` (which reads too bright on the footer surface). Based on the
+   footer's own ink (`--background`, its `text-background` colour) at low opacity,
+   so it stays a soft line in BOTH modes: light-on-dark on the default dark footer,
+   and dark-on-light when the footer inverts in dark mode. Scoped to
+   `.tokyo .footer-divider` so it wins over the unlayered `.tokyo *` border-color
+   default above (a `border-white/…` utility cannot — that rule overrides it). */
+.tokyo .footer-divider {
+  border-bottom-color: color-mix(in oklab, var(--background) 8%, transparent);
+}
+.tokyo :where(a, button, summary, [role="button"], [role="tab"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.tokyo :where(input, select, textarea):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 0;
+}
+.tokyo h1, .tokyo h2, .tokyo h3, .tokyo h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.025em;
+  font-weight: 700;
+}
+.tokyo h1 { letter-spacing: -0.035em; font-weight: 800; }
+.tokyo input, .tokyo select, .tokyo textarea { font-size: 16px; }
+.tokyo .snap-x, .tokyo [class*="overflow-x-auto"] { -webkit-overflow-scrolling: touch; }
+.tokyo :where(main, footer) :where(a, button, input, select, textarea, summary, form, [id], [tabindex]) {
+  scroll-margin-top: var(--sticky-top);
+}
+.tokyo main { scroll-margin-top: calc(var(--nav-h) + env(safe-area-inset-top)); }
+
+/* html canvas continues the storefront surface for overscroll/browser chrome.
+   text-size-adjust:100% stops iOS Safari (landscape) / Android auto-inflating the
+   tuned type scale — matches the Tokyo-Store-UI reference. */
+html:has(.tokyo) {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  background-color: oklch(0.963 0.0075 75);
+  overscroll-behavior-y: none;
+}
+html.dark:has(.tokyo) { background-color: oklch(0.14 0.012 260); }
+
+/* On phones the bottom nav is fixed: focus / anchor jumps / scrollIntoView must
+   stop above it. --dock-bottom is .tokyo-scoped (won't resolve on <html>), so the
+   phone value calc(5rem + safe-area) is inlined here, as in the reference. */
+@media (width < 48rem) {
+  html:has(.tokyo) { scroll-padding-bottom: calc(5rem + env(safe-area-inset-bottom)); }
+}
+/* The cart/checkout order bar docks below lg: add its ~56px capsule (4.25rem) so a
+   focused field never lands under it (phone + tablet, portrait included). */
+html:has(.tokyo):has([data-order-bar="shown"]) {
+  @media (width < 48rem) { scroll-padding-bottom: calc(5rem + env(safe-area-inset-bottom) + 4.25rem); }
+  @media (48rem <= width < 64rem) { scroll-padding-bottom: calc(1.5rem + env(safe-area-inset-bottom) + 4.25rem); }
+}
+
+@media (max-width: 767px) {
+  .tokyo input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  .tokyo select,
+  .tokyo textarea { font-size: 16px; }
+}
+
+/* ── Storefront utilities (global, unique names) ─────────────────────────── */
+@utility no-scrollbar {
+  &::-webkit-scrollbar { display: none; }
+  scrollbar-width: none;
+}
+@utility pill-gloss {
+  background-image: radial-gradient(
+    120% 95% at 50% -45%,
+    oklch(1 0 0 / 0.45) 0%,
+    oklch(1 0 0 / 0.14) 48%,
+    transparent 72%
+  );
+}
+@utility page-container {
+  margin-inline: auto;
+  width: 100%;
+  padding-left: var(--gutter-l);
+  padding-right: var(--gutter-r);
+}
+@utility gutter-x {
+  padding-left: var(--gutter-l);
+  padding-right: var(--gutter-r);
+}
+@utility envelope-x {
+  padding-left: var(--envelope-l);
+  padding-right: var(--envelope-r);
+}
+@utility envelope-wrap {
+  padding-top: 0.75rem;
+  @media (width >= 48rem) {
+    margin-top: calc(0.75rem - var(--nav-h));
+    padding-top: 0;
+  }
+}
+@utility radius-envelope {
+  border-radius: 28px;
+  @media (width >= 40rem) { border-radius: 36px; }
+  @media (width >= 48rem) { border-radius: 44px; }
+}
+@utility envelope {
+  position: relative;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-background);
+  box-shadow: var(--shadow-card);
+  border-radius: 28px;
+  padding: 1.25rem 1rem;
+  @media (width >= 40rem) {
+    border-radius: 36px;
+    padding-block: 1.5rem;
+  }
+  @media (width >= 48rem) {
+    border-radius: 44px;
+    padding: calc(var(--nav-h) + 0.5rem) 1.75rem 1.75rem;
+  }
+  @media (width >= 64rem) {
+    padding-inline: 2rem;
+    padding-bottom: 2rem;
+  }
+}
+@utility envelope-wash {
+  background-image: linear-gradient(
+    to bottom right,
+    color-mix(in oklab, var(--color-primary) 7%, transparent),
+    transparent 55%
+  );
+}
+@utility eyebrow {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-wrap-style: balance;
+  @media (width >= 40rem) { font-size: 12px; }
+}
+@utility title-page {
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  @media (width >= 40rem) { font-size: 32px; }
+  @media (width >= 48rem) { font-size: 36px; }
+}
+@utility title-product {
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  @media (width >= 40rem) { font-size: 26px; }
+  @media (width >= 64rem) { font-size: 28px; }
+}
+@utility title-section {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  text-wrap-style: balance;
+  @media (width >= 40rem) { font-size: 30px; }
+  @media (width >= 48rem) { font-size: 36px; }
+}
+@utility title-section-line {
+  height: calc(24px * 1.15);
+  @media (width >= 40rem) { height: calc(30px * 1.15); }
+  @media (width >= 48rem) { height: calc(36px * 1.15); }
+}
+@utility title-block {
+  font-family: var(--font-display);
+  font-size: 18px;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  @media (width >= 40rem) { font-size: 20px; }
+}
+@utility hit-44 {
+  &:where(:not(.absolute, .fixed, .sticky)) { position: relative; }
+  &::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* ── Storefront animations & decorative helpers (global) ─────────────────── */
+@keyframes tokyo-search-reveal {
+  0% { clip-path: circle(0px at var(--reveal-x, 50%) var(--reveal-y, 100%)); opacity: 0; }
+  15% { opacity: 1; }
+  100% { clip-path: circle(180% at var(--reveal-x, 50%) var(--reveal-y, 100%)); opacity: 1; }
+}
+.tokyo-search-reveal {
+  animation: tokyo-search-reveal 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: clip-path, opacity;
+}
+@keyframes tokyo-search-content {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.tokyo-search-content {
+  animation: tokyo-search-content 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 260ms;
+  will-change: opacity, transform;
+}
+@keyframes tokyo-pixel-rise {
+  0% { transform: translate3d(0, 12px, 0); opacity: 0; }
+  14% { opacity: var(--pixel-opacity, 0.7); }
+  76% { opacity: var(--pixel-opacity, 0.7); }
+  100% { transform: translate3d(var(--pixel-drift, 6px), var(--pixel-rise, -76px), 0); opacity: 0; }
+}
+@keyframes tokyo-pixel-grid {
+  to { background-position: 18px 0, 0 -18px; }
+}
+.tokyo-pixel-grid {
+  background-image:
+    linear-gradient(to right, currentColor 1px, transparent 1px),
+    linear-gradient(to bottom, currentColor 1px, transparent 1px);
+  background-size: 18px 18px, 18px 18px;
+  animation: tokyo-pixel-grid 3.2s linear infinite;
+}
+.tokyo-pixel {
+  position: absolute;
+  bottom: 0;
+  width: var(--pixel-size, 3px);
+  height: var(--pixel-size, 3px);
+  animation: tokyo-pixel-rise var(--pixel-duration, 4s) linear infinite;
+  animation-delay: var(--pixel-delay, 0s);
+  will-change: transform, opacity;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tokyo-pixel-grid { animation: none; }
+  .tokyo-pixel { animation: none; opacity: 0; }
+}
+
+[data-bottom-nav] {
+  transition:
+    translate 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 300ms ease;
+}
+html[data-menu-open="true"] [data-bottom-nav] {
+  translate: 0 calc(100% + 12px);
+  opacity: 0;
+  pointer-events: none;
+}
+/* ── PDP mobile buy bar ↔ bottom nav SWAP ───────────────────────────────────
+   On a product page the floating buy bar (qty · price · Panier · Acheter)
+   REPLACES the normal bottom nav while it is up; peeking the bar (its chevron)
+   restores the nav. Only the PDP sets data-buy-bar, and [data-bottom-nav] exists
+   only below md, so this is mobile-scoped in practice. Distinct from the cart's
+   data-order-bar (which floats ABOVE the nav), so the cart is unaffected. */
+html:has([data-buy-bar="shown"]) [data-bottom-nav] {
+  translate: 0 calc(100% + 12px);
+  opacity: 0;
+  pointer-events: none;
+}
+html:has([data-buy-bar="shown"]) {
+  scroll-padding-bottom: calc(env(safe-area-inset-bottom) + 8rem);
+}
+/* The buy/order bar is `fixed bottom-0`, so at the END of the page it overlaps
+   the footer's legal/copyright strip. scroll-padding alone adds no layout space,
+   so below lg (where the bar shows) give the footer REAL bottom clearance equal
+   to the tallest bar, overriding its default --dock-bottom. */
+@media (width < 64rem) {
+  html:has([data-buy-bar="shown"]) footer.envelope-x {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 8.5rem);
+  }
+}
+@media (width < 48rem) and (height <= 30rem) {
+  [data-order-bar] { --dock-bottom: calc(0.75rem + env(safe-area-inset-bottom)); }
+  html:has([data-order-bar="shown"]) {
+    scroll-padding-bottom: calc(0.75rem + env(safe-area-inset-bottom) + 4.25rem);
+  }
+  html:has([data-order-bar="shown"]) [data-bottom-nav] {
+    translate: 0 calc(100% + 12px);
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+@keyframes nav-island-grow {
+  0% { width: 7.5rem; height: 2.25rem; animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1); }
+  58% { width: calc(100% + 8px); height: calc(var(--pill-h, 4rem) + 2px); animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  80% { width: calc(100% - 2px); height: calc(var(--pill-h, 4rem) - 0.5px); animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1); }
+}
+@keyframes nav-island-content {
+  from { opacity: 0; filter: blur(6px); transform: scale(0.97); }
+}
+.nav-island { animation: nav-island-grow 820ms 160ms backwards; }
+.nav-island-content { animation: nav-island-content 420ms cubic-bezier(0.22, 1, 0.36, 1) 480ms backwards; }
+.nav-island-sheet-content { animation: nav-island-content 360ms cubic-bezier(0.22, 1, 0.36, 1) 140ms backwards; }
+@media (prefers-reduced-motion: reduce) {
+  .nav-island, .nav-island-content, .nav-island-sheet-content { animation: none; }
+}
+
+/* Site-wide reduced-motion sweep for the storefront (matches the Tokyo-Store-UI
+   reference). Without it, Tailwind transition and animate utilities and the
+   tw-animate-css animate-in/fade-in/zoom-in classes kept playing for users who
+   asked for less motion. Scoped to `.tokyo` so admin/legacy keep their own rules. */
+@media (prefers-reduced-motion: reduce) {
+  .tokyo *, .tokyo *::before, .tokyo *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   BLOG ARTICLE PROSE (crimson) — the sanitized post body rendered inside the
+   `.tokyo` scope (src/storefront/.../blog/blog-article-view.tsx). Mirrors the
+   « Blog » mockup's editorial typography: 18px/1.75 body, tight black H2s,
+   crimson links + markers, a crimson pull-quote, bordered tables, and the
+   optional `.tk-note` advice callout. Scoped to .tokyo so it never leaks into
+   the olive `.storefront` chrome.
+   ──────────────────────────────────────────────────────────────────────── */
+.tokyo .blog-prose {
+  font-size: 18px;
+  line-height: 1.75;
+  color: #262a31;
+  overflow-wrap: break-word;
+}
+.tokyo .blog-prose > :first-child { margin-top: 0; }
+.tokyo .blog-prose > :last-child { margin-bottom: 0; }
+.tokyo .blog-prose p { margin: 0 0 18px; text-wrap: pretty; }
+.tokyo .blog-prose h2 {
+  margin: 34px 0 0;
+  font-size: clamp(24px, 2.6vw, 32px);
+  line-height: 1.15;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--foreground);
+  scroll-margin-top: 90px;
+  text-wrap: balance;
+}
+.tokyo .blog-prose h2 + p { margin-top: 14px; }
+.tokyo .blog-prose h3 {
+  margin: 26px 0 0;
+  font-size: 20px;
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
+.tokyo .blog-prose h3 + p { margin-top: 10px; }
+.tokyo .blog-prose a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.tokyo .blog-prose strong { font-weight: 700; color: var(--foreground); }
+.tokyo .blog-prose ul,
+.tokyo .blog-prose ol { margin: 0 0 18px; padding-left: 26px; display: flex; flex-direction: column; gap: 10px; }
+.tokyo .blog-prose ul { list-style: none; padding-left: 0; }
+.tokyo .blog-prose ul > li { position: relative; padding-left: 26px; }
+.tokyo .blog-prose ul > li::before {
+  content: ""; position: absolute; left: 4px; top: 0.72em;
+  width: 7px; height: 7px; border-radius: 999px; background: var(--primary);
+}
+.tokyo .blog-prose ol { list-style: decimal; }
+.tokyo .blog-prose ol > li::marker { color: var(--primary); font-weight: 800; }
+.tokyo .blog-prose li { line-height: 1.6; }
+.tokyo .blog-prose blockquote {
+  margin: 8px 0 22px;
+  padding: 6px 0 6px 24px;
+  border-left: 4px solid var(--primary);
+  font-size: clamp(22px, 2.4vw, 28px);
+  line-height: 1.3;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+  text-wrap: balance;
+}
+.tokyo .blog-prose blockquote p { margin: 0; font-size: inherit; font-weight: inherit; }
+.tokyo .blog-prose blockquote cite,
+.tokyo .blog-prose blockquote footer { display: block; margin-top: 10px; font-size: 14px; font-weight: 500; font-style: normal; color: var(--muted-foreground); }
+.tokyo .blog-prose img {
+  display: block; width: 100%; height: auto;
+  border-radius: 24px; margin: 22px 0; background: var(--muted);
+}
+.tokyo .blog-prose figure { margin: 22px 0; }
+.tokyo .blog-prose figure img { margin: 0; }
+.tokyo .blog-prose figcaption { margin-top: 10px; font-size: 14px; color: var(--muted-foreground); }
+.tokyo .blog-prose hr { margin: 28px 0; border: 0; border-top: 1px solid var(--border); }
+.tokyo .blog-prose code {
+  font-size: 0.9em; padding: 2px 6px; border-radius: 8px;
+  background: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.tokyo .blog-prose pre {
+  margin: 0 0 22px; padding: 18px 20px; border-radius: 18px;
+  background: var(--foreground); color: var(--background); overflow-x: auto;
+}
+.tokyo .blog-prose pre code { background: transparent; padding: 0; }
+/* Tables — the mockup's bordered "Modèle / Idéal pour / Prix" grid. */
+.tokyo .blog-prose table {
+  width: 100%; border-collapse: collapse; margin: 22px 0;
+  border: 1px solid var(--border); border-radius: 22px; overflow: hidden;
+  display: block; overflow-x: auto;
+}
+.tokyo .blog-prose thead tr { background: var(--muted); }
+.tokyo .blog-prose th {
+  padding: 14px 16px; text-align: left; vertical-align: top;
+  font-size: 13px; font-weight: 800; color: var(--muted-foreground);
+  border-bottom: 1px solid var(--border);
+}
+.tokyo .blog-prose td {
+  padding: 14px 16px; text-align: left; vertical-align: top;
+  font-size: 15px; border-bottom: 1px solid var(--border);
+}
+.tokyo .blog-prose tbody tr:last-child td { border-bottom: 0; }
+/* Optional advice callout (TipTap `tk-note` class, as on the content pages). */
+.tokyo .blog-prose .tk-note {
+  display: flex; gap: 14px; align-items: flex-start;
+  margin: 22px 0; padding: 20px 22px; border-radius: 24px;
+  background: var(--muted); font-size: 16px; line-height: 1.6; color: #3d4046;
+}
+.tokyo .blog-prose .tk-note--warn { background: #fff7e6; color: #6b4e12; }
+.tokyo .blog-prose .tk-lead { font-size: 20px; line-height: 1.6; color: var(--foreground); }

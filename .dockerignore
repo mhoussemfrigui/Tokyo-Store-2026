@@ -1,0 +1,26 @@
+node_modules
+**/node_modules
+.next
+**/.next
+.git
+.gitignore
+.env
+.env.local
+.env.*.local
+*.md
+!PLAN.md
+docs
+.vscode
+.idea
+.DS_Store
+coverage
+docker-compose*.yml
+Dockerfile
+.dockerignore
+README.md
+# Local tooling — agent worktrees under .claude/ are full repo copies (with
+# their own .next build, hundreds of MB) and .tmp/ holds scratch files; neither
+# belongs in the build context (`COPY . .`).
+.claude
+**/.claude
+.tmp

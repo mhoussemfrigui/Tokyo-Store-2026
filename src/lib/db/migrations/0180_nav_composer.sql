@@ -1,0 +1,12 @@
+-- 0180 — composable mega-menu: nav_items.config (JSONB dropdown composition).
+--
+-- A nav ROOT (a `main`-menu nav_items row) gains a `config` JSONB holding its
+-- dropdown composition (columns + typed content blocks: links / categories /
+-- brands [titles|logos|both] / collections / products / image). NULL = a plain
+-- link (no dropdown) — the current `main`-item behaviour, so every existing row
+-- keeps rendering unchanged. Additive + nullable; no backfill.
+--
+-- Média ids live inside this JSON (image blocks), so `nav_items.config` is added
+-- to all three media-reference seams (orphanMediaWhere / listReferencedMediaIds /
+-- countMediaReferences) in lock-step — see modules/media/queries.ts.
+ALTER TABLE "nav_items" ADD COLUMN IF NOT EXISTS "config" jsonb;

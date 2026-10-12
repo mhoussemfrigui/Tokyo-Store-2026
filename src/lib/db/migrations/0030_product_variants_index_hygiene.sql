@@ -1,0 +1,11 @@
+-- product_variants index hygiene.
+--
+-- Drop the plain, non-partial sku index. Migration 0008 added the partial
+-- UNIQUE `product_variants_sku_unique` (sku WHERE sku IS NOT NULL AND
+-- deleted_at IS NULL), which `findVariantBySku` already uses. The plain
+-- `product_variants_sku_idx` over ALL rows (every NULL sku + every tombstone)
+-- is therefore redundant write-amplification on the hottest variant path
+-- (delete + reinsert per variant save). The four remaining variant indexes
+-- (sku_unique, gtin_unique, image_media_id_idx, live_order_idx) are now also
+-- declared in schema.ts so a future drizzle regen can't DROP them.
+DROP INDEX IF EXISTS "product_variants_sku_idx";

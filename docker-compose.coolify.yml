@@ -1,0 +1,499 @@
+# =============================================================================
+# Coolify deployment — single-file stack.
+# =============================================================================
+# This compose file is the ONE thing you paste into Coolify when creating
+# the resource: New Resource → Docker Compose → paste this file.
+#
+# Coolify will:
+#   - Parse it and present env vars as fillable form fields.
+#   - Auto-generate any `${SERVICE_PASSWORD_*}` / `${SERVICE_USER_*}` values
+#     and persist them across redeploys (no openssl ceremony).
+#   - Issue Let's Encrypt certs for any service that exposes a port + sets
+#     a custom domain in the UI.
+#   - Persist named volumes across redeploys (your DB + media survive).
+#
+# This same file also runs locally:
+#   docker compose -f docker-compose.coolify.yml up -d
+# When run outside Coolify, fill the Coolify-magic vars in a `.env` file
+# next to this compose (see the inline comments).
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # APP — Next.js standalone server
+  # ---------------------------------------------------------------------------
+  # On Coolify:
+  #   - Add custom domain in the UI (e.g. setup.tokyostore.com). Coolify auto-
+  #     issues TLS. The domain you set becomes the public URL.
+  #   - The build arg NEXT_PUBLIC_SITE_URL gets baked into the JS bundle at
+  #     build time — Coolify rebuilds on each deploy, so just set it once in
+  #     the Build Arguments tab and it always matches the current domain.
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Build args inlined at `next build` time. next.config.ts bakes
+        # S3_PUBLIC_URL into `images.remotePatterns` + CSP `img-src` for the
+        # object store; NEXT_PUBLIC_SITE_URL becomes the SEO `metadataBase` /
+        # canonical-origin fallback. CHANGING THESE REQUIRES A REBUILD —
+        # they cannot be overridden at runtime.
+        # Coolify → Build Arguments tab. Defaults are for local testing.
+        NEXT_PUBLIC_SITE_URL: ${PUBLIC_URL:-http://localhost:3000}
+        S3_PUBLIC_URL: ${SEAWEEDFS_PUBLIC_URL:-http://localhost:8333}/${S3_BUCKET:-tokyo}
+        # Optional CDN host(s) + extra CSP hosts — ALSO compiled into
+        # remotePatterns / the served CSP, so they must reach the BUILD (same
+        # variables feed the runtime env below). Blank ⇒ unused.
+        MEDIA_CDN_URL: ${MEDIA_CDN_URL:-}
+        CSP_EXTRA_HOSTS: ${CSP_EXTRA_HOSTS:-}
+        # Optional commit SHA for build provenance (admin Performance page).
+        NEXT_PUBLIC_BUILD_SHA: ${NEXT_PUBLIC_BUILD_SHA:-}
+        # V8 heap ceiling (MB) for `next build` — default 4096 (see Dockerfile).
+        # LOWER on a small box that gets OS-killed mid-build; RAISE only on a clean
+        # Node "heap out of memory". Add OS swap on a ≤4 GB box.
+        NODE_BUILD_MEMORY: ${NODE_BUILD_MEMORY:-4096}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_SITE_URL: ${PUBLIC_URL:-http://localhost:3000}
+
+      # --- Database (internal — uses the Docker service name) ---
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tokyo}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${POSTGRES_DB:-tokyo}
+      # DIRECT Postgres URL for the boot migrator + secret bootstrap
+      # (src/lib/db/migrate.ts, init-secrets.ts). Keep it on postgres:5432 EVEN
+      # after pointing DATABASE_URL at the pgbouncer pooler: the migrator's
+      # session advisory lock + generous per-session timeouts don't survive
+      # transaction pooling. Identical to DATABASE_URL today (no change).
+      MIGRATION_DATABASE_URL: postgresql://${POSTGRES_USER:-tokyo}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${POSTGRES_DB:-tokyo}
+      # Optional Postgres pool / observability tunables (defaults in
+      # src/lib/db/client.ts; blank ⇒ those defaults: idle 15000 ms, acquire
+      # 3000 ms, TCP keepalive ON — DB_KEEPALIVE=false disables it).
+      DB_POOL_MAX: ${DB_POOL_MAX:-}
+      DB_STATEMENT_TIMEOUT_MS: ${DB_STATEMENT_TIMEOUT_MS:-}
+      DB_IDLE_TIMEOUT_MS: ${DB_IDLE_TIMEOUT_MS:-}
+      DB_CONNECTION_TIMEOUT_MS: ${DB_CONNECTION_TIMEOUT_MS:-}
+      DB_KEEPALIVE: ${DB_KEEPALIVE:-}
+      DB_APPLICATION_NAME: ${DB_APPLICATION_NAME:-tokyo-app}
+      # CA (PEM literal or in-container file path) for VERIFIED Postgres TLS.
+      # Only relevant if a DATABASE_URL you set carries sslmode=require /
+      # verify-* — the internal postgres:5432 URL above is plain (private network).
+      DB_SSL_CA: ${DB_SSL_CA:-}
+
+      # --- Better Auth (auto-generated secret + bootstrap token; see
+      #     src/lib/db/init-secrets.ts — entrypoint persists them to the DB) ---
+      BETTER_AUTH_URL: ${PUBLIC_URL:-http://localhost:3000}
+      # Extra trusted origins (CSV) for CSRF/cookie checks — only when serving
+      # from a second hostname (www + apex). PUBLIC_URL is always trusted.
+      BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-}
+
+      # --- Admin / access control ---
+      # Secret staff-login path, e.g. /staff-x7k2. When set, proxy.ts serves the
+      # staff sign-in ONLY there, 404s the /admin-login default, and 404s (not
+      # redirects) anon /admin so the slug never leaks. Clean absolute path or
+      # it's ignored. (Listed here so Coolify surfaces it as an env field AND it
+      # actually reaches the app — see src/lib/auth/admin-path.ts + src/proxy.ts.)
+      ADMIN_LOGIN_PATH: ${ADMIN_LOGIN_PATH:-}
+      # Email seeded for the first-boot default admin (random password printed to
+      # the container log). Default houssem@kawn.me — set to YOUR real, receivable
+      # address so the password-reset / email-change confirmation reaches you.
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-houssem@kawn.me}
+      # true ⇒ skip first-boot auto-creation of the default admin.
+      DISABLE_DEFAULT_ADMIN: ${DISABLE_DEFAULT_ADMIN:-}
+      # Bearer token enabling the daily data-retention purge
+      # (POST /api/cron/retention). Blank ⇒ route returns 503 (purge disabled).
+      # Min 16 chars; wire a Coolify Scheduled Task to call it. See §12.
+      CRON_SECRET: ${CRON_SECRET:-}
+      # Optional IP allowlist (comma-separated) for /api/cron/* — checked BEFORE
+      # the CRON_SECRET compare, so a leaked secret alone can't trigger the jobs.
+      # Blank ⇒ allow all (src/lib/cron/guard.ts).
+      CRON_ALLOWED_IPS: ${CRON_ALLOWED_IPS:-}
+      # Cron-workflow windows (blank ⇒ code defaults): cancel EVERY order still
+      # `pending` (COD included) after ABANDONED_ORDER_HOURS (48); re-verify a
+      # pending gateway payment idle PAYMENT_RECONCILE_STALE_MINUTES (20), up to
+      # PAYMENT_RECONCILE_MAX_AGE_HOURS old (24). Keep the abandon window beyond
+      # the reconcile window.
+      ABANDONED_ORDER_HOURS: ${ABANDONED_ORDER_HOURS:-}
+      PAYMENT_RECONCILE_STALE_MINUTES: ${PAYMENT_RECONCILE_STALE_MINUTES:-}
+      PAYMENT_RECONCILE_MAX_AGE_HOURS: ${PAYMENT_RECONCILE_MAX_AGE_HOURS:-}
+
+      # --- Social login (optional env OVERRIDE) ---
+      # Normally entered in Admin → Clients → Connexion & comptes (encrypted at
+      # rest). A non-blank value here force-overrides + locks the admin field;
+      # blank ⇒ the admin value is used (src/lib/auth/social-config.ts).
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      FACEBOOK_CLIENT_ID: ${FACEBOOK_CLIENT_ID:-}
+      FACEBOOK_CLIENT_SECRET: ${FACEBOOK_CLIENT_SECRET:-}
+
+      # --- Email (pick one provider) ---
+      # Defaults to console (logs emails to stdout) so the stack boots even
+      # if you haven't wired Resend / SMTP yet.
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-console}
+      EMAIL_FROM: ${EMAIL_FROM:-Tokyo Store <noreply@tokyostore.com>}
+      EMAIL_REPLY_TO: ${EMAIL_REPLY_TO:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      # Local sendmail binary path for EMAIL_PROVIDER=internal (blank ⇒ platform
+      # default / the admin mail.sendmail_path setting).
+      SENDMAIL_PATH: ${SENDMAIL_PATH:-}
+
+      # --- SeaweedFS object storage (internal traffic on the Docker network) ---
+      # S3_ENDPOINT  is how the app talks to the SeaweedFS S3 gateway INSIDE
+      # the stack (port 8333). S3_PUBLIC_URL is the browser-reachable URL for
+      # uploaded images; set it via SEAWEEDFS_PUBLIC_URL in Coolify when you add
+      # a custom domain to the seaweedfs service. The SAME S3_ACCESS_KEY /
+      # S3_SECRET_KEY are consumed by the seaweedfs service below to build its
+      # identities config, so the two always match.
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_REGION: us-east-1
+      S3_BUCKET: ${S3_BUCKET:-tokyo}
+      S3_ACCESS_KEY: ${SERVICE_USER_SEAWEEDFS:-seaweedfs}
+      S3_SECRET_KEY: ${SERVICE_PASSWORD_SEAWEEDFS}
+      S3_FORCE_PATH_STYLE: "true"
+      S3_PUBLIC_URL: ${SEAWEEDFS_PUBLIC_URL:-http://localhost:8333}/${S3_BUCKET:-tokyo}
+      # Optional CDN base FALLBACK for public media (comma-separated; first used).
+      # Precedence: media_settings.cdn_base_url (admin) → MEDIA_CDN_URL → /cdn.
+      # Also passed as a BUILD arg above (next/image + CSP allow-list) — a host
+      # the build didn't see is ignored at runtime (falls back to /cdn).
+      MEDIA_CDN_URL: ${MEDIA_CDN_URL:-}
+      # Extra CSP hosts (comma-separated) for custom tags. Compiled at build
+      # (build arg above); passed here too so the admin Sécurité tab shows the
+      # same policy that is served.
+      CSP_EXTRA_HOSTS: ${CSP_EXTRA_HOSTS:-}
+
+      # --- Misc tunables ---
+      # AI review-draft scheduler tick interval in ms (blank ⇒ 30 min default).
+      REVIEW_SCHEDULER_TICK_MS: ${REVIEW_SCHEDULER_TICK_MS:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # Wait for the bucket-init to COMPLETE (it itself waits for the gateway to be
+      # healthy), so the app never serves a request before the S3 bucket + its
+      # anonymous-read policy exist.
+      seaweedfs-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+      # Cold-boot reality: the baseline migration (extensions, all tables
+      # + indexes) + secret bootstrap + default-admin creation + Next.js
+      # JIT compile can hit 60-90s on a fresh 4-vCPU VPS. Short
+      # start_period → Coolify restart loop. Long start + more retries
+      # forgives that.
+      interval: 15s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
+    # Coolify proxies host:port → container:3000 automatically when you
+    # add a domain. The expose directive marks the port as internal so
+    # Coolify knows what to route. For local runs, uncomment the ports
+    # block instead.
+    expose:
+      - "3000"
+    # ports:
+    #   - "3000:3000"   # uncomment for local `docker compose up` testing
+    # ── Container hardening ─────────────────────────────────────────────
+    # Defence in depth. The standalone Next.js server, sharp, and pg
+    # client don't need any Linux capabilities beyond the defaults the
+    # kernel grants a UID≥1 process — drop everything else. NoNewPrivileges
+    # blocks setuid escalation if any future dependency surprises us.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Read-only root FS forces all writes into the volumes / tmpfs below.
+    # The standalone Next.js server is mostly stateless at runtime, but
+    # `.next/cache` (image-optimization scratch) is the one path it MUST
+    # be able to write to — without it every `<Image>` 500s with ENOENT.
+    # We also give sharp + the AWS SDK a writable /tmp.
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+      - /app/.next/cache:rw,nosuid,size=512m
+
+  # ---------------------------------------------------------------------------
+  # POSTGRES 16 — internal only
+  # ---------------------------------------------------------------------------
+  # No exposed ports. Only `app` and `pgbouncer` reach it via the docker
+  # network. Data lives in the named volume `postgres_data`, which Coolify
+  # preserves across redeploys.
+  #
+  # Performance tuning matches what's used in production: see docs/database.md
+  # for the rationale on each setting.
+  # ---------------------------------------------------------------------------
+  postgres:
+    # Pinned to 16.14 — patches CVE-2026-6473 (memory corruption), CVE-2026-6475
+    # (pg_basebackup symlink), CVE-2026-6637 (refint RCE), CVE-2026-6638 (ALTER
+    # SUBSCRIPTION SQL injection). Bump on every minor release.
+    #
+    # Built as postgres:16.14-alpine + pgvector v0.8.0 (docker/pgvector/Dockerfile)
+    # — same Alpine/musl base, so it is a drop-in over the existing data volume
+    # (identical collation, no reindex). pgvector powers semantic search.
+    # DEPLOY ORDER: redeploy this DB resource on the pgvector image BEFORE the app
+    # deploy that runs the `CREATE EXTENSION vector` migration, or the boot
+    # migrator aborts on that statement.
+    build:
+      context: ./docker/pgvector
+    image: tokyo-pgvector:16.14-alpine
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tokyo}
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
+      POSTGRES_DB: ${POSTGRES_DB:-tokyo}
+    command:
+      - postgres
+      # ── Memory tuning (matches a typical 4 vCPU / 8 GB Coolify VPS) ───────
+      - -c
+      - shared_buffers=1GB
+      - -c
+      - effective_cache_size=4GB
+      - -c
+      - work_mem=16MB
+      - -c
+      - maintenance_work_mem=512MB
+      # ── I/O cost model (SSD storage) ──────────────────────────────────────
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      # ── WAL ───────────────────────────────────────────────────────────────
+      - -c
+      - max_wal_size=2GB
+      - -c
+      - min_wal_size=512MB
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - wal_compression=on
+      # ── Stats / planner ───────────────────────────────────────────────────
+      - -c
+      - default_statistics_target=200
+      - -c
+      - log_min_duration_statement=500ms
+      - -c
+      - log_lock_waits=on
+      - -c
+      - max_connections=100
+      # ── pg_stat_statements (observability — required to find slow queries
+      #    in production beyond `log_min_duration_statement` line-noise). ───
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - pg_stat_statements.track=all
+      - -c
+      - pg_stat_statements.max=10000
+      - -c
+      - track_io_timing=on
+      - -c
+      - track_activity_query_size=2048
+      # ── JIT thresholds — keep JIT for genuinely expensive analytics
+      #    plans, never for sub-ms OLTP queries (default thresholds were
+      #    too low and added 5-15 ms compile overhead per request). ─────────
+      - -c
+      - jit_above_cost=500000
+      - -c
+      - jit_inline_above_cost=500000
+      - -c
+      - jit_optimize_above_cost=500000
+      # ── LZ4 column compression by default (3× faster than pglz at the
+      #    same ratio). Applies to TOASTed columns going forward. ───────────
+      - -c
+      - default_toast_compression=lz4
+      # ── Autovacuum: scale to 4 vCPUs and run more often on hot tables ───
+      - -c
+      - autovacuum_max_workers=4
+      - -c
+      - autovacuum_naptime=30s
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tokyo} -d ${POSTGRES_DB:-tokyo}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  # SEAWEEDFS — self-hosted S3-compatible object storage (replaces MinIO)
+  # ---------------------------------------------------------------------------
+  # 100 % self-hosted. Data lives in the `seaweedfs_data` volume on the SAME
+  # VPS as everything else. A single `weed server` process runs the master +
+  # volume + filer + the S3 gateway together — there is NO connection to AWS
+  # or any external service. (The `S3_*` env names are just because SeaweedFS
+  # speaks the S3 protocol.)
+  #
+  # An inline entrypoint (below) renders the S3 identities config from ENV on
+  # every boot, so no credentials are ever committed:
+  #   - "app"       : the S3_ACCESS_KEY/S3_SECRET_KEY the app signs PUT/DELETE
+  #                   with (SigV4, path-style; Admin so it can create the bucket).
+  #   - "anonymous" : UNAUTHENTICATED read on the bucket ONLY, so the app's
+  #                   same-origin `/cdn` proxy (which GETs the object unsigned)
+  #                   works — mirrors MinIO's old GetObject-only anonymous policy.
+  #                   No anonymous LIST (no UUID/filename inventory leak) or WRITE.
+  # The `tokyo` bucket auto-creates on the first upload — no init step needed.
+  #
+  # On Coolify:
+  #   - Coolify auto-generates SERVICE_USER_SEAWEEDFS / SERVICE_PASSWORD_SEAWEEDFS;
+  #     the app service above reads the SAME two, so the keys always match.
+  #   - To serve media from a dedicated host instead of the same-origin /cdn
+  #     proxy, add a custom domain to THIS service on port 8333 and set it as
+  #     SEAWEEDFS_PUBLIC_URL in the app's Build Arguments (baked into next/image
+  #     remotePatterns + the CSP at build time; changing it needs a rebuild).
+  #   - The filer file browser is on port 8888 — route a second subdomain to it
+  #     if you want a web UI (it is NOT public by default).
+  #
+  # Pinned to 4.47. `latest` floats — an upstream regression could break the
+  # stack mid-deploy. Bump deliberately (https://github.com/seaweedfs/seaweedfs/releases).
+  # ---------------------------------------------------------------------------
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.47
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      # Consumed by the inline entrypoint to render the identities config. The
+      # app service above reads the SAME two vars, so writer creds always match.
+      S3_ACCESS_KEY: ${SERVICE_USER_SEAWEEDFS:-seaweedfs}
+      S3_SECRET_KEY: ${SERVICE_PASSWORD_SEAWEEDFS}
+      S3_BUCKET: ${S3_BUCKET:-tokyo}
+    # The config-generator is INLINED here (not a `./docker/...:/entrypoint.sh`
+    # bind mount) on purpose: Coolify rewrites a relative bind-mount SOURCE to its
+    # own per-app storage dir (/data/coolify/applications/<uuid>/…), NOT the cloned
+    # repo, so the file isn't there — Docker then auto-creates the missing source
+    # as a DIRECTORY and the mount fails ("mount a directory onto a file"), so the
+    # stack never starts. Inlining needs no host file. KEEP IN SYNC with
+    # docker/seaweedfs/entrypoint.sh (the DEV compose bind-mounts that file, which
+    # works because it runs from the repo root). `$$` escapes a literal `$` so
+    # Compose passes it through to the shell instead of interpolating it.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        CONFIG_FILE=/etc/seaweedfs/s3.json
+        mkdir -p /etc/seaweedfs /data
+        cat > "$$CONFIG_FILE" <<JSON
+        {
+          "identities": [
+            {
+              "name": "app",
+              "credentials": [
+                { "accessKey": "$${S3_ACCESS_KEY}", "secretKey": "$${S3_SECRET_KEY}" }
+              ],
+              "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+            },
+            { "name": "anonymous", "actions": ["Read:$${S3_BUCKET}"] }
+          ]
+        }
+        JSON
+        echo "[seaweedfs] wrote $$CONFIG_FILE (anonymous Read:$${S3_BUCKET}); starting gateway on :8333"
+        exec weed server -dir=/data -master.volumeSizeLimitMB="$${SEAWEED_VOLUME_SIZE_LIMIT_MB:-1024}" -volume.max="$${SEAWEED_VOLUME_MAX:-100}" -s3 -s3.port=8333 -s3.config="$$CONFIG_FILE"
+    volumes:
+      - seaweedfs_data:/data
+    expose:
+      - "8333"   # S3 API
+      - "8888"   # filer file browser
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8333/status"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  # One-shot: create the S3 bucket (idempotent — safe to re-run every deploy) so
+  # the app never depends on SeaweedFS's lazy auto-create-on-PutObject, and the
+  # anonymous `Read:<bucket>` policy in the gateway config has a real bucket to
+  # apply to from the very first request. Runs once the gateway is healthy, then
+  # exits (restart: "no").
+  seaweedfs-init:
+    image: chrislusf/seaweedfs:4.47
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    entrypoint:
+      - sh
+      - -c
+      - >
+        set -e;
+        echo "s3.bucket.create -name $$S3_BUCKET" | weed shell -master seaweedfs:9333;
+        echo "seaweedfs bucket $$S3_BUCKET ready"
+    environment:
+      S3_BUCKET: ${S3_BUCKET:-tokyo}
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # PGBOUNCER — optional connection pooler
+  # ---------------------------------------------------------------------------
+  # Enable when scaling past 1 app instance:
+  #   docker compose -f docker-compose.coolify.yml --profile pooler up -d
+  # In Coolify, enable the profile via the resource's "Profiles" toggle.
+  # Then change ONLY DATABASE_URL to point at pgbouncer:5432 instead of
+  # postgres. Leave MIGRATION_DATABASE_URL on postgres:5432 — the boot migrator
+  # needs a direct connection (session advisory lock, no 30s QUERY_TIMEOUT).
+  # ---------------------------------------------------------------------------
+  pgbouncer:
+    # edoburu publishes `v<version>-p<n>` tags (a bare `1.23.1` tag does not
+    # exist — the pull would fail when the profile is enabled). PgBouncer 1.23.1.
+    image: edoburu/pgbouncer:v1.23.1-p3
+    restart: unless-stopped
+    profiles: ["pooler"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-tokyo}
+      DB_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
+      DB_NAME: ${POSTGRES_DB:-tokyo}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 200
+      DEFAULT_POOL_SIZE: 25
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 3
+      SERVER_LIFETIME: 3600
+      SERVER_IDLE_TIMEOUT: 600
+      QUERY_TIMEOUT: 30
+      QUERY_WAIT_TIMEOUT: 30
+      AUTH_TYPE: scram-sha-256
+      ADMIN_USERS: ${POSTGRES_USER:-tokyo}
+      # The app's pg Pool sends `statement_timeout` as a standalone PostgreSQL
+      # StartupMessage parameter and `lock_timeout` /
+      # `idle_in_transaction_session_timeout` as `-c` keys inside the `options`
+      # parameter (src/lib/db/client.ts). PgBouncer REJECTS a connection carrying
+      # any startup param — standalone OR inside `options` — not listed here
+      # ("unsupported startup parameter: statement_timeout"), so every app
+      # connection would fail at connect time unless these are ignored. Listing
+      # `options` too makes PgBouncer ignore ANY future `-c` key in that packet.
+      # (They are then not enforced via startup under the pooler —
+      # statement_timeout is still enforced client-side by node-postgres
+      # query_timeout, and lock_timeout / idle_in_transaction_session_timeout
+      # are set at the ROLE level by migration 0117 so Postgres applies them
+      # server-side per backend, which survives the pooler; see
+      # docs/database.md §5.2.) Do NOT drop the named keys: they are what lets
+      # the `options`-embedded ones through on builds that check keys by name.
+      IGNORE_STARTUP_PARAMETERS: extra_float_digits,application_name,statement_timeout,lock_timeout,idle_in_transaction_session_timeout,options
+      # PgBouncer 1.21+ tracks named prepared statements across pooled
+      # transactions. The app currently issues only unnamed parameterized
+      # queries (no Drizzle `.prepare()` anywhere), so this is headroom —
+      # harmless today, required if prepared-statement caching is added.
+      MAX_PREPARED_STATEMENTS: 256
+    expose:
+      - "5432"
+
+# ---------------------------------------------------------------------------
+# Named volumes — survive redeploys. Coolify backs these up via its
+# scheduled volume snapshot feature (Database → Backups tab).
+# ---------------------------------------------------------------------------
+volumes:
+  postgres_data:
+  seaweedfs_data:

@@ -1,0 +1,796 @@
+[
+  {
+    "slug": "univers-apple",
+    "name": "Univers Apple",
+    "count": 896,
+    "children": [
+      {
+        "slug": "accessoires-apple",
+        "name": "Accessoires Apple",
+        "count": 365,
+        "children": [
+          {
+            "slug": "protection-accessoires-apple",
+            "name": "Protection",
+            "count": 292,
+            "children": [
+              {
+                "slug": "coques-et-etuis-protection",
+                "name": "Coques et Étuis",
+                "count": 235,
+                "children": []
+              },
+              {
+                "slug": "films-de-protection",
+                "name": "Films de protection",
+                "count": 45,
+                "children": [
+                  {
+                    "slug": "protection-camera-pour-iphone-14",
+                    "name": "Protection Camera Pour iPhone 14",
+                    "count": 1,
+                    "children": [
+                      {
+                        "slug": "14-plus-unipro",
+                        "name": "14 Plus - UNIPRO",
+                        "count": 1,
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "slug": "protection-camera-pour-iphone-15",
+                    "name": "Protection Camera Pour iPhone 15",
+                    "count": 1,
+                    "children": [
+                      {
+                        "slug": "15-plus-unipro",
+                        "name": "15 Plus - UNIPRO",
+                        "count": 1,
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "slug": "protection-pour-camera",
+                "name": "Protection pour Caméra",
+                "count": 6,
+                "children": []
+              }
+            ]
+          },
+          {
+            "slug": "alimentation-accessoires-apple",
+            "name": "Alimentation",
+            "count": 49,
+            "children": [
+              {
+                "slug": "cable-alimentation",
+                "name": "Cable",
+                "count": 19,
+                "children": []
+              },
+              {
+                "slug": "adaptateur",
+                "name": "Adaptateur",
+                "count": 8,
+                "children": []
+              }
+            ]
+          },
+          {
+            "slug": "magsafe-accessoires-apple",
+            "name": "MagSafe",
+            "count": 17,
+            "children": []
+          }
+        ]
+      },
+      {
+        "slug": "iphone",
+        "name": "iPhone",
+        "count": 321,
+        "children": [
+          {
+            "slug": "iphones-neufs",
+            "name": "iPhones Neufs",
+            "count": 171,
+            "children": []
+          },
+          {
+            "slug": "iphones-d-occasion",
+            "name": "iPhones d'occasion",
+            "count": 150,
+            "children": []
+          }
+        ]
+      },
+      {
+        "slug": "ipad-et-mac",
+        "name": "iPad et Mac",
+        "count": 89,
+        "children": [
+          {
+            "slug": "mac",
+            "name": "Mac",
+            "count": 22,
+            "children": []
+          },
+          {
+            "slug": "ipad",
+            "name": "iPad",
+            "count": 4,
+            "children": []
+          }
+        ]
+      },
+      {
+        "slug": "accessoires-apple-officiels",
+        "name": "Accessoires Apple Officiels",
+        "count": 71,
+        "children": [
+          {
+            "slug": "protection-accessoires-apple-officiels",
+            "name": "Protection",
+            "count": 36,
+            "children": []
+          },
+          {
+            "slug": "alimentation",
+            "name": "Alimentation",
+            "count": 11,
+            "children": []
+          },
+          {
+            "slug": "air-tags",
+            "name": "Air Tags",
+            "count": 1,
+            "children": []
+          },
+          {
+            "slug": "magsafe",
+            "name": "MagSafe",
+            "count": 1,
+            "children": []
+          },
+          {
+            "slug": "son-accessoires-apple-officiels",
+            "name": "Son",
+            "count": 1,
+            "children": []
+          }
+        ]
+      },
+      {
+        "slug": "apple-watch",
+        "name": "Apple Watch",
+        "count": 30,
+        "children": []
+      },
+      {
+        "slug": "airpods",
+        "name": "Airpods",
+        "count": 8,
+        "children": []
+      }
+    ]
+  },
+  {
+    "slug": "telephonie",
+    "name": "Téléphonie",
+    "count": 522,
+    "children": [
+      {
+        "slug": "accessoires-telephoniques",
+        "name": "Accessoires Téléphoniques",
+        "count": 254,
+        "children": [
+          {
+            "slug": "accessoires-voiture",
+            "name": "Accessoires Voiture",
+            "count": 76,
+            "children": []
+          },
+          {
+            "slug": "alimentation-et-cables",
+            "name": "Alimentation et Câbles",
+            "count": 61,
+            "children": [
+              {
+                "slug": "chargeurs-et-adaptateurs",
+                "name": "Chargeurs et Adaptateurs",
+                "count": 28,
+                "children": []
+              },
+              {
+                "slug": "cable",
+                "name": "Cable",
+                "count": 11,
+                "children": []
+              },
+              {
+                "slug": "power-bank",
+                "name": "Power Bank",
+                "count": 9,
+                "children": []
+              }
+            ]
+          },
+          {
+            "slug": "son-accessoires-telephoniques",
+            "name": "Son",
+            "count": 41,
+            "children": [
+              {
+                "slug": "haut-parleur",
+                "name": "Haut-Parleur",
+                "count": 22,
+                "children": []
+              },
+              {
+                "slug": "ecouteurs-son",
+                "name": "Écouteurs",
+                "count": 16,
+                "children": []
+              }
+            ]
+          },
+          {
+            "slug": "divers-telephonie",
+            "name": "Divers Téléphonie",
+            "count": 39,
+            "children": []
+          },
+          {
+            "slug": "protection",
+            "name": "Protection",
+            "count": 14,
+            "children": []
+          },
+          {
+            "slug": "coques-et-etuis",
+            "name": "Coques et Etuis",
+            "count": 12,
+            "children": []
+          }
+        ]
+      },
+      {
+        "slug": "smartphone",
+        "name": "Smartphone",
+        "count": 237,
+        "children": []
+      },
+      {
+        "slug": "telephone-portable",
+        "name": "Téléphone Portable",
+        "count": 15,
+        "children": []
+      },
+      {
+        "slug": "tablette",
+        "name": "Tablette",
+        "count": 7,
+        "children": [
+          {
+            "slug": "etui-galaxy-tab-s8",
+            "name": "Étui Galaxy Tab S8+",
+            "count": 1,
+            "children": [
+              {
+                "slug": "s7-book-cover-noir-samsung",
+                "name": "S7+ Book Cover Noir - Samsung",
+                "count": 1,
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "console-gaming",
+    "name": "Console Gaming",
+    "count": 502,
+    "children": [
+      {
+        "slug": "jeux-console",
+        "name": "Jeux Console",
+        "count": 300,
+        "children": [
+          {
+            "slug": "jeux-ps5",
+            "name": "Jeux PS5",
+            "count": 126,
+            "children": []
+          },
+          {
+            "slug": "jeux-switch",
+            "name": "Jeux Switch",
+            "count": 87,
+            "children": []
+          },
+          {
+            "slug": "jeux-ps4",
+            "name": "Jeux PS4",
+            "count": 82,
+            "children": []
+          },
+          {
+            "slug": "jeux-xbox",
+            "name": "Jeux Xbox",
+            "count": 2,
+            "children": []
+          }
+        ]
+      },
+      {
+        "slug": "accessoires-pour-consoles",
+        "name": "Accessoires pour Consoles",
+        "count": 153,
+        "children": [
+          {
+            "slug": "accessoires-playstation-5",
+            "name": "Accessoires PlayStation 5",
+            "count": 82,
+            "children": []
+          },
+          {
+            "slug": "accessoires-nintendo",
+            "name": "Accessoires Nintendo",
+            "count": 53,
+            "children": [
+              {
+                "slug": "joy-con-paire-de-manette-vert",
+                "name": "Joy Con : Paire de Manette - Vert",
+                "count": 1,
+                "children": [
+                  {
+                    "slug": "rose",
+                    "name": "Rose",
+                    "count": 1,
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "slug": "joy-con-paire-de-manette-violet",
+                "name": "Joy Con : Paire de Manette - Violet",
+                "count": 1,
+                "children": [
+                  {
+                    "slug": "bleu",
+                    "name": "Bleu",
+                    "count": 1,
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "slug": "joy-con-paire-de-manettes-bleu",
+                "name": "Joy Con : Paire de Manettes - Bleu",
+                "count": 1,
+                "children": [
+                  {
+                    "slug": "rouge",
+                    "name": "Rouge",
+                    "count": 1,
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "slug": "accessoires-playstation-4",
+            "name": "Accessoires PlayStation 4",
+            "count": 7,
+            "children": []
+          },
+          {
+            "slug": "accessoires-xbox",
+            "name": "Accessoires Xbox",
+            "count": 7,
+            "children": []
+          }
+        ]
+      },
+      {
+        "slug": "consoles",
+        "name": "Consoles",
+        "count": 49,
+        "children": [
+          {
+            "slug": "playstation-5",
+            "name": "PlayStation 5",
+            "count": 21,
+            "children": []
+          },
+          {
+            "slug": "nintendo-switch-2",
+            "name": "Nintendo Switch 2",
+            "count": 7,
+            "children": []
+          },
+          {
+            "slug": "consoles-portable",
+            "name": "Consoles Portable",
+            "count": 5,
+            "children": []
+          },
+          {
+            "slug": "nintendo-switch",
+            "name": "Nintendo Switch",
+            "count": 1,
+            "children": []
+          },
+          {
+            "slug": "playstation-4",
+            "name": "PlayStation 4",
+            "count": 1,
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "pc-gaming",
+    "name": "PC Gaming",
+    "count": 160,
+    "children": [
+      {
+        "slug": "accessoires-et-peripheriques",
+        "name": "Accessoires et Périphériques",
+        "count": 134,
+        "children": [
+          {
+            "slug": "casques-et-micro-gaming",
+            "name": "Casques et Micro Gaming",
+            "count": 51,
+            "children": []
+          },
+          {
+            "slug": "souris-gaming",
+            "name": "Souris Gaming",
+            "count": 31,
+            "children": []
+          },
+          {
+            "slug": "clavier-gaming",
+            "name": "Clavier Gaming",
+            "count": 13,
+            "children": []
+          },
+          {
+            "slug": "divers-accessoires-et-peripheriques",
+            "name": "Divers",
+            "count": 12,
+            "children": []
+          },
+          {
+            "slug": "tapis-gaming",
+            "name": "Tapis Gaming",
+            "count": 12,
+            "children": []
+          },
+          {
+            "slug": "souris",
+            "name": "Souris",
+            "count": 6,
+            "children": []
+          }
+        ]
+      },
+      {
+        "slug": "jeux-pc",
+        "name": "Jeux PC",
+        "count": 15,
+        "children": []
+      },
+      {
+        "slug": "pack-accesoires",
+        "name": "Pack Accesoires",
+        "count": 8,
+        "children": []
+      }
+    ]
+  },
+  {
+    "slug": "audiovisuel",
+    "name": "Audiovisuel",
+    "count": 157,
+    "children": [
+      {
+        "slug": "son",
+        "name": "Son",
+        "count": 112,
+        "children": [
+          {
+            "slug": "casques",
+            "name": "Casques",
+            "count": 24,
+            "children": []
+          },
+          {
+            "slug": "ecouteurs",
+            "name": "Écouteurs",
+            "count": 21,
+            "children": []
+          },
+          {
+            "slug": "enceintes",
+            "name": "Enceintes",
+            "count": 17,
+            "children": []
+          },
+          {
+            "slug": "microphones",
+            "name": "Microphones",
+            "count": 17,
+            "children": []
+          },
+          {
+            "slug": "accessoires-audio",
+            "name": "Accessoires Audio",
+            "count": 2,
+            "children": []
+          }
+        ]
+      },
+      {
+        "slug": "lumiere",
+        "name": "Lumière",
+        "count": 24,
+        "children": []
+      },
+      {
+        "slug": "photo",
+        "name": "Photo",
+        "count": 21,
+        "children": []
+      }
+    ]
+  },
+  {
+    "slug": "univers-tokyo-store",
+    "name": "Univers Tokyo Store",
+    "count": 124,
+    "children": [
+      {
+        "slug": "gadgets-lifestyle",
+        "name": "Gadgets Lifestyle",
+        "count": 43,
+        "children": []
+      },
+      {
+        "slug": "figurines",
+        "name": "Figurines",
+        "count": 25,
+        "children": [
+          {
+            "slug": "figurine-statue-trio-luffy",
+            "name": "Figurine Statue Trio Luffy",
+            "count": 1,
+            "children": [
+              {
+                "slug": "law",
+                "name": "Law",
+                "count": 1,
+                "children": [
+                  {
+                    "slug": "kid-20-cm-one-piece",
+                    "name": "Kid (20 cm) - One Piece",
+                    "count": 1,
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "slug": "figurine-statue-yami-yugi",
+            "name": "Figurine Statue Yami Yugi",
+            "count": 1,
+            "children": [
+              {
+                "slug": "atem-28-cm",
+                "name": "Atem (28 cm)",
+                "count": 1,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "slug": "divers",
+        "name": "Divers",
+        "count": 24,
+        "children": [
+          {
+            "slug": "video-stabilization-camera-bracket",
+            "name": "Video Stabilization Camera Bracket",
+            "count": 1,
+            "children": [
+              {
+                "slug": "selfie-stick-a21",
+                "name": "Selfie Stick A21",
+                "count": 1,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "slug": "produits-tendances",
+        "name": "Produits Tendances",
+        "count": 20,
+        "children": []
+      }
+    ]
+  },
+  {
+    "slug": "objets-connectes",
+    "name": "Objets Connectés",
+    "count": 118,
+    "children": [
+      {
+        "slug": "smartwatch-et-accessoires",
+        "name": "Smartwatch et Accessoires",
+        "count": 117,
+        "children": [
+          {
+            "slug": "montres-connectees",
+            "name": "Montres connectées",
+            "count": 65,
+            "children": []
+          },
+          {
+            "slug": "accessoires-smartwatch",
+            "name": "Accessoires Smartwatch",
+            "count": 52,
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "cartes-cadeaux-et-abonnements",
+    "name": "Cartes-cadeaux et Abonnements",
+    "count": 95,
+    "children": [
+      {
+        "slug": "recharge",
+        "name": "Recharge",
+        "count": 91,
+        "children": [
+          {
+            "slug": "jeux-video",
+            "name": "Jeux Video",
+            "count": 46,
+            "children": [
+              {
+                "slug": "roblox",
+                "name": "Roblox",
+                "count": 10,
+                "children": []
+              },
+              {
+                "slug": "league-of-legends-lol",
+                "name": "League Of Legends (LOL)",
+                "count": 7,
+                "children": []
+              },
+              {
+                "slug": "pubg",
+                "name": "PUBG",
+                "count": 6,
+                "children": []
+              },
+              {
+                "slug": "steam",
+                "name": "Steam",
+                "count": 6,
+                "children": []
+              },
+              {
+                "slug": "valorant",
+                "name": "Valorant",
+                "count": 6,
+                "children": []
+              },
+              {
+                "slug": "fortnite-v-bucks",
+                "name": "Fortnite V-Bucks",
+                "count": 4,
+                "children": []
+              },
+              {
+                "slug": "free-fire",
+                "name": "Free Fire",
+                "count": 2,
+                "children": []
+              }
+            ]
+          },
+          {
+            "slug": "console",
+            "name": "Console",
+            "count": 25,
+            "children": [
+              {
+                "slug": "playstation-network-psn",
+                "name": "PlayStation Network (PSN)",
+                "count": 14,
+                "children": []
+              },
+              {
+                "slug": "cartes-xbox",
+                "name": "Cartes Xbox",
+                "count": 6,
+                "children": []
+              },
+              {
+                "slug": "nintendo-switch-eshop",
+                "name": "Nintendo Switch Eshop",
+                "count": 5,
+                "children": []
+              }
+            ]
+          },
+          {
+            "slug": "apple",
+            "name": "Apple",
+            "count": 16,
+            "children": [
+              {
+                "slug": "itunes",
+                "name": "Itunes",
+                "count": 16,
+                "children": []
+              }
+            ]
+          },
+          {
+            "slug": "divertissements",
+            "name": "Divertissements",
+            "count": 2,
+            "children": [
+              {
+                "slug": "amazon",
+                "name": "Amazon",
+                "count": 1,
+                "children": []
+              },
+              {
+                "slug": "paysafe",
+                "name": "Paysafe",
+                "count": 1,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "slug": "abonnements",
+        "name": "Abonnements",
+        "count": 4,
+        "children": [
+          {
+            "slug": "netflix",
+            "name": "Netflix",
+            "count": 4,
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "chargePerUnit": true,
+  "countsTowardFreeShipping": false,
+  "plans": [
+    {
+      "id": "01a11e3b-f24f-7adb-8795-1f1b24785648",
+      "name": "Tokyo Care 24 mois",
+      "durationMonths": 12,
+      "perks": [],
+      "icon": null,
+      "description": "Casse, oxydation et panne couvertes 24 mois"
+    }
+  ]
+}

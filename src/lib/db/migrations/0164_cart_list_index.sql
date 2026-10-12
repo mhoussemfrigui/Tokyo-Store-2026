@@ -1,0 +1,15 @@
+-- 0164 — drop the dead carts_active_recent_idx.
+--
+-- `carts_active_recent_idx (updated_at DESC) WHERE merged_at IS NULL` (baseline) served
+-- NO query: the admin « Paniers » list (listCartsWithSummary) sorts by the aggregate
+-- GREATEST(carts.updated_at, MAX(cart_items.updated_at)) — which no index can serve —
+-- and it intentionally INCLUDES merged carts (a merged user cart has merged_at IS NOT
+-- NULL, exactly the rows the partial predicate excludes). A whole-tree scan finds no
+-- other query ordering by carts.updated_at alone or filtering merged_at IS NULL. So the
+-- index only added write cost (and defeated HOT updates) on the hot cart-write path,
+-- where touch() bumps carts.updated_at on every line write — drop it.
+--
+-- (The list's aggregate sort stays un-indexable by design; « Paniers » is a low-frequency
+-- admin-only read. Making it indexable would require a trigger maintaining
+-- carts.updated_at authoritatively on cart_items writes — deferred.)
+DROP INDEX IF EXISTS "carts_active_recent_idx";

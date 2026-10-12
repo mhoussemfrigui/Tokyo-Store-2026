@@ -1,0 +1,14 @@
+-- 0169 — add the 'targeted' value to the promotion_scope enum.
+--
+-- This is split OUT from the table/CHECK/backfill work (migration 0170) on
+-- purpose: PostgreSQL (we run 16.14) permits ALTER TYPE ... ADD VALUE inside the
+-- migrator transaction, but a newly-added enum label CANNOT be referenced (in a
+-- CHECK expression, a comparison, or DML) until the transaction that added it has
+-- COMMITTED. Drizzle wraps each migration file in its own transaction, so keeping
+-- the ADD VALUE alone here lets 0170 use 'targeted' freely. Same rule the payment_method
+-- (0053) and banner_placement (0085) additions follow. IF NOT EXISTS = idempotent.
+--
+-- 'targeted' = a MULTI-target promotion whose product set is defined by N rows in
+-- promotion_scope_targets (any mix of products / categories / brands), rather than
+-- a single (scope, scope_id). scope_id is NULL for a targeted promo (like 'cart').
+ALTER TYPE "promotion_scope" ADD VALUE IF NOT EXISTS 'targeted';

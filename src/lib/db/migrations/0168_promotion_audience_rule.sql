@@ -1,0 +1,11 @@
+-- 0168 — inline promotion AUDIENCE rule (compound rule_tree targeting).
+--
+-- Lets a code/URL coupon carry its own compound audience rule (the SAME engine as
+-- Clients→Segments: AND/OR/NOT over tier / spend / anniversary / cart / cercle
+-- leaves) so an admin targets a promo to a flexible buyer condition WITHOUT first
+-- creating a named segment. A promo with an audience rule is TARGETED (the public
+-- opt-out doesn't apply); the buyer must match it AND any explicit promotion_targets.
+-- Buyer-aware → checked only on the code/URL cart/checkout path (the auto-apply path
+-- has no buyer, so manage.ts rejects an audience rule on an automatic promo).
+-- Validation is application-level (isValidRuleTree, fail-closed — empty group refused).
+ALTER TABLE "promotions" ADD COLUMN IF NOT EXISTS "audience_rule_tree" jsonb;

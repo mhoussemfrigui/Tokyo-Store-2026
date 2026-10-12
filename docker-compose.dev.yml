@@ -1,0 +1,201 @@
+# Local development stack — mirrors the Coolify topology.
+#
+# Usage:
+#   pnpm db:up                                 # start postgres + seaweedfs
+#   pnpm db:down                               # stop them
+#   pnpm db:logs                               # tail postgres logs
+#
+# Object storage is SeaweedFS (S3-compatible), reached on the host at
+# http://localhost:8333 (S3 API) — set S3_ENDPOINT to that in .env.local.
+# The filer file browser is at http://localhost:8888.
+#
+# Optional connection pooler (matches the prod topology behind Coolify):
+#   docker compose -f docker-compose.dev.yml --profile pooler up -d
+#   # then point DATABASE_URL at 6432 instead of 5434 — and set
+#   # MIGRATION_DATABASE_URL to the DIRECT 5434 URL (or run db:migrate against
+#   # 5434): the migrator's session advisory lock needs a direct connection.
+#
+# Data persists in named volumes (`tokyo_pgdata`, `tokyo_seaweedfs`)
+# so you keep your local catalog between restarts. Wipe with:
+#   docker compose -f docker-compose.dev.yml down -v
+
+name: tokyo-dev
+
+services:
+  postgres:
+    # Postgres 16.14 + pgvector, built from the stock postgres:16.14-alpine base
+    # (see docker/pgvector/Dockerfile). Same Alpine/musl base → same text collation,
+    # so this is a drop-in over the existing data volume (no reindex, verified).
+    # pgvector powers semantic search; every other extension is unchanged.
+    build:
+      context: ./docker/pgvector
+    image: tokyo-pgvector:16.14-alpine
+    container_name: tokyo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tokyo
+      POSTGRES_PASSWORD: tokyo_dev_pwd
+      POSTGRES_DB: tokyo
+    # Performance defaults aimed at a 4 vCPU / 8 GB dev box. Production
+    # tuning lives in docker-compose.coolify.yml (postgres command flags);
+    # these are only here to keep local EXPLAIN ANALYZE results
+    # representative.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=2GB
+      - -c
+      - work_mem=16MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - random_page_cost=1.1            # SSD-class storage
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - max_wal_size=2GB
+      - -c
+      - min_wal_size=512MB
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - wal_compression=on
+      - -c
+      - synchronous_commit=on
+      - -c
+      - default_statistics_target=200
+      # Logging — keep the slow query log so we catch regressions early.
+      - -c
+      - log_min_duration_statement=500ms
+      - -c
+      - log_lock_waits=on
+      - -c
+      - log_temp_files=0
+      # Connection ceiling — pooler-friendly. PgBouncer multiplexes a
+      # large client pool onto a small server pool, so we keep this low.
+      - -c
+      - max_connections=100
+    ports:
+      # Mapped to 5434 on the host to avoid colliding with any locally-
+      # installed Postgres (5432) or other dev containers (5433).
+      - "5434:5432"
+    volumes:
+      - tokyo_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tokyo -d tokyo"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ───────────────────────────────────────────────────────────────────
+  # PgBouncer — transaction-mode connection pooler.
+  #
+  # Only started when `--profile pooler` is passed. Default dev workflow
+  # talks straight to Postgres on 5434; opt in when you want to mirror
+  # the Coolify topology (which runs PgBouncer in front in production).
+  #
+  # Sizing:
+  #   client pool      = 200  (app-side, what Node sees)
+  #   server pool size = 25   (actual Postgres connections used)
+  #   → 1 small Postgres box can fan out to 4 app instances easily.
+  #
+  # Transaction mode caveats baked into the app:
+  #   - no LISTEN/NOTIFY               (nothing in the app uses them)
+  #   - no named prepared statements   (the app never calls `.prepare()`)
+  #   - no session-level SET           (timeouts ride on startup params, which
+  #                                     the pooler ignores — role-level
+  #                                     defaults from migration 0117 + the
+  #                                     client-side query_timeout apply)
+  #   - migrations must NOT go through it (session advisory lock) — use
+  #     MIGRATION_DATABASE_URL / the direct 5434 URL for db:migrate.
+  # ───────────────────────────────────────────────────────────────────
+  pgbouncer:
+    # edoburu publishes `v<version>-p<n>` tags (a bare `1.23.1` tag does not
+    # exist). PgBouncer 1.23.1.
+    image: edoburu/pgbouncer:v1.23.1-p3
+    container_name: tokyo-pgbouncer
+    restart: unless-stopped
+    profiles: ["pooler"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: tokyo
+      DB_PASSWORD: tokyo_dev_pwd
+      DB_NAME: tokyo
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 200
+      DEFAULT_POOL_SIZE: 25
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 3
+      SERVER_LIFETIME: 3600
+      SERVER_IDLE_TIMEOUT: 600
+      QUERY_TIMEOUT: 30
+      QUERY_WAIT_TIMEOUT: 30
+      # Postgres 16 stores passwords as SCRAM, so PgBouncer must
+      # authenticate upstream with scram-sha-256 (md5 would fail).
+      AUTH_TYPE: scram-sha-256
+      ADMIN_USERS: tokyo
+      # `ignore_startup_parameters` is needed for any startup param the app's
+      # pg Pool forwards that PgBouncer doesn't support — `application_name`
+      # AND `statement_timeout` (set in lib/db/client.ts), plus the timeout
+      # GUCs sent as `-c` keys inside the `options` packet (`options` itself is
+      # listed so any future `-c` key is ignored too). Without
+      # `statement_timeout` here, PgBouncer rejects every app connection with
+      # "unsupported startup parameter: statement_timeout".
+      IGNORE_STARTUP_PARAMETERS: extra_float_digits,application_name,statement_timeout,lock_timeout,idle_in_transaction_session_timeout,options
+    ports:
+      - "6432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "PGPASSWORD=tokyo_dev_pwd psql -h 127.0.0.1 -p 5432 -U tokyo -d tokyo -c 'SELECT 1' >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ───────────────────────────────────────────────────────────────────
+  # SeaweedFS — S3-compatible object storage (replaces MinIO).
+  #
+  # A single `weed server` process runs the master + volume + filer + the
+  # S3 gateway together. `entrypoint.sh` renders the S3 identities config
+  # from ENV on every boot:
+  #   - "app"       : the S3_ACCESS_KEY / S3_SECRET_KEY the Next app uses for
+  #                   PUT/DELETE (SigV4, path-style; Admin so it can create
+  #                   the bucket).
+  #   - "anonymous" : UNAUTHENTICATED read on the bucket, so the same-origin
+  #                   `/cdn/[...path]` proxy (which fetches the object without
+  #                   signing) works — mirrors MinIO's old GetObject-only
+  #                   anonymous policy. No public LIST or WRITE.
+  # The `tokyo` bucket is auto-created on the first upload (no init step).
+  # ───────────────────────────────────────────────────────────────────
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.47
+    container_name: tokyo-seaweedfs
+    restart: unless-stopped
+    environment:
+      # Dev placeholders — the app's .env.local must match these. NEVER ship
+      # these to production (the admin Sécurité page flags them).
+      S3_ACCESS_KEY: seaweedfs
+      S3_SECRET_KEY: seaweedfs_dev_secret
+      S3_BUCKET: tokyo
+    # Invoke via `sh <script>` so no exec bit is needed on the mounted file.
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    volumes:
+      - ./docker/seaweedfs/entrypoint.sh:/entrypoint.sh:ro
+      - tokyo_seaweedfs:/data
+    ports:
+      - "8333:8333"   # S3 API  (S3_ENDPOINT=http://localhost:8333)
+      - "8888:8888"   # filer file browser (http://localhost:8888)
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8333/status"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  tokyo_pgdata:
+  tokyo_seaweedfs:

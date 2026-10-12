@@ -1,0 +1,27 @@
+-- Phase 4c — DEFERRED column drops (RC-1).
+--
+-- These three columns are dead in the NEW code (their Drizzle schemas no longer
+-- declare them, so `.select()` omits them):
+--   customer_profiles.date_of_birth
+--   coin_levels.badge_color
+--   promotions.description
+--
+-- The DROP was originally performed here, but Coolify does a HEALTH-GATED
+-- ROLLING redeploy: the NEW container runs migrations (this file) BEFORE it
+-- serves, while the OLD container keeps taking traffic until it drains. Drizzle's
+-- bare `.select()` compiles to an EXPLICIT column list, so the OLD container's
+-- queries name these columns — dropping them in the SAME deploy as the code that
+-- stopped reading them caused transient "column does not exist" 500s on live
+-- cart/promo/account pages during the overlap window. This violated the repo's
+-- own 3-deploy rule (docs/database.md §9.3, docs/deployment-coolify.md §10).
+--
+-- Fix: this migration is now a NO-OP so the columns SURVIVE this deploy. Once the
+-- epic is live everywhere (no instance reads them), add a follow-up migration in
+-- a LATER deploy with the statements below — by then there is no overlap window:
+--
+--   ALTER TABLE "customer_profiles" DROP COLUMN IF EXISTS "date_of_birth";
+--   ALTER TABLE "coin_levels" DROP COLUMN IF EXISTS "badge_color";
+--   ALTER TABLE "promotions" DROP COLUMN IF EXISTS "description";
+--
+-- Leaving the columns in place is harmless: nullable, unread, ignored by the ORM.
+SELECT 1;

@@ -1,0 +1,13 @@
+-- 0159 — public-favorites MODERATION LOCK.
+--
+-- An admin « Rendre privé » on the Favoris moderation board must be more than a
+-- one-click toggle the customer can immediately undo with the same abusive handle.
+-- `public_locked` records that the sharing was suspended by an operator: while true,
+-- the customer cannot re-publish (the account action refuses with a clear message)
+-- until an admin lifts the lock. The handle is kept (the list is already unreachable
+-- via is_public=false) so the moderation board can still review the offending profile.
+--
+-- A customer-initiated private toggle leaves this false, so an ordinary private
+-- list is never mistaken for a moderated one. NOT NULL DEFAULT false — existing
+-- rows are unmoderated.
+ALTER TABLE "wishlists" ADD COLUMN "public_locked" boolean NOT NULL DEFAULT false;

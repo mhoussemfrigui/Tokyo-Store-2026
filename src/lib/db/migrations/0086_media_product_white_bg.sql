@@ -1,0 +1,17 @@
+-- Auto uniform-backdrop handling for product images (admin media setting).
+--
+-- Adds a single boolean toggle to the media_settings singleton (product_white_bg).
+--
+-- NOTE (updated): the column name predates the feature's evolution. It now drives
+-- edge flood-fill background REMOVAL (détourage → transparent, in
+-- src/modules/media/white-bg.ts), generalised beyond white to any uniform sweep
+-- (white/black/grey/flat colour), preserving same-colour interior regions — NOT
+-- the original alpha-flatten-to-white, and NOT an external AI/segmentation
+-- service. Only product-scope uploads are eligible; interior regions + textured
+-- backdrops are left intact.
+--
+-- Default FALSE so existing installs process images exactly as before until an
+-- admin opts in from /admin/media/settings. NOT NULL + DEFAULT means the
+-- existing singleton row is backfilled to false in place; no data migration.
+-- IF NOT EXISTS keeps re-apply idempotent.
+ALTER TABLE "media_settings" ADD COLUMN IF NOT EXISTS "product_white_bg" boolean DEFAULT false NOT NULL;

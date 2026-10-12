@@ -1,0 +1,5 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Shell scripts must stay LF so they run in Linux containers (Windows checkout would otherwise CRLF them).
+*.sh text eol=lf
