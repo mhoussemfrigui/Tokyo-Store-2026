@@ -24,8 +24,19 @@ export const INVENTORY_WEB_STOCK_SOURCE_KEY = "inventory.web_stock_source";
  *     the website through the Centrale. Matches the historical behaviour.
  *   - `combined` — flat aggregate: the locations are peers, the website isn't tied
  *     to a single depot, so there's no depot ship-decrement and no auto-pull.
- * Availability is the SAME in both (the sellable total = Σ active levels — the
- * website never hides store stock); the mode only changes fulfilment + replenish.
+ * Availability is the SAME in both — the sellable TOTAL (`stock_qty`) is the
+ * authoritative count the storefront sells against (no oversell), and the website
+ * never hides store stock; the mode only changes fulfilment + replenish.
+ *
+ * NOTE on the per-location invariant: `central` keeps total = Σ(active levels)
+ * continuously because every fulfilment step that drops the total also drops a
+ * location level (placement → total, ship/pickup → depot level, return → depot
+ * level credit). `combined` has NO depot, so the order flow moves ONLY the total;
+ * the per-location levels are the operator/ERP-maintained physical counts
+ * (adjustLocationLevel via PATCH /api/stock, or the Stock matrix). The invariant
+ * therefore holds only AT REST — after a sale the total can sit BELOW Σ(active
+ * levels) until the operator/ERP reconciles the levels. This is by design, not a
+ * bug: the total, not Σ-levels, is what gates sellability.
  */
 export type WebStockSource = "combined" | "central";
 
