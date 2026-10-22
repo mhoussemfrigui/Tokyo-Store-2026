@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ChevronDown, Mail, MapPin, Phone } from "lucide-react";
+import { ChevronDown, Clock, Mail, MapPin, Phone } from "lucide-react";
 
 import { PLATFORM_META } from "@/components/social-icons";
 import type { FooterColumn, NavLink } from "@/lib/api/cms";
@@ -19,6 +19,9 @@ export type FooterData = {
   logoUrl?: string | null;
   phone?: string | null;
   email?: string | null;
+  /** Opening hours (« Pied de page » → site.hours). Shown as a contact line when
+   *  « Afficher les coordonnées » is on; empty → the line hides. */
+  hours?: string | null;
   /** Footer-flagged boutiques (« Identité & contact »). Empty → the row hides —
    *  never a hardcoded / placeholder store address. */
   stores?: string[];
@@ -225,10 +228,11 @@ export function Footer({ data = {} }: { data?: FooterData }) {
   const email = data.email?.trim() || "";
   const phoneHref = phone ? `tel:${phone.replace(/[^\d+]/g, "")}` : "";
   const stores = appearance.showContact ? (data.stores ?? []).filter((s) => s.trim().length > 0) : [];
+  const hours = appearance.showContact ? (data.hours?.trim() || "") : "";
   const socials = appearance.showSocials ? (data.socials ?? []) : [];
   const { columns, legal } = resolveColumns(data);
   const showTagline = appearance.showDescription && tagline.length > 0;
-  const hasContact = appearance.showContact && (phone.length > 0 || email.length > 0);
+  const hasContact = appearance.showContact && (phone.length > 0 || email.length > 0 || hours.length > 0);
   // HQ / registered address — shown in the bottom bar only when the admin enabled
   // its front-end visibility (business.hq_address_public). Empty → the line hides,
   // so the footer stays byte-identical when the toggle is off.
@@ -288,6 +292,11 @@ export function Footer({ data = {} }: { data?: FooterData }) {
                     >
                       <Mail aria-hidden className="size-4 text-primary" /> {email}
                     </a>
+                  </li>
+                )}
+                {hours && (
+                  <li className="inline-flex min-h-11 items-center gap-2 md:min-h-8 pointer-coarse:min-h-11">
+                    <Clock aria-hidden className="size-4 text-primary" /> {hours}
                   </li>
                 )}
               </ul>

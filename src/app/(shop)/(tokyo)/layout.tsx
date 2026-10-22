@@ -81,6 +81,7 @@ export default async function TokyoShellLayout({ children }: { children: ReactNo
     logoUrl,
     phone: footerEntries(contacts.phones)[0]?.value ?? settings["site.contact_phone"],
     email: footerEntries(contacts.emails)[0]?.value ?? settings["site.contact_email"],
+    hours: settings["site.hours"],
     stores: footerEntries(contacts.addresses).map((e) => e.value),
     // Central HQ / registered address — shown in the footer bottom bar only when
     // the admin enabled its front-end visibility (business.hq_address_public).
