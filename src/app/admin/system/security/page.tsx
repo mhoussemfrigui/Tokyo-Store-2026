@@ -13,6 +13,7 @@ import { getSettingsMap } from "@/modules/cms/setting/queries";
 import { getConsentConfig } from "@/lib/consent/config";
 import { getTrackingConfig } from "@/lib/tracking/config";
 import { computePosture } from "@/lib/security/posture";
+import { resolveMailProviderConfig } from "@/lib/email/config";
 import { getSecuritySignals } from "@/lib/security/signals";
 import { SecurityCenter, type SecurityCenterData } from "./security-center";
 
@@ -131,6 +132,11 @@ export default async function SecurityPage() {
   const dbTlsVerified: boolean | null =
     dbSslPosture === null ? null : dbSslPosture === "verified";
 
+  // Does a REAL mail provider deliver? "console" (the default) writes e-mails to the
+  // server log and sends nothing — password resets / order receipts never arrive.
+  const mailDelivers =
+    ((await resolveMailProviderConfig().catch(() => null))?.providerName ?? "console") !== "console";
+
   const posture = computePosture({
     isProd: isProd(),
     authSecretValid,
@@ -152,6 +158,7 @@ export default async function SecurityPage() {
     lastAdminFloor: true,
     securityEventLogging: true,
     emailVerificationRequired,
+    mailDelivers,
   });
 
   const data: SecurityCenterData = {

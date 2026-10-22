@@ -36,6 +36,7 @@ const STRONG: PostureFacts = {
   lastAdminFloor: true,
   securityEventLogging: true,
   emailVerificationRequired: true,
+  mailDelivers: true,
 };
 
 const byId = (items: ReturnType<typeof computePosture>["items"], id: string) =>
@@ -48,7 +49,7 @@ function main() {
   check("score 100", strong.summary.scorePct === 100);
   check("all scoreable pass", strong.summary.pass === strong.summary.total);
   check("every item has an OWASP tag", strong.items.every((i) => /^A\d/.test(i.owasp)));
-  check("stable item count", strong.items.length === 11);
+  check("stable item count", strong.items.length === 12);
 
   console.log("computePosture — current real state (csp nonce pending):");
   const current = computePosture({ ...STRONG, cspHasNonce: false });
@@ -62,7 +63,7 @@ function main() {
   check("info counted in summary", noTls.summary.info === 1);
   // db-tls moves from pass→info, so it leaves BOTH numerator + denominator: with
   // one remaining warn (csp-nonce) the score is 9/10 = 90 (vs current's 10/11=91).
-  check("info neutral: still scored on the rest", noTls.summary.scorePct === 90);
+  check("info neutral: still scored on the rest", noTls.summary.scorePct === 91);
   check("an all-info-or-pass set scores 100", computePosture({ ...STRONG, dbTlsVerified: null }).summary.scorePct === 100);
 
   console.log("computePosture — DB TLS required-but-unverified → warn:");
@@ -97,6 +98,16 @@ function main() {
   console.log("computePosture — email verification off → info (not a hard fail):");
   const noVerif = computePosture({ ...STRONG, emailVerificationRequired: false });
   check("email-verif → info", byId(noVerif.items, "email-verif")?.status === "info");
+
+  console.log("computePosture — console mail provider delivers nothing → warn in prod:");
+  check(
+    "mail-delivery passes with a real provider",
+    byId(computePosture(STRONG).items, "mail-delivery")?.status === "pass",
+  );
+  check(
+    "mail-delivery warns in prod when provider is console",
+    byId(computePosture({ ...STRONG, isProd: true, mailDelivers: false }).items, "mail-delivery")?.status === "warn",
+  );
 
   console.log("computePosture — 2FA adoption unknown (signals degraded) → info, not false-pass:");
   const degraded = computePosture({ ...STRONG, twoFactorDataAvailable: false });

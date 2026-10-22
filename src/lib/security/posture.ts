@@ -58,6 +58,8 @@ export type PostureFacts = {
   securityEventLogging: boolean;
   /** Email verification required before first session. */
   emailVerificationRequired: boolean;
+  /** A REAL e-mail provider is configured (not "console", which delivers nothing). */
+  mailDelivers: boolean;
 };
 
 export function computePosture(f: PostureFacts): {
@@ -162,6 +164,17 @@ export function computePosture(f: PostureFacts): {
     f.emailVerificationRequired
       ? "Aucune session avant la confirmation de l'adresse e-mail."
       : "La vérification e-mail n'est pas exigée avant la première session.",
+  );
+  add(
+    "mail-delivery",
+    "A09",
+    "Envoi d'e-mails réel",
+    f.mailDelivers ? "pass" : f.isProd ? "warn" : "info",
+    f.mailDelivers
+      ? "Un fournisseur d'e-mail réel est configuré (Resend / SMTP)."
+      : "Le fournisseur « console » n'envoie AUCUN e-mail réel : réinitialisations de mot de passe, " +
+        "reçus de commande et confirmations ne partent pas (ils sont écrits dans le journal du serveur). " +
+        "Configurez Resend ou SMTP dans « Campagnes e-mail → Réglages ».",
   );
   add(
     "last-admin",
