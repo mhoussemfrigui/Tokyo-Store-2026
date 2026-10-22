@@ -6,7 +6,7 @@ import type { ResolvedMedia } from "@/modules/media";
 import { valuePropIcon } from "@/lib/catalog/value-prop-icons";
 import type { PageBlock } from "@/lib/pages/page-blocks";
 import type { BlockHeader, BlockImage } from "@/lib/pages/block-model";
-import { mapUrlsFor, telHref, whatsappHref } from "@/lib/pages/page-blocks";
+import { DEFAULT_CONTACT_CHANNELS, mapUrlsFor, telHref, whatsappHref } from "@/lib/pages/page-blocks";
 import type { ResolvedPage } from "@/lib/pages/page-blocks-data";
 import { cn } from "@/storefront/lib/utils";
 import { sanitizeRichHtml } from "@/lib/sanitize/rich-html";
@@ -23,8 +23,6 @@ import {
 } from "./info-kit";
 import { FaqHelp } from "./faq-help";
 import { LegalDoc } from "./legal-doc";
-import { ContactForm } from "./contact-form";
-import { ApplyForm } from "./apply-form";
 import { JobBoard } from "./job-board";
 
 /**
@@ -361,29 +359,41 @@ function renderBlock(block: PageBlock, ctx: Ctx): ReactNode {
           sections={c.sections ?? []}
           cookiePrefs={c.cookiePrefs ?? []}
           showToc={c.showToc ?? true}
-          email={ctx.r.site.email || "contact@tokyostores.tn"}
+          email={ctx.r.site.email || ""}
         />
       );
 
+    // The old demo forms (no backend; faked a success panel) were removed. Show
+    // the REAL contact channels / job board instead — no fabricated submission.
     case "contact_form":
       return (
-        <ContactForm
-          header={h}
-          subjects={c.subjects ?? []}
-          showOrderField={c.showOrderField ?? true}
-          successTitle={c.successTitle || "Message envoyé"}
-          successBody={c.successBody || "Nous vous répondons sous 24h ouvrées."}
+        <ContactChannels
+          block={{
+            ...block,
+            config: {
+              header: c.header,
+              layout: c.layout ?? "cards",
+              channels: c.channels ?? DEFAULT_CONTACT_CHANNELS,
+            },
+          }}
+          ctx={ctx}
         />
       );
 
     case "apply_form":
+      // Real application is by e-mail (mailto) to the configured recruitment /
+      // site address — reuse the job board's spontaneous-application flow.
       return (
-        <ApplyForm
+        <JobBoard
           header={h}
-          jobOptions={c.jobOptions ?? []}
-          consentText={c.consentText || ""}
-          successTitle={c.successTitle || "Candidature envoyée"}
-          successBody={c.successBody || "Merci ! Un e-mail de confirmation vient de vous être envoyé."}
+          jobs={(c.jobs ?? []).filter((j) => j.active !== false)}
+          emptyText={c.emptyText || ""}
+          applyEmail={c.applyEmail || ctx.r.site.email || ""}
+          spontaneous={{
+            title: c.spontaneousTitle || "Candidature spontanée",
+            body: c.spontaneousBody || c.consentText || "",
+            ctaLabel: c.spontaneousCtaLabel || "Postuler par e-mail",
+          }}
         />
       );
 
@@ -506,18 +516,28 @@ function ContactChannels({ block, ctx }: { block: PageBlock; ctx: Ctx }) {
   const c = block.config;
   const h: Partial<BlockHeader> = c.header ?? {};
   const site = ctx.r.site;
-  const phone = site.phone || "+216 50 059 160";
-  const email = site.email || "contact@tokyostores.tn";
+  // No fabricated fallbacks: the real values come from « Identité & contact »
+  // (site.contact_phone / site.contact_email); a channel with no configured value
+  // is simply dropped rather than showing an invented number/address.
+  const phone = site.phone || "";
+  const email = site.email || "";
+  const whatsapp = site.whatsapp || phone;
   const rows = (c.channels ?? [])
     .filter((ch) => ch.enabled)
     .map((ch) => {
       switch (ch.key) {
         case "phone":
-          return { key: ch.key, label: ch.label || "Appeler", value: phone.replace("+216", "").trim(), note: ch.note || "Lun – sam · 9h – 19h30", href: telHref(phone), icon: "Phone", tone: "crimson" as const };
+          return phone
+            ? { key: ch.key, label: ch.label || "Appeler", value: phone.replace("+216", "").trim(), note: ch.note || "Lun – sam · 9h – 19h30", href: telHref(phone), icon: "Phone", tone: "crimson" as const }
+            : null;
         case "whatsapp":
-          return { key: ch.key, label: ch.label || "WhatsApp", value: "Écrire", note: ch.note || "Réponse rapide en journée", href: ch.href || whatsappHref(site.whatsapp || phone), icon: "MessageCircle", tone: "green" as const };
+          return whatsapp
+            ? { key: ch.key, label: ch.label || "WhatsApp", value: "Écrire", note: ch.note || "Réponse rapide en journée", href: ch.href || whatsappHref(whatsapp), icon: "MessageCircle", tone: "green" as const }
+            : null;
         case "email":
-          return { key: ch.key, label: ch.label || "E-mail", value: email, note: ch.note || "Sous 24h ouvrées", href: `mailto:${email}`, icon: "Mail", tone: "ink" as const };
+          return email
+            ? { key: ch.key, label: ch.label || "E-mail", value: email, note: ch.note || "Sous 24h ouvrées", href: `mailto:${email}`, icon: "Mail", tone: "ink" as const }
+            : null;
         case "stores":
           return { key: ch.key, label: ch.label || "Boutique", value: "3 boutiques", note: ch.note || "Lac 2 · La Marsa · Menzah 5", href: ch.href || "/apropos#boutiques", icon: "MapPin", tone: "soft" as const };
         case "help":

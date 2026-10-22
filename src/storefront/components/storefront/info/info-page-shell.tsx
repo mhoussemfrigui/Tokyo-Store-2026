@@ -38,7 +38,8 @@ export function InfoPageShell({
   const groupLabel = entry ? infoGroupLabel(entry.group) : "";
   const legal = isLegalInfoPage(slug);
   const nav = infoNavModel(slug);
-  const tel = telHref(phone ?? "+216 50 059 160");
+  // Real phone from « Identité & contact » (passed in by the page); no invented fallback.
+  const tel = phone ? telHref(phone) : "";
 
   return (
     <div className="page-container flex flex-col gap-5 pt-3 sm:gap-5">
@@ -129,13 +130,23 @@ export function InfoPageShell({
             <span className="text-[13px] leading-[1.5] text-background/70">
               Notre équipe vous répond du lundi au samedi.
             </span>
-            <a
-              href={tel || undefined}
-              className="flex h-11 items-center justify-center gap-2 rounded-full bg-primary text-sm font-bold text-primary-foreground transition-[filter] hover:brightness-95"
-            >
-              <Phone aria-hidden className="size-[15px]" strokeWidth={2} />
-              {(phone ?? "+216 50 059 160").replace("+216", "").trim()}
-            </a>
+            {phone ? (
+              <a
+                href={tel || undefined}
+                className="flex h-11 items-center justify-center gap-2 rounded-full bg-primary text-sm font-bold text-primary-foreground transition-[filter] hover:brightness-95"
+              >
+                <Phone aria-hidden className="size-[15px]" strokeWidth={2} />
+                {phone.replace("+216", "").trim()}
+              </a>
+            ) : (
+              <Link
+                href="/aide"
+                className="flex h-11 items-center justify-center gap-2 rounded-full bg-primary text-sm font-bold text-primary-foreground transition-[filter] hover:brightness-95"
+              >
+                <Phone aria-hidden className="size-[15px]" strokeWidth={2} />
+                Contactez-nous
+              </Link>
+            )}
           </div>
         </aside>
 

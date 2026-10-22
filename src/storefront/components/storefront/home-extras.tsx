@@ -1,6 +1,6 @@
 "use client";
 
-import { Gamepad2, Phone, Timer } from "lucide-react";
+import { Gamepad2, Phone } from "lucide-react";
 import { AccessoryCarousel } from "@/storefront/components/storefront/accessory-carousel";
 import { PromoBar } from "@/storefront/components/storefront/promo-bar";
 import { GamingTabs } from "@/storefront/components/storefront/gaming-tabs";
@@ -22,13 +22,11 @@ export function HomeExtras() {
             A promo bar heads its shelf at the heading gap (20 / 24 / 32), not
             the section gap. */}
         <div className="space-y-5 sm:space-y-6 lg:space-y-8">
-          <PromoBar
-            href="/bons-plans"
-            label="BONS PLANS"
-            copy="Jusqu'à -30% sur iPhone, Gaming & Audio"
-            meta="02j : 14h : 32m"
-            metaIcon={Timer}
-          />
+          {/* No fabricated countdown: a hardcoded "02j : 14h : 32m" implied a
+              real time-limited offer that does not exist. The banner links to the
+              live /bons-plans promotions page. */}
+          <PromoBar href="/bons-plans" label="BONS PLANS" copy="Bons plans iPhone, Gaming & Audio" />
+
 
           <IphoneTabs variant="neufs" />
         </div>

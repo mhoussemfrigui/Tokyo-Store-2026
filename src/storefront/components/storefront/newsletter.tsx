@@ -1,44 +1,30 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useActionState } from "react";
 import { Check } from "lucide-react";
 
+import { subscribeNewsletterAction, type NewsletterState } from "@/lib/actions/newsletter";
 import { btn, field, panel } from "@/storefront/components/storefront/ui-classes";
 import { cn } from "@/storefront/lib/utils";
 
 /**
  * Home page newsletter: the last section of <main>, on the page column like
- * every other home section. It used to live in the footer (outside every
- * landmark) behind a pathname check; main's bottom padding now gives the
- * section → footer rhythm.
+ * every other home section. Submits the REAL public `subscribeNewsletterAction`
+ * server action (same one as the footer signup) — no fake success. The action
+ * is rate-limited and returns one generic message for every outcome so it never
+ * leaks whether an address is already subscribed.
  */
 export function Newsletter() {
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSubscribe = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const value = email.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-      setError("Adresse e-mail invalide");
-      return;
-    }
-    setError(null);
-    setSubmitted(true);
-    setEmail("");
-  };
+  const [state, formAction, pending] = useActionState<NewsletterState | null, FormData>(
+    subscribeNewsletterAction,
+    null,
+  );
+  const done = state?.ok === true;
 
   return (
     <section aria-labelledby="newsletter-title" className="pt-14 sm:pt-16 lg:pt-20">
       <div className="page-container">
-        {/* A panel on the content column, so it pads like the pill (px-4 /
-            lg:px-5): the copy and field land on the logo line with the store
-            cards above (gutter + 1 + 16 = 29 / 45, 28 + 1 + 20 = 49). The
-            vertical air stays banner-generous. */}
         <div className={cn(panel, "px-4 py-10 sm:py-12 lg:px-5")}>
-          {/* The form column stops at a readable measure on wide screens
-              instead of stretching a 700px e-mail field. */}
           <div className="grid gap-6 md:grid-cols-[1.2fr_1fr] md:items-end lg:gap-12 xl:grid-cols-[minmax(0,1fr)_minmax(0,32rem)]">
             <div className="text-center md:text-left">
               <p className="eyebrow text-primary-ink">Newsletter</p>
@@ -51,51 +37,53 @@ export function Newsletter() {
               </p>
             </div>
 
-            {/* Field and button share a row except at md, where the column is
-                ~280px and a row left a 150px field: there they stack. */}
             <div className="text-center md:text-left">
               <form
-                onSubmit={handleSubscribe}
-                noValidate
+                action={formAction}
                 className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] md:grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto]"
               >
+                <input type="hidden" name="source" value="home" />
                 <label htmlFor="newsletter-email" className="sr-only">
                   Adresse e-mail
                 </label>
                 <input
                   id="newsletter-email"
+                  name="email"
                   type="email"
                   inputMode="email"
                   autoComplete="email"
                   required
                   maxLength={255}
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (submitted) setSubmitted(false);
-                    if (error) setError(null);
-                  }}
                   placeholder="votre@email.com"
-                  aria-invalid={error ? true : undefined}
                   aria-describedby="newsletter-status"
                   className={field}
                 />
-                <button type="submit" className={cn(btn.base, btn.lg, btn.primary)}>
-                  {submitted ? (
+                <button
+                  type="submit"
+                  disabled={pending || done}
+                  className={cn(btn.base, btn.lg, btn.primary)}
+                >
+                  {done ? (
                     <>
                       <Check aria-hidden className="size-4" /> Inscrit
                     </>
+                  ) : pending ? (
+                    "…"
                   ) : (
                     "S'abonner"
                   )}
                 </button>
               </form>
-              {/* Announced when it changes: the error, or the confirmation. */}
+              {/* Announced when it changes: the server action's message. */}
               <div id="newsletter-status" aria-live="polite">
-                {error && <p className="mt-3 text-[12px] font-medium text-destructive">{error}</p>}
-                {submitted && !error && (
-                  <p className="mt-3 text-[12px] text-muted-foreground">
-                    Merci ! Vous êtes bien inscrit.
+                {state && (
+                  <p
+                    className={cn(
+                      "mt-3 text-[12px]",
+                      state.ok ? "text-muted-foreground" : "font-medium text-destructive",
+                    )}
+                  >
+                    {state.message}
                   </p>
                 )}
               </div>

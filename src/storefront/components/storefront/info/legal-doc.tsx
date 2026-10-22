@@ -207,15 +207,19 @@ export function LegalDoc(props: {
             </div>
           )}
 
-          {/* 5. Footer note */}
+          {/* 5. Footer note — real contact email from settings; nothing invented. */}
           <div className="flex flex-wrap items-center justify-between gap-3.5 border-t border-border pt-6 text-sm text-muted-foreground">
-            <span>
-              Une question sur ce document ?{" "}
-              <a href={`mailto:${email}`} className="font-bold text-primary">
-                {email}
-              </a>
-            </span>
-            <span>tokyostores.tn</span>
+            {email ? (
+              <span>
+                Une question sur ce document ?{" "}
+                <a href={`mailto:${email}`} className="font-bold text-primary">
+                  {email}
+                </a>
+              </span>
+            ) : (
+              <span />
+            )}
+            {email.includes("@") && <span>{email.split("@")[1]}</span>}
           </div>
         </article>
 

@@ -55,8 +55,9 @@ export function PromoBar({
   href: string;
   label: string;
   copy: string;
-  meta: string;
-  metaIcon: LucideIcon;
+  /** Optional trailing chip (e.g. a real promo end date). Omitted → no chip. */
+  meta?: string;
+  metaIcon?: LucideIcon;
   tone?: "primary" | "dark";
   /** Arcade treatment: a drifting playfield grid and rising pixels. */
   pixels?: boolean;
@@ -156,21 +157,19 @@ export function PromoBar({
         {copy}
       </p>
 
-      <span
-        /* Was hidden below sm, which threw away the countdown — the one
-           piece of urgency the bar carries. On phones it is pushed to the
-           end of row one, opposite the label. Below 360 the row is only
-           262px: without its icon, a tighter gap and a 10px side the
-           "UNIVERS GAMING" pair still fits (137 + 8 + 116), instead of the
-           chip wrapping onto a row of its own. */
-        className={cn(
-          "relative ml-auto inline-flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[12px] font-semibold backdrop-blur max-[359px]:px-2.5 sm:ml-0",
-          dark ? "bg-background/10" : "bg-primary-foreground/15",
-        )}
-      >
-        <MetaIcon aria-hidden className="size-3.5 max-[359px]:hidden" />
-        {meta}
-      </span>
+      {meta && MetaIcon && (
+        <span
+          /* Optional trailing chip (e.g. a real promo end date). On phones it is
+             pushed to the end of row one, opposite the label. */
+          className={cn(
+            "relative ml-auto inline-flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[12px] font-semibold backdrop-blur max-[359px]:px-2.5 sm:ml-0",
+            dark ? "bg-background/10" : "bg-primary-foreground/15",
+          )}
+        >
+          <MetaIcon aria-hidden className="size-3.5 max-[359px]:hidden" />
+          {meta}
+        </span>
+      )}
 
       {/* From sm only: on phones it wrapped onto a row of its own at 320, and
           the whole bar is the link anyway. */}

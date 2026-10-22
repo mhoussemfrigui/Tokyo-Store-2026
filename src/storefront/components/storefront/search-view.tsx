@@ -446,10 +446,10 @@ export function SearchView({
               <li>Vérifiez l&apos;orthographe des mots-clés</li>
               <li>Essayez un terme plus général, par exemple «&nbsp;casque&nbsp;» ou «&nbsp;Galaxy&nbsp;»</li>
               <li>
-                Appelez-nous au{" "}
-                <a href="tel:+21650059160" className="font-bold text-foreground">
-                  50 059 160
-                </a>
+                Besoin d&apos;aide ?{" "}
+                <Link href="/aide" className="font-bold text-foreground">
+                  Contactez-nous
+                </Link>
                 , nous trouverons le produit pour vous
               </li>
             </ul>
