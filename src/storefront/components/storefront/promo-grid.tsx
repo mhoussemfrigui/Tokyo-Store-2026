@@ -14,14 +14,19 @@ import {
 } from "lucide-react";
 
 import { SectionHeading, ViewAllLink } from "@/storefront/components/storefront/section-heading";
-import { badge, btn, card, promise, rhythm } from "@/storefront/components/storefront/ui-classes";
+import { btn, card, promise, rhythm } from "@/storefront/components/storefront/ui-classes";
 import { useShippingConfig } from "@/storefront/lib/cart";
 import { useSiteContacts, telHref } from "@/storefront/lib/site-contacts";
 import { cn } from "@/storefront/lib/utils";
 
+/** A storefront boutique card — mapped from the backend in-store pickup
+ *  locations (delivery module), the real, admin-editable source of truth. */
+export type StoreCard = { city: string; address: string; hours: string; phone: string };
+
 /** The delivery promise copy tracks the live free-shipping threshold (admin-
- *  configurable, read via useShippingConfig). `freeFrom === 0` = no free offer. */
-const buildPromises = (freeFrom: number) => [
+ *  configurable, read via useShippingConfig). `freeFrom === 0` = no free offer.
+ *  The boutiques promise is derived from the real store list (no hardcoded count). */
+const buildPromises = (freeFrom: number, stores: StoreCard[]) => [
   {
     icon: ShieldCheck,
     title: "Garantie jusqu’à 24 mois",
@@ -40,27 +45,13 @@ const buildPromises = (freeFrom: number) => [
         ? `Partout en Tunisie, gratuite dès ${freeFrom} TND.`
         : "Partout en Tunisie, livrée en 24h.",
   },
-  { icon: Store, title: "3 boutiques en Tunisie", copy: "Lac 2, La Marsa & Menzah 5." },
-];
-
-const stores = [
   {
-    city: "Lac 2 — Tunisia Mall 1",
-    address: "Tunisia Mall 1, Les Berges du Lac 2",
-    hours: "Lun–Sam · 09h – 20h",
-    phone: "+216 29 111 684",
-  },
-  {
-    city: "La Marsa",
-    address: "La Marsa, Tunis",
-    hours: "Lun–Sam · 09h – 20h",
-    phone: "+216 29 599 967",
-  },
-  {
-    city: "Menzah 5",
-    address: "Menzah 5, Tunis",
-    hours: "Lun–Sam · 09h – 20h",
-    phone: "+216 20 254 111",
+    icon: Store,
+    title:
+      stores.length > 0
+        ? `${stores.length} boutique${stores.length > 1 ? "s" : ""} en Tunisie`
+        : "Retrait en boutique",
+    copy: stores.length > 0 ? stores.map((s) => s.city).join(" · ") : "Disponible en magasin.",
   },
 ];
 
@@ -79,10 +70,10 @@ const mapsSearch = (query: string) =>
  */
 const EDITORIAL_PAD = "px-4 py-5 sm:py-8 lg:px-5 lg:py-10";
 
-export function PromoGrid() {
+export function PromoGrid({ stores }: { stores: StoreCard[] }) {
   const { freeFrom } = useShippingConfig();
   const { phone: sitePhone } = useSiteContacts();
-  const promises = buildPromises(freeFrom);
+  const promises = buildPromises(freeFrom, stores);
   return (
     <section className="pt-14 sm:pt-16 lg:pt-20">
       <div className="page-container">
@@ -174,7 +165,11 @@ export function PromoGrid() {
         <div className="mt-14 sm:mt-16 lg:mt-20">
           <SectionHeading
             eyebrow="Nos boutiques"
-            title="3 boutiques en Tunisie"
+            title={
+              stores.length > 0
+                ? `${stores.length} boutique${stores.length > 1 ? "s" : ""} en Tunisie`
+                : "Nos boutiques"
+            }
             action={
               <ViewAllLink href={mapsSearch("Tokyo Store Tunis")}>Voir les boutiques</ViewAllLink>
             }
@@ -198,8 +193,8 @@ export function PromoGrid() {
                 className="flex w-[85%] shrink-0 snap-start flex-col rounded-card border border-border bg-background p-4 shadow-island transition-colors duration-200 hover:border-primary/40 sm:w-[45%] md:w-auto lg:p-5 2xl:grid 2xl:grid-cols-[minmax(0,1fr)_auto] 2xl:items-end 2xl:gap-x-6"
               >
                 <div className="flex items-start justify-between gap-3 2xl:col-span-2">
+                  {/* No fabricated "Ouvert" status: real-time open/closed is not tracked. */}
                   <h3 className="title-block text-foreground">{s.city}</h3>
-                  <span className={cn(badge.base, badge.success)}>Ouvert</span>
                 </div>
                 {/* flex-1: the buttons line up across the row whatever the
                     address length. */}
@@ -212,10 +207,12 @@ export function PromoGrid() {
                     <Clock aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
                     <span>{s.hours}</span>
                   </li>
-                  <li className="flex items-start gap-2.5">
-                    <Phone aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
-                    <span>{s.phone}</span>
-                  </li>
+                  {s.phone && (
+                    <li className="flex items-start gap-2.5">
+                      <Phone aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
+                      <span>{s.phone}</span>
+                    </li>
+                  )}
                 </ul>
                 <a
                   href={mapsSearch(s.address)}

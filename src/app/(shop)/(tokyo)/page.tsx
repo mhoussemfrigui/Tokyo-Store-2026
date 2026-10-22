@@ -7,6 +7,7 @@ import { HeroCarousel, type Slide } from "@/storefront/components/storefront/her
 import { HomeExtras } from "@/storefront/components/storefront/home-extras";
 import { Newsletter } from "@/storefront/components/storefront/newsletter";
 import { PromoGrid } from "@/storefront/components/storefront/promo-grid";
+import { listEnabledPickups } from "@/modules/delivery/queries";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -41,7 +42,18 @@ async function getHeroSlides(): Promise<Slide[]> {
 }
 
 export default async function HomePage() {
-  const heroSlides = await getHeroSlides();
+  const [heroSlides, pickups] = await Promise.all([
+    getHeroSlides(),
+    listEnabledPickups("in_store"),
+  ]);
+  // « Nos boutiques » cards from the REAL in-store pickup locations (delivery module,
+  // admin-editable) — never hardcoded in the component.
+  const stores = pickups.map((p) => ({
+    city: p.name,
+    address: p.address_line ?? [p.city, p.region].filter(Boolean).join(", "),
+    hours: p.hours_label ?? "",
+    phone: p.phone ?? "",
+  }));
   const graph = [
     {
       "@context": "https://schema.org",
@@ -69,7 +81,7 @@ export default async function HomePage() {
       <HeroCarousel slides={heroSlides} />
       <CategoryTabs />
       <HomeExtras />
-      <PromoGrid />
+      <PromoGrid stores={stores} />
       <Newsletter />
     </>
   );
