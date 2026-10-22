@@ -9,6 +9,7 @@ import type { BlockHeader, BlockImage } from "@/lib/pages/block-model";
 import { DEFAULT_CONTACT_CHANNELS, mapUrlsFor, telHref, whatsappHref } from "@/lib/pages/page-blocks";
 import type { ResolvedPage } from "@/lib/pages/page-blocks-data";
 import { cn } from "@/storefront/lib/utils";
+import { fmtPrice } from "@/storefront/lib/productMeta";
 import { sanitizeRichHtml } from "@/lib/sanitize/rich-html";
 
 import {
@@ -483,6 +484,167 @@ function renderBlock(block: PageBlock, ctx: Ctx): ReactNode {
               <div key={i} className="aspect-square overflow-hidden rounded-[22px] bg-muted">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={im.src} alt={im.alt} loading="lazy" decoding="async" className="size-full object-cover" />
+              </div>
+            ))}
+          </div>
+        </InfoSection>
+      );
+    }
+
+    // ── timeline (dated vertical rail) ─────────────────────────────────────
+    case "timeline": {
+      const items = c.timeline ?? [];
+      if (items.length === 0 && !h.title) return null;
+      return (
+        <InfoSection>
+          <SectionHead header={h} />
+          <ol className="flex flex-col">
+            {items.map((it, i) => (
+              <li key={i} className="grid grid-cols-[auto_1fr] gap-x-5">
+                <div className="flex flex-col items-center">
+                  <span className="mt-1.5 size-3 shrink-0 rounded-full bg-primary ring-4 ring-primary/15" />
+                  {i < items.length - 1 && <span className="w-px flex-1 bg-border" />}
+                </div>
+                <div className="pb-9">
+                  {it.year && <span className="text-[14px] font-extrabold text-primary">{it.year}</span>}
+                  {it.title && <h3 className="mt-1 text-[clamp(18px,2vw,22px)] font-extrabold tracking-[-0.01em]">{it.title}</h3>}
+                  {it.description && <p className={cn("mt-1.5", INFO_MUTED)}>{it.description}</p>}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </InfoSection>
+      );
+    }
+
+    // ── fifty_fifty (1–3 image + text cards) ───────────────────────────────
+    case "fifty_fifty": {
+      const cards = c.cards ?? [];
+      if (cards.length === 0 && !h.title) return null;
+      return (
+        <InfoSection>
+          <SectionHead header={h} />
+          <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))]">
+            {cards.map((card, i) => {
+              const img = pick(media, card.image, card.title);
+              return (
+                <div key={i} className="flex flex-col overflow-hidden rounded-[28px] bg-card">
+                  {img && (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.src} alt={img.alt} loading="lazy" decoding="async" className="aspect-[4/3] w-full object-cover" />
+                    </>
+                  )}
+                  <div className="flex flex-col gap-2 p-6">
+                    {card.eyebrow && <Eyebrow>{card.eyebrow}</Eyebrow>}
+                    {card.title && <h3 className="text-[clamp(18px,2vw,22px)] font-extrabold tracking-[-0.01em]">{card.title}</h3>}
+                    {card.body && <p className={INFO_MUTED}>{card.body}</p>}
+                    {card.ctaLabel && card.ctaHref && (
+                      <SmartLink href={card.ctaHref} className="mt-1 inline-flex w-max items-center gap-1.5 text-[15px] font-bold text-primary">
+                        {card.ctaLabel} <ArrowRight className="size-4" aria-hidden />
+                      </SmartLink>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </InfoSection>
+      );
+    }
+
+    // ── product_grid (embed a catalogue listing; products resolved server-side) ─
+    case "product_grid": {
+      const prods = ctx.r.productsByBlock.get(block.id) ?? [];
+      if (prods.length === 0 && !h.title) return null;
+      return (
+        <InfoSection>
+          <SectionHead header={h} />
+          <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr))]">
+            {prods.map((p) => {
+              const imgSrc = typeof p.image === "string" ? p.image : p.image.src;
+              return (
+                <Link
+                  key={p.slug}
+                  href={`/${p.slug}`}
+                  className="group flex flex-col gap-2 rounded-card border border-border bg-card p-2 transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-island"
+                >
+                  <div className="aspect-square overflow-hidden rounded-media bg-product-media">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={imgSrc} alt="" loading="lazy" decoding="async" className="size-full object-contain" />
+                  </div>
+                  <div className="flex flex-col gap-1 px-1.5 pb-1.5">
+                    <span className="line-clamp-2 min-h-[38px] text-sm font-bold leading-[1.35] text-foreground transition-colors group-hover:text-primary">
+                      {p.name}
+                    </span>
+                    <span className="text-[18px] font-extrabold leading-none text-primary">
+                      {fmtPrice(p.price)} <span className="text-[11px] font-bold">TND</span>
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </InfoSection>
+      );
+    }
+
+    // ── categories (category cards; refs filter, [] = all) ─────────────────
+    case "categories": {
+      const refs = c.refs ?? [];
+      const cats = refs.length ? ctx.r.categories.filter((cat) => refs.includes(cat.slug)) : ctx.r.categories;
+      if (cats.length === 0 && !h.title) return null;
+      return (
+        <InfoSection>
+          <SectionHead header={h} />
+          <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,190px),1fr))]">
+            {cats.map((cat) => {
+              const img = cat.boutiqueImageMediaId ? media.get(cat.boutiqueImageMediaId) : undefined;
+              return (
+                <Link
+                  key={cat.slug}
+                  href={`/${cat.slug}`}
+                  className="group relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-[24px] bg-foreground p-5 text-background"
+                >
+                  {img?.url && (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.url} alt="" loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover opacity-70 transition-transform duration-300 group-hover:scale-105" />
+                    </>
+                  )}
+                  <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-foreground/85 to-transparent" />
+                  <span className="relative text-[18px] font-extrabold leading-tight">{cat.name}</span>
+                  <span className="relative mt-0.5 text-[13px] font-semibold text-background/70">
+                    {cat.count} produit{cat.count === 1 ? "" : "s"}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </InfoSection>
+      );
+    }
+
+    // ── brands (logo grid; refs filter, [] = all). Brand pages may not exist,
+    //    so logos are non-linking tiles rather than dead buttons. ────────────
+    case "brands": {
+      const refs = c.refs ?? [];
+      const brands = refs.length ? ctx.r.brands.filter((b) => refs.includes(b.slug)) : ctx.r.brands;
+      if (brands.length === 0 && !h.title) return null;
+      return (
+        <InfoSection>
+          <SectionHead header={h} />
+          <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr))]">
+            {brands.map((b) => (
+              <div key={b.slug} className="flex h-[92px] items-center justify-center rounded-[20px] border border-border bg-card p-4">
+                {b.logoUrl ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={b.logoUrl} alt={b.logoAlt ?? b.name} loading="lazy" decoding="async" className="max-h-full max-w-full object-contain" />
+                  </>
+                ) : (
+                  <span className="text-center text-[15px] font-bold text-foreground">{b.name}</span>
+                )}
               </div>
             ))}
           </div>
