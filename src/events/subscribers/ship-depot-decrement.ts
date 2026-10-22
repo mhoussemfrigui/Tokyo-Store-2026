@@ -1,30 +1,42 @@
 import "server-only";
 
+import { and, eq, isNotNull } from "drizzle-orm";
+
+import { db } from "@/lib/db/client";
 import { getSettingsMap } from "@/modules/cms/setting/queries";
 import { resolveInventoryConfig } from "@/lib/inventory/locations-config";
 import { resolveSharedStockProductIds } from "@/lib/inventory/variant-stock";
 import { orderService } from "@/modules/order/service";
 import { listStatusHistory } from "@/modules/order/queries";
+import { order_return_items } from "@/modules/order/returns.schema";
 import { stockLocationService } from "@/modules/stock-location";
 import type { StockLocationRow } from "@/modules/stock-location/schema";
 import { bus } from "../bus";
 
 /**
- * Per-location physical decrement on SHIP. In per_location mode, when goods leave
- * the selling DEPOT for a customer, drop the depot's `stock_levels` by the shipped
- * quantities (LEVEL-ONLY — the cached TOTAL already dropped at order PLACEMENT, so
- * it is NOT touched again). This makes the depot level track physical reality so
- * the order-driven auto-request shortfall is exact. No-op for a single-pool store.
- * A shared-stock product's units live in its POOL level (variantId null), so a
- * shared line is redirected there (mirrors the placement decrement + the matrix).
- * Best-effort, post-commit.
+ * Keep the selling DEPOT's physical `stock_levels` in sync with order fulfilment
+ * in per_location + `central` web-stock mode (no-op for a single-pool / combined
+ * store). The cached TOTAL moves at PLACEMENT (down) and on RESTOCK (up); the
+ * depot LEVEL moves when units physically cross the depot's dock — which these
+ * handlers track so the matrix + the order-driven auto-request shortfall are
+ * exact. A shared-stock product's units live in its POOL level (variantId null),
+ * so a shared line is redirected there (mirrors the placement decrement + the
+ * matrix). Best-effort, post-commit.
  *
- * TWO ship paths, and a parcel + a later status-ship must not double-decrement:
+ * DECREMENT when goods LEAVE the depot (total already dropped at placement, so
+ * the level drops alone). Three fulfilment exits, none double-counting:
  *  - order.shipment_created (a BL parcel): drop the depot by that parcel's exact lines.
  *  - order.status_changed → "shipped" (the one-click "Marquer expédiée", NO parcel):
  *    drop the depot by each line's UNSHIPPED REMAINDER (quantity − Σ shipments).
  *    shipments are committed before this fires, so the remainder never
  *    double-counts a parcel that already decremented its share.
+ *  - order.status_changed → "delivered" on a PICKUP order that never shipped:
+ *    collected at the counter, so the units left the depot without a ship step.
+ *
+ * CREDIT when goods COME BACK to the depot:
+ *  - order.return.received: a received return restocks the sellable TOTAL
+ *    (restock.ts) but writes a location-less `return` leg — so the depot level
+ *    must be credited too, the exact mirror of the ship/pickup decrement.
  */
 async function depotIfPerLocation(): Promise<StockLocationRow | null> {
   const cfg = resolveInventoryConfig(await getSettingsMap());
@@ -117,6 +129,49 @@ export function registerShipDepotDecrementSubscriber() {
       }
     } catch (err) {
       console.error("[ship-depot-decrement] delivered (pickup) failed", err);
+    }
+  });
+
+  // RETURN credit — the mirror of the ship/pickup decrement. A received return
+  // restocks the sellable TOTAL (restock.ts bumps stock_qty) but ledgers only a
+  // location-less `return` leg; it never credits the depot's stock_levels. The
+  // returned units physically came back to the Centrale, so in per_location +
+  // central mode the depot level would otherwise sit UNDER the total forever
+  // (the matrix shows fewer units at the Centrale than are actually sellable —
+  // the mirror drift of an un-decremented ship). Credit the depot by each
+  // RESTOCKED, restockable line (`restocked_at` set = it bumped the total;
+  // adjustLevelOnly no-ops an untracked target). ISSUE-31 #3.
+  bus.on("order.return.received", async ({ payload }) => {
+    try {
+      const depot = await depotIfPerLocation();
+      if (!depot) return;
+      const lines = await db
+        .select({
+          productId: order_return_items.product_id,
+          variantId: order_return_items.variant_id,
+          quantity: order_return_items.quantity,
+        })
+        .from(order_return_items)
+        .where(
+          and(
+            eq(order_return_items.return_id, payload.returnId),
+            eq(order_return_items.restockable, true),
+            isNotNull(order_return_items.restocked_at),
+          ),
+        );
+      if (lines.length === 0) return;
+      const shared = await resolveSharedStockProductIds(lines.map((l) => l.productId));
+      for (const l of lines) {
+        if (l.quantity <= 0) continue;
+        await stockLocationService.adjustLevelOnly(
+          { productId: l.productId, variantId: shared.has(l.productId) ? null : (l.variantId ?? null) },
+          depot.id,
+          l.quantity,
+          { reason: "return", orderId: payload.orderId, note: `Retour ${payload.returnId} réintégré` },
+        );
+      }
+    } catch (err) {
+      console.error("[ship-depot-decrement] return credit failed", err);
     }
   });
 }

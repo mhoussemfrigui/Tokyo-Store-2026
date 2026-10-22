@@ -31,6 +31,7 @@ import {
 } from "@/lib/inventory/locations-config";
 import { products } from "@/modules/catalog/product/schema";
 import { orders, order_items } from "@/modules/order/schema";
+import { order_returns, order_return_items } from "@/modules/order/returns.schema";
 import { stock_levels } from "@/modules/stock-location/schema";
 import { stockLocationService } from "@/modules/stock-location/service";
 import { stock_movements } from "@/modules/stock-movement/schema";
@@ -79,6 +80,10 @@ async function restoreSettings() {
 }
 
 async function cleanup() {
+  await db.execute(sql`delete from order_return_items where return_id in (select r.id from order_returns r join orders o on o.id = r.order_id where o.order_number like ${TAG + "%"})`);
+  await db.execute(sql`delete from order_returns where order_id in (select id from orders where order_number like ${TAG + "%"})`);
+  await db.execute(sql`delete from shipment_items where shipment_id in (select s.id from shipments s join orders o on o.id = s.order_id where o.order_number like ${TAG + "%"})`);
+  await db.execute(sql`delete from shipments where order_id in (select id from orders where order_number like ${TAG + "%"})`);
   await db.execute(sql`delete from order_items where order_id in (select id from orders where order_number like ${TAG + "%"})`);
   await db.execute(sql`delete from orders where order_number like ${TAG + "%"}`);
   await db.execute(sql`delete from stock_movements where product_id in (select id from products where slug like ${TAG + "%"})`);
@@ -111,17 +116,21 @@ async function mkOrder(tag: string, deliveryMethod: string): Promise<string> {
     .returning({ id: orders.id });
   return o.id;
 }
-async function mkItem(orderId: string, productId: string, qty: number) {
-  await db.insert(order_items).values({
-    order_id: orderId,
-    product_id: productId,
-    variant_id: null,
-    product_name: `${TAG} line`,
-    product_slug: `${TAG}-line`,
-    unit_price_cents: 1000,
-    quantity: qty,
-    subtotal_cents: 1000 * qty,
-  } as never);
+async function mkItem(orderId: string, productId: string, qty: number): Promise<string> {
+  const [it] = await db
+    .insert(order_items)
+    .values({
+      order_id: orderId,
+      product_id: productId,
+      variant_id: null,
+      product_name: `${TAG} line`,
+      product_slug: `${TAG}-line`,
+      unit_price_cents: 1000,
+      quantity: qty,
+      subtotal_cents: 1000 * qty,
+    } as never)
+    .returning({ id: order_items.id });
+  return it.id;
 }
 async function levelAt(productId: string, locationId: string): Promise<number> {
   const [r] = await db
@@ -134,12 +143,12 @@ async function totalOf(productId: string): Promise<number | null> {
   const [r] = await db.select({ s: products.stock_qty }).from(products).where(eq(products.id, productId));
   return r?.s ?? null;
 }
-/** The `order` ledger legs a ship/pickup decrement wrote at a location. */
-async function orderLegsAt(productId: string, locationId: string) {
+/** The per-location ledger legs of a given reason a product wrote at a location. */
+async function legsAt(productId: string, locationId: string, reason: "order" | "return") {
   return db
     .select({ delta: stock_movements.delta })
     .from(stock_movements)
-    .where(and(eq(stock_movements.product_id, productId), eq(stock_movements.reason, "order"), eq(stock_movements.location_id, locationId)));
+    .where(and(eq(stock_movements.product_id, productId), eq(stock_movements.reason, reason), eq(stock_movements.location_id, locationId)));
 }
 
 async function main() {
@@ -176,7 +185,7 @@ async function main() {
     check(`A[${method}]: transition preparing → delivered ok`, r.ok === true);
     check(`A[${method}]: depot level 5 → 3 (collected units left the depot)`, (await levelAt(p, depot.id)) === 3);
     check(`A[${method}]: cached TOTAL untouched at 5 (it moved at placement)`, (await totalOf(p)) === 5);
-    const legs = await orderLegsAt(p, depot.id);
+    const legs = await legsAt(p, depot.id, "order");
     check(`A[${method}]: exactly ONE order leg −2 at the depot`, legs.length === 1 && legs[0].delta === -2);
   }
 
@@ -196,8 +205,35 @@ async function main() {
     const rDel = await T({ orderId: order, toStatus: "delivered" }, { actorUserId: null });
     check("B: transition shipped → delivered ok", rDel.ok === true);
     check("B: depot level STILL 7 — delivered did NOT double-decrement (shipped in history)", (await levelAt(p, depot.id)) === 7);
-    const legs = await orderLegsAt(p, depot.id);
+    const legs = await legsAt(p, depot.id, "order");
     check("B: exactly ONE order leg −3 at the depot (ship only)", legs.length === 1 && legs[0].delta === -3);
+  }
+
+  // ── C: a received RETURN credits the depot level back (ISSUE-31 #3) ──────────
+  {
+    const p = await mkProduct("return");
+    await stockLocationService.setLocationLevel({ productId: p, variantId: null }, depot.id, 10);
+    check("C: setup — depot level 10", (await levelAt(p, depot.id)) === 10);
+
+    const order = await mkOrder("return", "home_delivery");
+    const itemId = await mkItem(order, p, 3);
+
+    const rShip = await T({ orderId: order, toStatus: "shipped" }, { actorUserId: null });
+    check("C: transition preparing → shipped ok", rShip.ok === true);
+    check("C: depot level 10 → 7 at ship", (await levelAt(p, depot.id)) === 7);
+
+    const rCreate = await workflows.order.createReturn(
+      { orderId: order, kind: "after_sale", lines: [{ orderItemId: itemId, quantity: 3, restockable: true }] },
+      { actorUserId: null },
+    );
+    check("C: createReturn ok", rCreate.ok === true);
+    const returnId = rCreate.ok ? rCreate.data.returnId : "";
+
+    const rRecv = await workflows.order.receiveReturn({ returnId }, { actorUserId: null });
+    check("C: receiveReturn ok (1 line restocked)", rRecv.ok === true && rRecv.data.restocked === 1);
+    check("C: depot level 7 → 10 — the returned units are credited back to the depot", (await levelAt(p, depot.id)) === 10);
+    const credit = await legsAt(p, depot.id, "return");
+    check("C: exactly ONE return leg +3 at the depot", credit.length === 1 && credit[0].delta === 3);
   }
 
   await cleanup();
