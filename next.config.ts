@@ -73,12 +73,9 @@ const nextConfig: NextConfig = {
         destination: "/:slug",
         permanent: true,
       },
-      {
-        // Fidélité landing renamed from /niveaux-avantages → /fidelite (branded slug).
-        source: "/niveaux-avantages",
-        destination: "/fidelite",
-        permanent: true,
-      },
+      // NOTE: the old `/niveaux-avantages → /fidelite` redirect was removed —
+      // the loyalty subsystem was dropped (migration 0204) and `/fidelite`
+      // does not exist, so the redirect 308'd straight into a 404.
     ];
   },
 
