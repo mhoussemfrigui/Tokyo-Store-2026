@@ -55,6 +55,7 @@ import { useHydrated } from "@/storefront/lib/hydration";
 import { smoothBehavior } from "@/storefront/lib/motion";
 import { fmtPrice, alsoViewed, conditionLabel, isOrderable } from "@/storefront/lib/productMeta";
 import type { Product } from "@/storefront/types/catalog";
+import { TrustBand } from "./trust-band";
 
 /* Palette — explicit values so the page renders faithfully to the mockup.
    Exported so the cart page (/panier) renders the SAME language as the checkout. */
@@ -1250,6 +1251,9 @@ export function SummaryAside({ items, totals, mode, showItems, shipping, ctaLabe
       <span className="flex items-center justify-center gap-1.5 text-[12px]" style={{ color: MUTED }}>
         <Lock size={13} /> Paiement sécurisé · Données chiffrées
       </span>
+      {/* Admin-managed reassurance strip — shows when « Badges de confiance →
+          Afficher au paiement » is on (off by default). */}
+      <TrustBand surface="checkout" />
     </div>
   );
 }

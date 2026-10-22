@@ -43,10 +43,7 @@ import {
   stockState,
   STOCK_LABEL,
 } from "@/storefront/lib/productMeta";
-import { resolveBuyBoxBadges } from "@/lib/storefront/trust-badges";
-import { trustIcon } from "@/lib/home/trust-icons";
-import { isSurfaceEnabled } from "@/lib/cms/trust-badge-appearance";
-import { useTrustCopy } from "@/components/storefront/trust-copy-provider";
+import { TrustBand } from "./trust-band";
 import type { Product, ProductReview, ProductReviewSummary, ProductSpec } from "@/storefront/types/catalog";
 
 /* The design palette (matches the Tokyo tokens) — kept as explicit values so the
@@ -906,7 +903,7 @@ export function ProductView({
             Checkout; warranty = this product's resolved coverage). Self-hides when
             no badge resolves or the admin disabled the strip on the product surface.
             NOTHING hardcoded. */}
-        <TrustBand inStock={stock === "in_stock"} warranty={warranty?.full ?? null} />
+        <TrustBand surface="product" inStock={stock === "in_stock"} warranty={warranty?.full ?? null} />
 
         {/* 3 ─ PRÉSENTATION */}
         {longParas.length > 0 && (
@@ -1807,43 +1804,6 @@ function VideoSection({ product }: { product: Product }) {
           )}
         </div>
       </div>
-    </section>
-  );
-}
-
-/** The reassurance SERVICE BAND, driven ENTIRELY by the admin-managed trust badges
- *  (Contenu & Design → Badges de confiance) resolved for the product surface — the
- *  warranty tile uses this product's own backend coverage, delivery/returns use the
- *  admin checkout copy, custom badges their own label. Renders nothing when the admin
- *  disabled the strip on the product surface or no badge resolves (so an unconfigured
- *  store shows no band rather than a fabricated one). */
-function TrustBand({ inStock, warranty }: { inStock: boolean; warranty: string | null }) {
-  const trust = useTrustCopy();
-  if (!isSurfaceEnabled(trust.config, "product")) return null;
-  const { security, list } = resolveBuyBoxBadges(trust.badges, {
-    inStock,
-    warranty,
-    etaCopy: trust.eta,
-    returnsCopy: trust.returns,
-  });
-  const items = [...list, ...security];
-  if (items.length === 0) return null;
-  return (
-    <section className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-6 rounded-[36px] bg-[#0e1218] p-[clamp(22px,3vw,36px)] text-white">
-      {items.map((b, i) => {
-        const Icon = trustIcon(b.icon);
-        return (
-          <div key={i} className="flex items-center gap-3.5">
-            <span
-              className="flex h-[46px] w-[46px] flex-[0_0_46px] items-center justify-center rounded-[16px]"
-              style={{ background: CRIMSON }}
-            >
-              <Icon size={20} />
-            </span>
-            <div className="text-[16px] font-extrabold leading-snug [text-wrap:balance]">{b.label}</div>
-          </div>
-        );
-      })}
     </section>
   );
 }

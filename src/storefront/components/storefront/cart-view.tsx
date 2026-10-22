@@ -24,6 +24,7 @@ import {
 } from "@/storefront/lib/cart";
 import { useHydrated } from "@/storefront/lib/hydration";
 import { fmtPrice } from "@/storefront/lib/productMeta";
+import { TrustBand } from "./trust-band";
 
 /**
  * The cart page (`/panier`). It shares the checkout's exact cart surface — the
@@ -162,6 +163,9 @@ export function CartView() {
             error={null}
             showCta={!narrow}
           />
+          {/* Admin-managed reassurance strip — renders here when « Badges de
+              confiance → Afficher sur le panier » is on (default). */}
+          <TrustBand surface="cart" />
         </aside>
       </section>
 
