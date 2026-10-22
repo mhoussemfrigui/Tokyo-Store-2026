@@ -7,6 +7,7 @@ import { formatMoneyExact } from "@/lib/price";
 import { firstNameOf } from "@/lib/email/util";
 import { isOnlineMethod } from "@/lib/payments/shared";
 import { formatTaxRate, getTaxConfig } from "@/lib/tax";
+import { orderTaxIncludedInTotal } from "@/lib/order/order-tax-mode";
 import { resolvePublicOrigin } from "@/lib/url/public-origin";
 import { bus } from "../bus";
 
@@ -59,14 +60,21 @@ export function registerOrderReceiptSubscriber() {
         order.discount_cents > 0
           ? `<tr><td style="padding:2px 0;color:#d40530;">Remise</td><td style="padding:2px 0;text-align:right;color:#d40530;">−${TND(order.discount_cents)}</td></tr>`
           : "";
-      // ── TVA — same inference as the storefront order page (and so the invoice):
-      // the printed tax is the manual override when set, else the snapshot; it was
-      // ADDED on top ("ht" → a real row, so the rows sum to the total) unless the
-      // other components already balance the total (tax-INCLUSIVE "ttc" → a muted
-      // « dont TVA » note under the total). Stays correct if the mode later flips.
+      // Tokyo Care add-on charge (ex-TVA line total; 0 when nothing was protected).
+      // It was previously OMITTED, so the breakdown didn't sum to the total AND it
+      // broke the TTC inference below (which read subtotal+shipping−discount).
+      const careRow =
+        order.care_cents > 0
+          ? `<tr><td style="padding:2px 0;color:#6b7280;">Tokyo Care</td><td style="padding:2px 0;text-align:right;">${TND(order.care_cents)}</td></tr>`
+          : "";
+      // ── TVA — the printed tax is the manual override when set, else the snapshot;
+      // it was ADDED on top ("ht" → a real row, so the rows sum to the total) unless
+      // the other components already balance the total (tax-INCLUSIVE "ttc" → a muted
+      // « dont TVA » note under the total). Use the CANONICAL, care-aware helper
+      // (the one the invoice/order page use) so a Tokyo Care charge no longer flips
+      // the inference and mis-prints TVA as an added row.
       const effectiveTaxCents = order.tax_manual_cents ?? order.tax_cents;
-      const baseExclTax = order.subtotal_cents + order.shipping_cents - order.discount_cents;
-      const taxIncludedInTotal = effectiveTaxCents > 0 && baseExclTax === order.total_cents;
+      const taxIncludedInTotal = orderTaxIncludedInTotal(order);
       let taxRow = "";
       let taxNote = "";
       if (effectiveTaxCents > 0) {
@@ -104,7 +112,7 @@ export function registerOrderReceiptSubscriber() {
           tax_note: taxNote,
           order_url: `${await resolvePublicOrigin()}/order/${order.id}`,
         },
-        htmlVariables: { items_html: itemRows + subtotalRow + discountRow + taxRow },
+        htmlVariables: { items_html: itemRows + subtotalRow + discountRow + careRow + taxRow },
       });
     } catch (err) {
       console.error("[events] send-order-receipt failed", err);
