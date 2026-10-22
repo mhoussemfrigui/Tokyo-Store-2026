@@ -25,7 +25,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 import { buildCollectionGraph, buildProductGraph, buildProductVideoLd, mergeGraphs } from "@/lib/seo/jsonld";
 import { canEmitAggregateRating, selectStructuredReviews } from "@/lib/seo/review-jsonld";
 import { resolveOfferValidity } from "@/lib/seo/offer-validity";
-import { getAllSettingsServerOnly } from "@/lib/api/cms";
+import { getAllSettingsServerOnly, getMaisonExploreNav } from "@/lib/api/cms";
 import { getSiteContacts, footerEntries } from "@/lib/cms/contact-list";
 import { pageService } from "@/modules/cms/page/service";
 import { resolveMediaSocialUrl, resolveMediaUrl } from "@/modules/media";
@@ -289,8 +289,11 @@ export default async function SlugPage({ params }: Params) {
     const title = forRender.page.title;
     const lede = forRender.page.metaDescription;
     if (isInfoPage(resolved.slug)) {
+      // The « Explorer la maison » index (CMS maison-explore menu) at the foot —
+      // previously resolved by no caller, so the control was dead.
+      const maisonExplore = await getMaisonExploreNav().catch(() => null);
       return (
-        <InfoPageShell slug={resolved.slug} title={title} lede={lede} phone={phone}>
+        <InfoPageShell slug={resolved.slug} title={title} lede={lede} phone={phone} maisonExplore={maisonExplore}>
           <InfoBlocks resolved={resolvedPage} />
         </InfoPageShell>
       );

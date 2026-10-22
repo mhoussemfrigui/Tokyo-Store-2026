@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ChevronRight, Clock, Home, Phone } from "lucide-react";
 
 import { telHref } from "@/lib/pages/page-blocks";
+import type { MaisonExploreNav } from "@/lib/api/cms";
 import { cn } from "@/storefront/lib/utils";
 import {
   INFO_UPDATED,
@@ -26,12 +27,16 @@ export function InfoPageShell({
   title,
   lede,
   phone,
+  maisonExplore,
   children,
 }: {
   slug: string;
   title: string;
   lede?: string | null;
   phone?: string | null;
+  /** The « Explorer la maison » index (CMS `maison-explore` menu) — rendered at
+   *  the foot of the page. Null / no links → the section hides. */
+  maisonExplore?: MaisonExploreNav | null;
   children: ReactNode;
 }) {
   const entry = infoPage(slug);
@@ -152,6 +157,41 @@ export function InfoPageShell({
 
         <div className="flex min-w-0 flex-col gap-5">{children}</div>
       </div>
+
+      {/* « Explorer la maison » — the CMS maison-explore index at the page foot.
+          Hidden when the admin emptied the menu (no links). */}
+      {maisonExplore && maisonExplore.links.length > 0 && (
+        <section className="flex flex-col gap-6 rounded-[clamp(24px,4vw,36px)] bg-foreground p-[clamp(24px,4vw,44px)] text-background">
+          <div className="flex flex-col gap-1.5">
+            {maisonExplore.eyebrow && (
+              <span className="text-[12px] font-extrabold uppercase tracking-[0.16em] text-primary">
+                {maisonExplore.eyebrow}
+              </span>
+            )}
+            <h2 className="text-[clamp(26px,3vw,38px)] font-extrabold tracking-[-0.02em]">{maisonExplore.title}</h2>
+            {maisonExplore.tagline && (
+              <p className="text-[15px] italic text-background/70">{maisonExplore.tagline}</p>
+            )}
+          </div>
+          <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))]">
+            {maisonExplore.links.map((l, i) => (
+              <Link
+                key={`${l.href}-${i}`}
+                href={l.href}
+                target={l.newTab ? "_blank" : undefined}
+                rel={l.newTab ? "noopener noreferrer" : undefined}
+                className="group flex items-center justify-between gap-3 rounded-[20px] bg-background/5 px-5 py-4 transition-colors hover:bg-background/10"
+              >
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-[15px] font-bold">{l.label}</span>
+                  {l.hint && <span className="truncate text-[13px] text-background/60">{l.hint}</span>}
+                </span>
+                <ChevronRight aria-hidden className="size-4 shrink-0 text-background/50 transition-transform group-hover:translate-x-0.5" strokeWidth={2.2} />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
