@@ -12,7 +12,9 @@ import { smoothBehavior } from "@/storefront/lib/motion";
 import { fmtPrice } from "@/storefront/lib/productMeta";
 
 const INK = "#0e1218";
-const CRIMSON = "#d40530";
+// Brand accent via the theme token so a brand-color change re-skins the quick-buy
+// sheet; used only in `style={{}}` here, where a var() resolves.
+const CRIMSON = "var(--primary)";
 const PAPER = "#f6f2ed";
 
 const governorates = [

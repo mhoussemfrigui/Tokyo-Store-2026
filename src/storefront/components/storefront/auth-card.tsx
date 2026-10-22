@@ -8,7 +8,7 @@ import { cn } from "@/storefront/lib/utils";
 
 /* Palette — the mockup's EXACT values (crimson Tokyo system). */
 export const INK = "#0e1218";
-export const CRIMSON = "#d40530";
+export const CRIMSON = "var(--primary)";
 export const PAPER = "#f6f2ed";
 export const MUTED = "#5b5d62";
 const FIELD_REST_BG = "#fbf9f8";
@@ -114,7 +114,7 @@ export function AuthAside({
           gradient, not a fabricated product photo. Desktop only. */}
       <div
         className="relative hidden min-h-[260px] flex-1 overflow-hidden rounded-[28px] lg:block"
-        style={{ background: "linear-gradient(145deg,#d40530 0%,#a80326 55%,#0e1218 135%)" }}
+        style={{ background: "linear-gradient(145deg,var(--primary) 0%,color-mix(in oklab, var(--primary) 60%, #0e1218) 55%,#0e1218 135%)" }}
       >
         <span className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white/10" />
         <span className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/[0.06]" />
@@ -125,7 +125,7 @@ export function AuthAside({
       <div className="flex flex-col gap-3 pt-1">
         {BENEFITS.map((b) => (
           <span key={b.text} className="flex items-center gap-2.5 text-[14px] font-semibold" style={{ color: INK }}>
-            <span className="flex h-8 w-8 flex-[0_0_32px] items-center justify-center rounded-[10px]" style={{ background: "#fdecef" }}>
+            <span className="flex h-8 w-8 flex-[0_0_32px] items-center justify-center rounded-[10px]" style={{ background: "color-mix(in oklab, var(--primary) 12%, transparent)" }}>
               <b.Icon size={15} style={{ color: CRIMSON }} />
             </span>
             {b.text}
@@ -191,8 +191,8 @@ export function AuthField({
   // Mockup colours: error > focus(INK) > rest(#fbf9f8). Green check only when
   // filled + valid + not focused + not a password field.
   const border = error ? CRIMSON : focused ? INK : "#e6dfd7";
-  const bg = error ? "#fff7f8" : focused ? "#fff" : FIELD_REST_BG;
-  const ring = focused ? (error ? "0 0 0 4px rgba(212,5,48,.12)" : "0 0 0 4px rgba(14,18,24,.07)") : "none";
+  const bg = error ? "color-mix(in oklab, var(--primary) 5%, white)" : focused ? "#fff" : FIELD_REST_BG;
+  const ring = focused ? (error ? "0 0 0 4px color-mix(in oklab, var(--primary) 12%, transparent)" : "0 0 0 4px rgba(14,18,24,.07)") : "none";
   const ok = !error && touched && !focused && !!value.trim() && !password && (validate ? validate(value) : true);
   const inputType = password ? (show ? "text" : "password") : type;
 
@@ -282,7 +282,7 @@ export function AuthSubmit({ pending, children }: { pending: boolean; children: 
       type="submit"
       disabled={pending}
       className="flex h-[58px] items-center justify-center gap-2.5 rounded-full text-[16px] font-extrabold text-white transition-[filter,transform] hover:brightness-95 active:scale-[0.98] disabled:opacity-70"
-      style={{ background: CRIMSON, boxShadow: "0 12px 28px rgba(212,5,48,.22)" }}
+      style={{ background: CRIMSON, boxShadow: "0 12px 28px color-mix(in oklab, var(--primary) 22%, transparent)" }}
     >
       {pending && <Loader2 size={18} className="animate-spin" />}
       {children}
@@ -305,7 +305,7 @@ export function AuthCheckbox({
   return (
     <label className="flex cursor-pointer items-start gap-3 text-[14px] leading-[1.5] text-[#3d4046]">
       <input type="checkbox" name={name} required={required} defaultChecked={defaultChecked} className="peer sr-only" />
-      <span className="mt-px flex h-[22px] w-[22px] flex-[0_0_22px] items-center justify-center rounded-[7px] border-[1.5px] border-[#c9c2ba] bg-white transition-colors peer-checked:border-[#d40530] peer-checked:bg-[#d40530] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#d40530]">
+      <span className="mt-px flex h-[22px] w-[22px] flex-[0_0_22px] items-center justify-center rounded-[7px] border-[1.5px] border-[#c9c2ba] bg-white transition-colors peer-checked:border-primary peer-checked:bg-primary peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary">
         <Check size={14} className="text-white" strokeWidth={3} />
       </span>
       <span>{children}</span>
@@ -347,6 +347,9 @@ export function PasswordlessDisabled() {
 }
 
 /* ── Password strength meter (register) — the mockup's exact scale ────────── */
+// Semantic red→green scale (weak→strong). The "weak" red is a SIGNAL colour, not
+// the brand accent, so it stays a literal #d40530 and is deliberately NOT routed
+// to --primary (a blue brand must not paint a weak password blue).
 const SC = ["#ece6df", "#d40530", "#f59e0b", "#84cc16", "#16a34a"];
 const SL = ["", "Faible", "Moyen", "Bon", "Excellent"];
 export function PasswordStrength({ value }: { value: string }) {

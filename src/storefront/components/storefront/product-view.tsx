@@ -52,7 +52,11 @@ import type { Product, ProductReview, ProductReviewSummary, ProductSpec } from "
 /* The design palette (matches the Tokyo tokens) — kept as explicit values so the
    PDP renders pixel-faithfully to the approved mockup. */
 const INK = "#0e1218";
-const CRIMSON = "#d40530";
+// Brand accent routes through the theme token so an admin brand-color change
+// (buildThemeCss → .tokyo{--primary}) re-skins the PDP. Used in `style={{}}`
+// (CSS vars resolve) — SVG `fill=`/`stroke=` ATTRIBUTES can't resolve a var(),
+// so those spots use `currentColor` against a var-driven `color` instead.
+const CRIMSON = "var(--primary)";
 const PAPER = "#f6f2ed";
 
 /* ───────────────────────────────────────────────── helpers */
@@ -363,7 +367,7 @@ export function ProductView({
             <Link
               href="/"
               aria-label="Accueil"
-              className="flex h-[26px] w-[26px] flex-[0_0_26px] items-center justify-center rounded-full text-[#0e1218] hover:text-[#d40530]"
+              className="flex h-[26px] w-[26px] flex-[0_0_26px] items-center justify-center rounded-full text-[#0e1218] hover:text-primary"
               style={{ background: PAPER }}
             >
               <Home size={13} />
@@ -377,8 +381,8 @@ export function ProductView({
                     href={`/${c.slug}`}
                     className={
                       last
-                        ? "flex-[0_0_auto] rounded-full bg-[#f9dde2] px-2.5 py-1 font-semibold text-[#d40530]"
-                        : "flex-[0_1_auto] px-0.5 py-1 text-[#5b5d62] hover:text-[#d40530]"
+                        ? "flex-[0_0_auto] rounded-full bg-[color-mix(in_oklab,var(--primary)_14%,transparent)] px-2.5 py-1 font-semibold text-primary"
+                        : "flex-[0_1_auto] px-0.5 py-1 text-[#5b5d62] hover:text-primary"
                     }
                   >
                     {taxonomyLabel(c.slug) ?? c.label ?? getCategoryLabel(c.slug)}
@@ -417,7 +421,7 @@ export function ProductView({
                   className="flex h-[46px] w-[46px] items-center justify-center rounded-full border border-[#ece6df] bg-white transition-transform hover:scale-105"
                   style={{ color: fav ? CRIMSON : INK }}
                 >
-                  <Heart size={18} fill={fav ? CRIMSON : "none"} />
+                  <Heart size={18} fill={fav ? "currentColor" : "none"} />
                 </button>
                 <button
                   aria-label="Partager"
@@ -543,7 +547,7 @@ export function ProductView({
               <Link
                 href="/"
                 aria-label="Accueil"
-                className="flex h-[30px] w-[30px] flex-[0_0_30px] items-center justify-center rounded-full text-[#0e1218] hover:text-[#d40530]"
+                className="flex h-[30px] w-[30px] flex-[0_0_30px] items-center justify-center rounded-full text-[#0e1218] hover:text-primary"
                 style={{ background: PAPER }}
               >
                 <Home size={14} />
@@ -557,8 +561,8 @@ export function ProductView({
                       href={`/${c.slug}`}
                       className={
                         last
-                          ? "flex-[0_0_auto] rounded-full bg-[#f9dde2] px-3 py-[5px] font-semibold text-[#d40530]"
-                          : "min-w-0 flex-[0_1_auto] overflow-hidden text-ellipsis px-0.5 py-1 text-[#5b5d62] hover:text-[#d40530]"
+                          ? "flex-[0_0_auto] rounded-full bg-[color-mix(in_oklab,var(--primary)_14%,transparent)] px-3 py-[5px] font-semibold text-primary"
+                          : "min-w-0 flex-[0_1_auto] overflow-hidden text-ellipsis px-0.5 py-1 text-[#5b5d62] hover:text-primary"
                       }
                     >
                       {taxonomyLabel(c.slug) ?? c.label ?? getCategoryLabel(c.slug)}
@@ -607,7 +611,7 @@ export function ProductView({
                     product.brandSlug ? (
                       <Link
                         href={`/${product.brandSlug}`}
-                        className="text-[12px] font-extrabold uppercase tracking-[.16em] hover:text-[#d40530]"
+                        className="text-[12px] font-extrabold uppercase tracking-[.16em] hover:text-primary"
                       >
                         {product.brand}
                       </Link>
@@ -656,7 +660,7 @@ export function ProductView({
                     <span className="text-[14px] text-[#9a938a] line-through">{fmtPrice(strike.strike)} TND</span>
                     <span
                       className="rounded-full px-2 py-[3px] text-[12px] font-extrabold leading-none"
-                      style={{ background: "#f9dde2", color: CRIMSON }}
+                      style={{ background: "color-mix(in oklab, var(--primary) 14%, transparent)", color: CRIMSON }}
                     >
                       -{strike.pct}%
                     </span>
@@ -1018,10 +1022,10 @@ export function ProductView({
                   {pickups.map((s) => (
                     <div
                       key={s.id}
-                      className="flex flex-col gap-3.5 rounded-[28px] border-[1.5px] border-transparent bg-white p-6 transition-colors hover:border-[#d40530]"
+                      className="flex flex-col gap-3.5 rounded-[28px] border-[1.5px] border-transparent bg-white p-6 transition-colors hover:border-primary"
                     >
                       <div className="flex items-center justify-between gap-2.5">
-                        <span className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-[#f9dde2]">
+                        <span className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-[color-mix(in_oklab,var(--primary)_14%,transparent)]">
                           <Store size={18} style={{ color: CRIMSON }} />
                         </span>
                         <span className="rounded-full bg-[#eaf7ee] px-2.5 py-1 text-[12px] font-bold text-[#15803d]">
@@ -1140,7 +1144,7 @@ export function ProductView({
               <div className="truncate text-[14px] font-extrabold leading-tight text-[#0e1218]">{product.title}</div>
               <div className="text-[12px] font-medium text-[#5b5d62]">{STOCK_LABEL[stock]}</div>
             </div>
-            <div className="shrink-0 whitespace-nowrap text-[18px] font-black leading-none text-[#d40530]">
+            <div className="shrink-0 whitespace-nowrap text-[18px] font-black leading-none text-primary">
               {fmtPrice(price * qty)} <span className="text-[12px] font-extrabold">TND</span>
             </div>
           </div>
@@ -1528,7 +1532,7 @@ function ReviewsSection({
                     type="button"
                     onClick={() => pickStar(s)}
                     aria-pressed={starFilter === s}
-                    className={`flex items-center gap-2.5 rounded-lg px-1.5 py-1 text-[12px] text-[#5b5d62] transition-colors ${starFilter === s ? "bg-[#f9dde2]" : "hover:bg-[#f6f2ed]"}`}
+                    className={`flex items-center gap-2.5 rounded-lg px-1.5 py-1 text-[12px] text-[#5b5d62] transition-colors ${starFilter === s ? "bg-[color-mix(in_oklab,var(--primary)_14%,transparent)]" : "hover:bg-[#f6f2ed]"}`}
                   >
                     <span className="flex w-6 items-center justify-end gap-0.5 tabular-nums">
                       {s}
@@ -1622,7 +1626,7 @@ function ReviewForm({
   const [hover, setHover] = useState(0);
   const [state, formAction, pending] = useActionState<ActionState | null, FormData>(submitReviewAction, null);
   const fieldCls =
-    "w-full rounded-[16px] border border-[#e6dfd7] bg-[#fbf9f7] px-4 text-[15px] text-[#0e1218] outline-none transition-colors focus:border-[#d40530]";
+    "w-full rounded-[16px] border border-[#e6dfd7] bg-[#fbf9f7] px-4 text-[15px] text-[#0e1218] outline-none transition-colors focus:border-primary";
 
   return (
     <form action={formAction} className="flex flex-col gap-4 rounded-[24px] bg-white p-5 sm:p-6">
@@ -1658,7 +1662,7 @@ function ReviewForm({
                 aria-label={`${s} étoile${s > 1 ? "s" : ""}`}
                 className="p-1"
               >
-                <Star size={26} strokeWidth={1.5} style={{ color: on ? CRIMSON : "#d8cfc4" }} fill={on ? CRIMSON : "none"} />
+                <Star size={26} strokeWidth={1.5} style={{ color: on ? CRIMSON : "#d8cfc4" }} fill={on ? "currentColor" : "none"} />
               </button>
             );
           })}

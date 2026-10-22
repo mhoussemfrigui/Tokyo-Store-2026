@@ -59,7 +59,7 @@ import type { Product } from "@/storefront/types/catalog";
 /* Palette — explicit values so the page renders faithfully to the mockup.
    Exported so the cart page (/panier) renders the SAME language as the checkout. */
 export const INK = "#0e1218";
-export const CRIMSON = "#d40530";
+export const CRIMSON = "var(--primary)";
 export const PAPER = "#f6f2ed";
 export const MUTED = "#5b5d62";
 
@@ -420,7 +420,7 @@ export function CheckoutView({
                       background: active ? CRIMSON : "#fff",
                       color: active ? "#fff" : "#b4aca3",
                       boxShadow: cur
-                        ? `0 0 0 1.5px ${CRIMSON}, 0 0 0 6px rgba(212,5,48,.14)`
+                        ? `0 0 0 1.5px ${CRIMSON}, 0 0 0 6px color-mix(in oklab, var(--primary) 14%, transparent)`
                         : `0 0 0 1.5px ${active ? CRIMSON : "#e6dfd7"}`,
                       transform: cur ? "scale(1.06)" : "none",
                     }}
@@ -564,7 +564,7 @@ export function CartStep({ items, small, onNotify }: { items: CartItem[]; small:
                   <img src={p.image} alt="" className="h-16 w-16 flex-[0_0_64px] rounded-[14px] border border-[#f0ebe5] object-contain" />
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     {p.brand && <span className="text-[11px] font-bold" style={{ color: MUTED }}>{p.brand}</span>}
-                    <span className="line-clamp-2 text-[14px] font-bold leading-tight transition-colors group-hover:text-[#d40530]">{p.title}</span>
+                    <span className="line-clamp-2 text-[14px] font-bold leading-tight transition-colors group-hover:text-primary">{p.title}</span>
                     <span className="text-[15px] font-black" style={{ color: CRIMSON }}>{fmtPrice(p.price)} TND</span>
                   </span>
                 </Link>
@@ -604,7 +604,7 @@ function CartLine({ it, small, onNotify }: { it: CartItem; small: boolean; onNot
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 flex-col gap-1">
               {product.brand && <span className="text-[11px] font-semibold uppercase tracking-[.14em]" style={{ color: MUTED }}>{product.brand}</span>}
-              <Link href={`/${slug}`} className="text-[16px] font-bold leading-tight text-[#0e1218] hover:text-[#d40530]">{product.title}</Link>
+              <Link href={`/${slug}`} className="text-[16px] font-bold leading-tight text-[#0e1218] hover:text-primary">{product.title}</Link>
               <span className="flex flex-wrap items-center gap-1.5 text-[12px]">
                 <span className="rounded-full px-2.5 py-1 font-semibold" style={{ background: PAPER, color: MUTED }}>{conditionLabel(product.condition)}</span>
                 {isOrderable(product) && (
@@ -636,7 +636,7 @@ function CartLine({ it, small, onNotify }: { it: CartItem; small: boolean; onNot
               <button
                 type="button"
                 onClick={() => removeFromCart(slug)}
-                className="flex h-10 items-center gap-1.5 rounded-full px-3 text-[13px] font-bold transition-colors hover:bg-[#f9dde2]"
+                className="flex h-10 items-center gap-1.5 rounded-full px-3 text-[13px] font-bold transition-colors hover:bg-[color-mix(in_oklab,var(--primary)_14%,transparent)]"
                 style={{ color: CRIMSON }}
               >
                 <Trash2 size={15} /> {!small && "Supprimer"}
@@ -649,7 +649,7 @@ function CartLine({ it, small, onNotify }: { it: CartItem; small: boolean; onNot
       {plans.length > 0 && (
         <div
           className="flex flex-col gap-3 rounded-[22px] border-[1.5px] p-3.5"
-          style={{ borderColor: plan ? CRIMSON : "#ece6df", background: plan ? "#fff7f8" : "#fbf9f7" }}
+          style={{ borderColor: plan ? CRIMSON : "#ece6df", background: plan ? "color-mix(in oklab, var(--primary) 5%, white)" : "#fbf9f7" }}
         >
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 flex-[0_0_40px] items-center justify-center rounded-xl text-white" style={{ background: CRIMSON }}>
@@ -1380,7 +1380,7 @@ function Confirmation({ done }: { done: Done }) {
         <div className="flex min-w-0 flex-[1_1_360px] flex-col gap-3.5">
           {careLines.length > 0 && (
             <div className="relative overflow-hidden rounded-[28px] border-[1.5px] bg-white p-6" style={{ borderColor: "#f3b8c4" }}>
-              <span className="absolute -right-8 -top-8 h-36 w-36 rounded-full" style={{ background: "#f9dde2" }} />
+              <span className="absolute -right-8 -top-8 h-36 w-36 rounded-full" style={{ background: "color-mix(in oklab, var(--primary) 14%, transparent)" }} />
               <span className="relative flex h-12 w-12 items-center justify-center rounded-[14px] text-white" style={{ background: CRIMSON }}><ShieldCheck size={24} /></span>
               <div className="relative mt-3.5 flex flex-col gap-1">
                 <span className="text-[12px] font-extrabold uppercase tracking-[.14em]" style={{ color: CRIMSON }}>Tokyo Care activé</span>
