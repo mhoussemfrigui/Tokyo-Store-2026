@@ -93,6 +93,10 @@ export default async function InvoicePage({
   const docNumber = isAvoir
     ? order.credit_note_number ?? order.order_number
     : order.invoice_number ?? order.order_number;
+  // Whether this document has been formally ISSUED (carries a real fiscal number).
+  // An un-issued document is a PREVIEW and must NOT present the order number as if
+  // it were a fiscal invoice / credit-note number (fiscal compliance — ISSUE-29).
+  const issued = isAvoir ? order.credit_note_number != null : order.invoice_number != null;
   const docDate = isAvoir
     ? order.credit_note_at ?? order.created_at
     : order.invoiced_at ?? order.created_at;
@@ -200,8 +204,15 @@ export default async function InvoicePage({
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#d40530]">
             {docLabel}
           </p>
-          <p className="mt-1 text-lg font-bold text-[#d40530]">{docNumber}</p>
+          <p className="mt-1 text-lg font-bold text-[#d40530]">
+            {issued ? docNumber : "Aperçu — non émis"}
+          </p>
           <p className="text-xs text-gray-600">{docDateLabel}</p>
+          {!issued && (
+            <p className="mt-0.5 text-[10px] font-semibold text-[#d40530]">
+              Document non fiscal · N° attribué à l&apos;émission
+            </p>
+          )}
           <p className="text-[10px] text-gray-500">Commande : {order.order_number}</p>
           {isAvoir && order.invoice_number && (
             <p className="text-[10px] text-gray-500">Facture : {order.invoice_number}</p>

@@ -65,7 +65,9 @@ export function registerPriceDropSubscriber() {
             product_name: product.name,
             old_price: formatMoneyExact(payload.oldCents),
             new_price: formatMoneyExact(payload.newCents),
-            percent_off: String(percentOff),
+            // Include the "%" — the template renders « -{{ percent_off }} » (sample
+            // "26%"), so passing a bare "26" printed « -26 » instead of « -26% ».
+            percent_off: `${percentOff}%`,
             pdp_url: pdpUrl,
           },
         }).catch(() => null);

@@ -29,6 +29,9 @@ export async function enqueueCampaign(opts: {
   const brand = buildBrandVars(await getEmailBrand());
   const base = renderTemplate(wrap(opts.html), {
     brand_logo: brand.brand_logo,
+    // The shared shell's accent bars/rules use {{ brand_primary }} — without it a
+    // campaign rendered with empty tokens (no crimson). Pass it like dispatch.ts does.
+    brand_primary: brand.brand_primary,
     brand_footer: brand.brand_footer,
     brand_socials: brand.brand_socials,
     brand_name: escapeHtml(brand.brand_name),
