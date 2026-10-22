@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, lte, or, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/client";
 import { loadCategoryChains } from "@/lib/catalog/category-chain";
@@ -607,6 +607,33 @@ export async function countLivePromotionsForScope(
       ),
     );
   return Number(r?.n ?? 0);
+}
+
+/**
+ * Active AUTO cart-scope promotions (ids), most recent first. A cart-wide promo
+ * with trigger_kind='auto' applies WITHOUT a code or URL — the one promotion kind
+ * not carried by a storefront cookie — so previously it was resolved by NOTHING
+ * and silently did nothing (shown "Active", never discounted). The cart resolver
+ * now appends these as FALLBACK candidates (after any entered code / URL promo).
+ * The authoritative window / caps / min-max-cart / targeting gates still run per
+ * candidate in `evaluateCouponEligibility`; this is only a cheap pre-filter.
+ */
+export async function listActiveAutoCartPromotionIds(): Promise<string[]> {
+  const rows = await db
+    .select({ id: promotions.id })
+    .from(promotions)
+    .where(
+      and(
+        eq(promotions.is_active, true),
+        isNull(promotions.deleted_at),
+        eq(promotions.trigger_kind, "auto"),
+        eq(promotions.scope, "cart"),
+        or(isNull(promotions.starts_at), lte(promotions.starts_at, sql`now()`)),
+        or(isNull(promotions.ends_at), gt(promotions.ends_at, sql`now()`)),
+      ),
+    )
+    .orderBy(desc(promotions.created_at));
+  return rows.map((r) => r.id);
 }
 
 /** Re-export the service for workflow use. */

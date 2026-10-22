@@ -22,6 +22,7 @@ export {
   productsMatchingPromoScope,
   effectiveScopeTargets,
   listNonDiscountableProductIds,
+  listActiveAutoCartPromotionIds,
   resolveProductDiscount,
   computeProductDiscount,
   type ProductDiscount,

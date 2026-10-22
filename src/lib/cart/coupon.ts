@@ -2,7 +2,11 @@ import "server-only";
 
 import { cookies } from "next/headers";
 
-import { promotionService, type ProductDiscount } from "@/modules/promotion";
+import {
+  promotionService,
+  listActiveAutoCartPromotionIds,
+  type ProductDiscount,
+} from "@/modules/promotion";
 import { evaluateCouponEligibility } from "@/lib/promotions/coupon-eligibility";
 import { resolveBuyerContext } from "@/lib/promotions/buyer-context";
 import type { CouponCartLine } from "@/lib/promotions/scoped-coupon";
@@ -29,10 +33,10 @@ export type CartPromotion = {
   name: string;
   discountCents: number;
   grantsFreeShipping: boolean;
-  source: "code" | "url";
+  source: "code" | "url" | "auto";
 };
 
-export type CartPromotionCandidate = { id: string; source: "code" | "url" };
+export type CartPromotionCandidate = { id: string; source: "code" | "url" | "auto" };
 
 /**
  * The promotion-id candidates held by the storefront cookie jar, in resolution
@@ -48,6 +52,19 @@ export async function readCartPromotionCandidates(): Promise<CartPromotionCandid
   if (couponId && isUuid(couponId)) candidates.push({ id: couponId, source: "code" });
   const urlId = jar.get(PROMO_URL_COOKIE)?.value;
   if (urlId && isUuid(urlId) && urlId !== couponId) candidates.push({ id: urlId, source: "url" });
+  // Auto cart-wide promotions apply WITHOUT a code or URL — append them as FALLBACK
+  // candidates (after any entered code / URL promo, so an explicit coupon still
+  // wins). The resolver's eligibility gate drops any that don't currently qualify.
+  // (Previously an auto cart promo was carried by no cookie, so it was resolved by
+  // nothing — shown "Active" in admin but never actually discounting the cart.)
+  const seen = new Set(candidates.map((c) => c.id));
+  const autoIds = await listActiveAutoCartPromotionIds().catch(() => []);
+  for (const id of autoIds) {
+    if (!seen.has(id)) {
+      candidates.push({ id, source: "auto" });
+      seen.add(id);
+    }
+  }
   return candidates;
 }
 

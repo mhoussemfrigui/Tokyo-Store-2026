@@ -85,7 +85,7 @@ export const placeQuickOrderSchema = z.object({
    * skipped for the next (never charged at).
    */
   promotionCandidates: z
-    .array(z.object({ id: z.string().uuid(), source: z.enum(["code", "url"]) }))
+    .array(z.object({ id: z.string().uuid(), source: z.enum(["code", "url", "auto"]) }))
     .max(2)
     .optional(),
   /**
