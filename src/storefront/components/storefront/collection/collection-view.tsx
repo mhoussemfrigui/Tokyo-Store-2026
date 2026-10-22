@@ -90,8 +90,17 @@ type Props = {
   strategy: CollectionStrategy;
   /** H1 — the admin-editable page title. */
   title: string;
+  /** Decorative kicker above the H1 (admin eyebrow; hidden when empty). */
+  eyebrow?: string;
   /** Lead paragraph — admin subtitle, else the collection default copy. */
   catDesc: string;
+  /** Header CTA button (admin) — rendered only when both label + href are set. */
+  ctaLabel?: string;
+  ctaHref?: string;
+  /** Resolved hero image URL (admin médiathèque) — a header banner when set. */
+  heroImage?: string | null;
+  /** Admin-seeded initial sort (a copy.sorts key; falls back to the first sort). */
+  defaultSort?: string;
   /** Snapshot cards in render order (pins first, then the strategy pool). */
   products: Product[];
   extrasById: Record<string, CollectionCardExtra>;
@@ -135,10 +144,16 @@ function agoLabel(days: number | null): string {
 }
 
 export function CollectionView(props: Props) {
-  const { slug, strategy, title, catDesc, products, extrasById, empty, navBar, phone } = props;
+  const { slug, strategy, title, eyebrow, catDesc, ctaLabel, ctaHref, heroImage, products, extrasById, empty, navBar, phone } = props;
   const copy = collectionCopy(slug);
   const hasPeriods = !!copy.periods && (strategy === "best_sellers" || strategy === "new_arrivals");
-  const defaultSort = copy.sorts[0]?.key ?? "best";
+  // Admin-seeded initial sort — honoured only when it's a real sort for THIS
+  // collection (a stale/foreign key falls back to the collection's first sort).
+  const defaultSort: CollectionSortKey =
+    (props.defaultSort && copy.sorts.some((s) => s.key === props.defaultSort)
+      ? (props.defaultSort as CollectionSortKey)
+      : copy.sorts[0]?.key) ?? "best";
+  const headerCta = ctaLabel?.trim() && ctaHref?.trim() ? { label: ctaLabel.trim(), href: ctaHref.trim() } : null;
 
   const [per, setPer] = useState(copy.defaultPeriod ?? 0);
   const [podAnim, setPodAnim] = useState(true);
@@ -439,6 +454,18 @@ export function CollectionView(props: Props) {
     <div className="page-container flex flex-col gap-5 pt-3">
       {/* ── 1. Header ─────────────────────────────────────────────── */}
       <section className="flex flex-col gap-7 rounded-[36px] bg-background p-6 sm:p-9 lg:p-12">
+        {/* Admin hero banner (médiathèque) — renders only when set. */}
+        {heroImage && (
+          <div className="overflow-hidden rounded-[24px] bg-secondary">
+            <img
+              src={heroImage}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="h-[clamp(150px,22vw,280px)] w-full object-cover"
+            />
+          </div>
+        )}
         <nav aria-label="Fil d'Ariane" className="flex min-w-0 items-center gap-1.5 overflow-hidden">
           <Link
             href="/"
@@ -457,6 +484,9 @@ export function CollectionView(props: Props) {
         </nav>
 
         <div className="flex flex-col gap-4">
+          {eyebrow?.trim() && (
+            <span className="eyebrow text-primary">{eyebrow.trim()}</span>
+          )}
           <div className="flex flex-wrap items-center gap-3.5">
             <h1 className="text-[clamp(44px,6.5vw,96px)] font-black leading-[0.92] tracking-[-0.05em] text-foreground">
               {title}
@@ -487,6 +517,17 @@ export function CollectionView(props: Props) {
               {copy.aboutLinkLabel}
             </button>
           </p>
+
+          {/* Admin header CTA — renders only when both label + href are set. */}
+          {headerCta && (
+            <Link
+              href={headerCta.href}
+              className="flex h-12 w-fit items-center gap-2 rounded-full bg-primary px-6 text-[15px] font-bold text-primary-foreground transition-colors hover:bg-primary-hover"
+            >
+              {headerCta.label}
+              <ChevronRight aria-hidden className="size-4" strokeWidth={2.4} />
+            </Link>
+          )}
 
           {strategy === "on_promotion" && offersWithStrike.length > 0 && (
             <div className="flex flex-wrap gap-2">

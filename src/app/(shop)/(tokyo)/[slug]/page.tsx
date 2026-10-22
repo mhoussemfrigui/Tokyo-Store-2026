@@ -28,7 +28,7 @@ import { resolveOfferValidity } from "@/lib/seo/offer-validity";
 import { getAllSettingsServerOnly } from "@/lib/api/cms";
 import { getSiteContacts, footerEntries } from "@/lib/cms/contact-list";
 import { pageService } from "@/modules/cms/page/service";
-import { resolveMediaSocialUrl } from "@/modules/media";
+import { resolveMediaSocialUrl, resolveMediaUrl } from "@/modules/media";
 import { mediaService } from "@/modules/media/service";
 import {
   getCollectionPageConfig,
@@ -334,6 +334,11 @@ export default async function SlugPage({ params }: Params) {
     const contacts = getSiteContacts(settings);
     const phone = footerEntries(contacts.phones)[0]?.value ?? settings["site.contact_phone"] ?? null;
     const catDesc = config.subtitle.trim() || copy.catDesc;
+    // Vitrines hero image (médiathèque id → content URL) — previously a dead control.
+    const heroMedia = config.heroMediaId
+      ? await mediaService.findById(config.heroMediaId).catch(() => null)
+      : null;
+    const heroImage = heroMedia ? resolveMediaUrl(heroMedia) : null;
 
     // Structured data: CollectionPage + ItemList + Breadcrumb (+ FAQPage) through
     // the tested SEO builders — the admin config now owns the collection graph
@@ -379,7 +384,12 @@ export default async function SlugPage({ params }: Params) {
           slug={resolved.slug}
           strategy={config.strategy}
           title={config.title}
+          eyebrow={config.eyebrow}
           catDesc={catDesc}
+          ctaLabel={config.ctaLabel}
+          ctaHref={config.ctaHref}
+          heroImage={heroImage}
+          defaultSort={config.defaultSort}
           products={cards}
           extrasById={extrasById}
           empty={config.empty}
