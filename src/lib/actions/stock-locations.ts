@@ -138,6 +138,16 @@ export async function setLocationLevelsAction(
     return { ok: false, error: "too_many", message: "Trop de lignes à enregistrer en une fois (max 1000)." };
   }
 
+  // Backfill any MISSING default-location level rows before the matrix edits apply.
+  // A target stocked by a total-only writer (product editor / import / a new or
+  // duplicated product) AFTER per-location mode was enabled carries a stock_qty with
+  // NO stock_levels row, so the matrix showed its default level from the total but
+  // setting that same value re-added the whole quantity — DOUBLING the total (e.g.
+  // 10 → 20). Reconciling here gives every such target a real default level =
+  // stock_qty − Σ(other active) first, so the operator's write composes as a delta.
+  // Idempotent and a cheap no-op once everything is level-tracked. (ISSUE-31.)
+  await stockLocationService.reconcileDefaultLevels().catch(() => {});
+
   type RowUpdate = (typeof updates)[number];
   const processRow = async (u: RowUpdate) => {
     const cell = { productId: u.productId, variantId: u.variantId, locationId: u.locationId };
