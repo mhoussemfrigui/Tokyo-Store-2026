@@ -4,6 +4,7 @@ import { getSettingsMap } from "@/modules/cms/setting/queries";
 import { resolveInventoryConfig } from "@/lib/inventory/locations-config";
 import { resolveSharedStockProductIds } from "@/lib/inventory/variant-stock";
 import { orderService } from "@/modules/order/service";
+import { listStatusHistory } from "@/modules/order/queries";
 import { stockLocationService } from "@/modules/stock-location";
 import type { StockLocationRow } from "@/modules/stock-location/schema";
 import { bus } from "../bus";
@@ -82,6 +83,40 @@ export function registerShipDepotDecrementSubscriber() {
       }
     } catch (err) {
       console.error("[ship-depot-decrement] status ship failed", err);
+    }
+  });
+
+  // PICKUP fulfillment path — a pickup order (in-store / drive-by) is COLLECTED, never
+  // shipped (preparing → delivered directly), so NEITHER ship path above ever dropped
+  // its depot level: the cached total fell at placement but the depot's stock_levels
+  // stayed high forever (drift). Drop it on "delivered" — but ONLY when the order never
+  // passed through "shipped" (an order that DID ship already dropped the depot there,
+  // and a status-ship records no shipment rows for the remainder to shrink against, so
+  // decrementing again would DOUBLE-count). ISSUE-31.
+  bus.on("order.status_changed", async ({ payload }) => {
+    if (payload.toStatus !== "delivered") return;
+    try {
+      const depot = await depotIfPerLocation();
+      if (!depot) return;
+      const history = await listStatusHistory(payload.orderId);
+      if (history.some((h) => h.to_status === "shipped")) return; // already dropped at ship
+      const [items, shipped] = await Promise.all([
+        orderService.listItems(payload.orderId),
+        orderService.shippedQtyByItem(payload.orderId),
+      ]);
+      const shared = await resolveSharedStockProductIds(items.map((it) => it.product_id));
+      for (const it of items) {
+        const remainder = it.quantity - (shipped.get(it.id) ?? 0);
+        if (remainder <= 0) continue;
+        await stockLocationService.adjustLevelOnly(
+          { productId: it.product_id, variantId: shared.has(it.product_id) ? null : (it.variant_id ?? null) },
+          depot.id,
+          -remainder,
+          { reason: "order", orderId: payload.orderId, note: `Commande ${payload.orderNumber} retirée` },
+        );
+      }
+    } catch (err) {
+      console.error("[ship-depot-decrement] delivered (pickup) failed", err);
     }
   });
 }
