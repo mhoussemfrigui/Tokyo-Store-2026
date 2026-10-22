@@ -7,7 +7,7 @@ import { requirePermission } from "@/lib/auth/session";
 import { blogService } from "@/modules/blog/service";
 import { authorService } from "@/modules/authors/service";
 import { BlogPostForm } from "@/components/admin/blog-post-form";
-import { resolveRelatedProductOptionsAction } from "@/lib/actions/related-products";
+import { productPickerOptionsForIds } from "@/lib/catalog/product-picker-options.server";
 import { isUuid } from "@/lib/utils/uuid";
 
 export const metadata: Metadata = { title: "Modifier l'article" };
@@ -33,12 +33,13 @@ export default async function BlogPostEditPage({
     authorService.listActive(),
     blogService.listProductIdsForPost(post.id),
   ]);
-  // Hydrate the cited-product ids into picker cards — reuse the shared
-  // id→card resolver (same as the product form's cross-sell pickers).
+  // Hydrate the cited-product ids into picker cards — call the shared id→card
+  // resolver DIRECTLY (not the picker server action): the page is already gated on
+  // `blog_posts:view`, and this only reads public catalogue data (id/slug/name/
+  // image/price). Going through the gated action would 500 the editor for a blog
+  // author who lacks the picker's product/review/showcase grants.
   const citedProducts =
-    citedProductIds.length > 0
-      ? await resolveRelatedProductOptionsAction(citedProductIds)
-      : [];
+    citedProductIds.length > 0 ? await productPickerOptionsForIds(citedProductIds) : [];
 
   return (
     <div className="space-y-6">

@@ -6,7 +6,7 @@
  * in here. Completeness enforced by src/lib/db/tests/event-catalog.test.ts.
  * Regenerate after adding an event: `node scripts/gen-event-catalog.mjs`.
  *
- * Total events: 206 across 50 domains.
+ * Total events: 203 across 49 domains.
  */
 
 export type EventCatalogDomain = {

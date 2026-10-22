@@ -209,26 +209,26 @@ export async function upsertBrandFaqsAction(
 }
 
 // ─────────────────────────────────────────── banners
-/**
- * Gate each banner write on the resource that OWNS the placement's editor:
- *   - `home_hero`  → `home`       (edited in CMS → Page d'accueil, the hero carousel)
- *   - `footer` / `nav_*` → `navigation` (edited in CMS → Footer / Nav Menu singletons)
- *   - everything else (legacy `header_strip` / `category_grid`) → `banners`
- * So the operator who can edit a surface can save its banner, and no one can mutate
- * another surface's singleton through the shared actions.
- */
-function bannerResourceFor(placement: string): "home" | "banners" | "navigation" {
-  if (placement === "home_hero") return "home";
-  if (placement === "footer" || placement.startsWith("nav_")) return "navigation";
-  return "banners";
-}
+// Banner writes gate on the owning surface's EDIT right (home_hero→home:update,
+// footer/nav_*→navigation:update — both VIEW_EDIT, so no :create/:delete key;
+// legacy header_strip/category_grid→the banners CRUD resource). update & delete
+// resolve the placement from the DB row, never client input (ISSUE-18). Gates are
+// inlined with literal keys so they stay statically analysable (internal-api catalog).
 
+/** Create a banner on a surface the caller is allowed to edit. */
 export async function createBannerAction(
   _prev: ActionState | null,
   formData: FormData,
 ): Promise<ActionState> {
   const placement = String(formData.get("placement") ?? "");
-  const session = await requirePermission(bannerResourceFor(placement), "create");
+  // Create gates on the TARGET surface (choosing where to create is legitimate):
+  // home/nav → their `:update`, legacy placements → `banners:create`.
+  const session =
+    placement === "home_hero"
+      ? await requirePermission("home", "update")
+      : placement === "footer" || placement.startsWith("nav_")
+        ? await requirePermission("navigation", "update")
+        : await requirePermission("banners", "create");
   const result = await workflows.cms.createBanner(
     {
       placement: placement as never,
@@ -274,14 +274,27 @@ export async function updateBannerAction(
   _prev: ActionState | null,
   formData: FormData,
 ): Promise<ActionState> {
-  // The form always posts `placement` (the selector, or the locked hidden input), so the
-  // RBAC gate can key off it without a pre-auth DB read.
-  const session = await requirePermission(
-    bannerResourceFor(String(formData.get("placement") ?? "")),
-    "update",
-  );
   const id = optional(formData, "id");
   if (!id) return { ok: false, error: "validation", message: "ID requis." };
+  // SECURITY (ISSUE-18): resolve the banner's REAL placement from the DB — NEVER
+  // trust the client-posted `placement` for the RBAC gate, or a caller could edit a
+  // surface they can't by posting a placement they can. Gate on the owning surface.
+  const existing = await bannerService.findById(id);
+  if (!existing) return { ok: false, error: "not_found", message: "Bannière introuvable." };
+  const session =
+    existing.placement === "home_hero"
+      ? await requirePermission("home", "update")
+      : existing.placement === "footer" || existing.placement.startsWith("nav_")
+        ? await requirePermission("navigation", "update")
+        : await requirePermission("banners", "update");
+  // Moving a banner to a DIFFERENT surface also requires edit rights on the target.
+  const movedTo = optional(formData, "placement");
+  if (movedTo && movedTo !== existing.placement) {
+    if (movedTo === "home_hero") await requirePermission("home", "update");
+    else if (movedTo === "footer" || movedTo.startsWith("nav_"))
+      await requirePermission("navigation", "update");
+    else await requirePermission("banners", "update");
+  }
   const result = await workflows.cms.updateBanner(
     {
       id,
@@ -337,11 +350,16 @@ export async function updateBannerAction(
 
 export async function deleteBannerAction(id: string): Promise<ActionState> {
   // Resolve the placement server-side (never trust a client-passed placement) so
-  // the delete gates on the SAME resource that owns the placement's editor — the
-  // hero carousel on `home`, the footer banner on `navigation`.
+  // the delete gates on the surface that owns it — the hero carousel on `home`,
+  // the footer banner on `navigation` (both VIEW_EDIT → `:update`), legacy on `banners`.
   const banner = await bannerService.findById(id);
   if (!banner) return { ok: false, error: "not_found", message: "Bannière introuvable." };
-  const session = await requirePermission(bannerResourceFor(banner.placement), "delete");
+  const session =
+    banner.placement === "home_hero"
+      ? await requirePermission("home", "update")
+      : banner.placement === "footer" || banner.placement.startsWith("nav_")
+        ? await requirePermission("navigation", "update")
+        : await requirePermission("banners", "delete");
   const result = await workflows.cms.deleteBanner({ id }, { actorUserId: session.user.id });
   if (!result.ok) return failState(result);
   revalidatePath("/admin/cms/home");

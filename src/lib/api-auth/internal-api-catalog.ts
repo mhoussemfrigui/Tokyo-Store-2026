@@ -8,7 +8,7 @@
  * label against the RBAC registry). Regenerate after adding a server action or
  * changing a guard: `node scripts/gen-internal-api-catalog.mjs`.
  *
- * Total actions: 394.
+ * Total actions: 294.
  */
 
 export type InternalActionKind = "write" | "read" | "settings" | "destructive" | "auth";
@@ -64,6 +64,17 @@ export const INTERNAL_API_CATALOG: InternalApiGroup[] = [
         ],
       },
       {
+        file: "src/lib/actions/care.ts",
+        label: "Tokyo Care (garanties bonus)",
+        permission: "care:*",
+        actions: [
+          { name: "createCarePlanAction", kind: "write", permission: "care:create", summary: "Server actions backing the Tokyo Care admin CRUD." },
+          { name: "updateCarePlanAction", kind: "write", permission: "care:update", summary: "" },
+          { name: "deleteCarePlanAction", kind: "destructive", permission: "care:delete", summary: "" },
+          { name: "saveCareSettingsAction", kind: "settings", permission: "care:update", summary: "" },
+        ],
+      },
+      {
         file: "src/lib/actions/catalog.ts",
         label: "Produits / marques / catégories / média",
         permission: "brands:* · categories:* · products:* · stock:update · media:* · system_media:update",
@@ -91,27 +102,16 @@ export const INTERNAL_API_CATALOG: InternalApiGroup[] = [
           { name: "importMediaFromUrlAction", kind: "write", permission: "media:create", summary: "Import an image by URL into the médiathèque." },
           { name: "deleteMediaAction", kind: "destructive", permission: "media:delete", summary: "" },
           { name: "mediaUsageCountAction", kind: "read", permission: "media:view", summary: "How many catalogue/CMS/blog records still reference a media — for the delete confirm so the admin is warned before removing an in-use asset (delete purges the S3 bytes, so an in-use image silently …" },
-          { name: "listMediaInUseAction", kind: "read", permission: "media:view", summary: "Which of the selected media are still referenced by a catalogue / CMS / blog / settings record — for the BULK delete confirm, so the admin sees (and must explicitly acknowledge) the in-use im…" },
+          { name: "listMediaInUseAction", kind: "read", permission: "media:view", summary: "Which of the selected media are still referenced by a catalogue / CMS / blog / aid / settings record — for the BULK delete confirm, so the admin sees (and must explicitly acknowledge) the in-use im…" },
           { name: "bulkDeleteMediaAction", kind: "destructive", permission: "media:delete", summary: "row + S3 keys + audit event (no shared state to race on), but an unbounded Promise.all over a select-all (~100 rows × ~4 variant deletes) would storm the node-postgres pool + object store; batches …" },
           { name: "updateMediaAction", kind: "write", permission: "media:update", summary: "" },
           { name: "updateMediaSettingsAction", kind: "settings", permission: "system_media:update", summary: "" },
         ],
       },
       {
-        file: "src/lib/actions/care.ts",
-        label: "Tokyo Care (garanties bonus)",
-        permission: "care:*",
-        actions: [
-          { name: "createCarePlanAction", kind: "write", permission: "care:create", summary: "Server actions backing the Tokyo Care admin CRUD (plans de garantie bonus)." },
-          { name: "updateCarePlanAction", kind: "write", permission: "care:update", summary: "" },
-          { name: "deleteCarePlanAction", kind: "destructive", permission: "care:delete", summary: "" },
-          { name: "saveCareSettingsAction", kind: "settings", permission: "care:update", summary: "Store-wide Tokyo Care switches (master kill-switch + charging knobs)." },
-        ],
-      },
-      {
         file: "src/lib/actions/related-products.ts",
         label: "Produits liés",
-        permission: "products:* · reviews:create · showcase:update",
+        permission: "products:view · reviews:create · showcase:update",
         actions: [
           { name: "searchProductsForPickerAction", kind: "read", permission: "products:view | reviews:create | showcase:update", summary: "" },
           { name: "resolveRelatedProductOptionsAction", kind: "write", permission: "products:view | reviews:create | showcase:update", summary: "" },
@@ -222,10 +222,10 @@ export const INTERNAL_API_CATALOG: InternalApiGroup[] = [
       {
         file: "src/lib/actions/order.ts",
         label: "Commandes (cycle de vie, lignes, expédition)",
-        permission: "session/public · orders:*",
+        permission: "public · session/public · orders:*",
         actions: [
           { name: "transitionOrderStatusAction", kind: "write", permission: "orders:manage", summary: "" },
-          { name: "setOrderPaymentStatusAction", kind: "write", permission: "orders:manage", summary: "« Paiement manuel » — set an order Payée/Partiellement payée/Non payée directly (gated by the orders.manual_payment_enabled setting). Marking paid settles it (revenue via order.paid)." },
+          { name: "setOrderPaymentStatusAction", kind: "write", permission: "orders:manage", summary: "« Paiement manuel » — set an order's payment state (paid / partial / unpaid) directly, for offline settlements the gateway/COD flow doesn't capture." },
           { name: "confirmOrderAction", kind: "write", permission: "orders:manage", summary: "Operator \"Confirmer la commande\" — accept a placed order (mainly COD; online orders auto-confirm on payment)." },
           { name: "editOrderItemsAction", kind: "write", permission: "orders:manage", summary: "Operator order-line editing — add / change-qty / remove lines on a pre-ship order, reconciling stock + tax + totals atomically (see editOrderItemsWorkflow)." },
           { name: "createShipmentAction", kind: "write", permission: "orders:manage", summary: "Create a partial-shipment bon de livraison (a parcel covering a subset of line quantities)." },
@@ -242,7 +242,7 @@ export const INTERNAL_API_CATALOG: InternalApiGroup[] = [
           { name: "placeQuickOrderAction", kind: "write", permission: "session/public", summary: "Quick-buy path: skip the cart entirely." },
           { name: "resumeOrderPaymentAction", kind: "write", permission: "session/public", summary: "Customer-facing \"Reprendre le paiement\" — re-initiate the gateway session for a still-pending ONLINE order and hand back a fresh redirect URL." },
           { name: "cancelMyPendingOrderAction", kind: "destructive", permission: "session/public", summary: "Customer-facing \"Annuler la commande\" — cancel a still-pending ONLINE order (payment not completed)." },
-          { name: "trackOrderAction", kind: "read", permission: "session/public", summary: "Public order-tracking lookup (order number + contact), rate-limited by IP." },
+          { name: "trackOrderAction", kind: "write", permission: "public", summary: "Public « Suivi de commande » lookup: find one order by its number, authorised by the contact/shipping phone (last 8 digits) — no account required." },
         ],
       },
       {
@@ -292,13 +292,13 @@ export const INTERNAL_API_CATALOG: InternalApiGroup[] = [
         permission: "public · session/public",
         actions: [
           { name: "mergeGuestCartAction", kind: "write", permission: "session/public", summary: "Merge a leftover guest cart into the signed-in user's cart, then drop the guest cookie." },
+          { name: "getStorefrontCartAction", kind: "read", permission: "public", summary: "" },
           { name: "addToCartAction", kind: "write", permission: "public", summary: "" },
           { name: "addToCartBySlugAction", kind: "write", permission: "public", summary: "Quick-add from a listing card, which only carries the product slug (not the DB id)." },
           { name: "removeCartItemBySlugAction", kind: "destructive", permission: "public", summary: "Quick-REMOVE by slug — the counterpart to `addToCartBySlugAction` for the accessory / listing cards' \"+ → ✕\" toggle." },
           { name: "removeCartItemAction", kind: "destructive", permission: "public", summary: "" },
           { name: "setCartItemQuantityAction", kind: "write", permission: "public", summary: "" },
-          { name: "setCartItemCarePlanAction", kind: "write", permission: "session/public", summary: "Attach / clear a Tokyo Care protection plan on a cart line (re-priced at checkout)." },
-          { name: "getStorefrontCartAction", kind: "read", permission: "session/public", summary: "Read the current session/guest cart for the storefront mini-cart & cart page." },
+          { name: "setCartItemCarePlanAction", kind: "write", permission: "public", summary: "is re-validated + re-priced server-side at checkout — this only records the shopper's choice so it rides from cart → checkout." },
         ],
       },
     ],
@@ -347,6 +347,8 @@ export const INTERNAL_API_CATALOG: InternalApiGroup[] = [
           { name: "changeEmailAction", kind: "write", permission: "session", summary: "Self-serve \"change my email\"." },
           { name: "updateProfileAction", kind: "write", permission: "session", summary: "" },
           { name: "addAddressAction", kind: "write", permission: "session", summary: "" },
+          { name: "createAddressAction", kind: "write", permission: "session", summary: "Checkout variant of {@link addAddressAction}: takes a plain object (not FormData) and RETURNS the new address id (as `id`) so the checkout can add the address to its local list and select it for th…" },
+          { name: "editAddressAction", kind: "write", permission: "session", summary: "Checkout variant of {@link updateAddressAction}: object args (not FormData) so the inline checkout edit form can call it directly and patch its local list from the values it already holds." },
           { name: "deleteAddressAction", kind: "destructive", permission: "session", summary: "" },
           { name: "updateAddressAction", kind: "write", permission: "session", summary: "" },
           { name: "setDefaultShippingAddressAction", kind: "write", permission: "session", summary: "Convenience action to set a specific address as the default shipping choice without going through the full update form." },
@@ -427,7 +429,7 @@ export const INTERNAL_API_CATALOG: InternalApiGroup[] = [
           { name: "updateRoleAction", kind: "write", permission: "users:roles", summary: "" },
           { name: "deleteRoleAction", kind: "destructive", permission: "users:roles", summary: "" },
           { name: "setUserRolesAction", kind: "write", permission: "users:roles", summary: "" },
-          { name: "setUserPermissionsAction", kind: "write", permission: "users:roles", summary: "Replace a user's per-user permission overlay (allow/deny over roles)." },
+          { name: "setUserPermissionsAction", kind: "write", permission: "users:roles", summary: "Replace a user's per-user permission overlay (the allow/deny deltas over their role baseline)." },
           { name: "createUserAction", kind: "write", permission: "users:create", summary: "" },
           { name: "setUserPasswordAction", kind: "write", permission: "users:manage", summary: "" },
           { name: "adminSetUserEmailAction", kind: "write", permission: "users:manage", summary: "Admin sets a user's LOGIN email directly (users:manage)." },
@@ -438,7 +440,7 @@ export const INTERNAL_API_CATALOG: InternalApiGroup[] = [
         label: "Politique de session",
         permission: "users:policy",
         actions: [
-          { name: "saveSessionPolicyAction", kind: "settings", permission: "users:policy", summary: "Save the admin-tunable session policy (Utilisateurs → Réglages): session lifetime, refresh age, and the session cookie-cache duration." },
+          { name: "saveSessionPolicyAction", kind: "settings", permission: "users:policy", summary: "session lifetime, refresh age, and the session cookie-cache duration." },
         ],
       },
       {
@@ -455,6 +457,36 @@ export const INTERNAL_API_CATALOG: InternalApiGroup[] = [
   {
     group: "Contenu",
     domains: [
+      {
+        file: "src/lib/actions/authors.ts",
+        label: "Blog — auteurs",
+        permission: "blog_authors:*",
+        actions: [
+          { name: "createAuthorAction", kind: "write", permission: "blog_authors:create", summary: "" },
+          { name: "updateAuthorAction", kind: "write", permission: "blog_authors:update", summary: "" },
+          { name: "deleteAuthorAction", kind: "destructive", permission: "blog_authors:delete", summary: "" },
+          { name: "restoreAuthorAction", kind: "write", permission: "blog_authors:update", summary: "" },
+        ],
+      },
+      {
+        file: "src/lib/actions/blog-comment.ts",
+        label: "Blog — commentaires (public)",
+        permission: "public · session/public",
+        actions: [
+          { name: "submitBlogCommentAction", kind: "write", permission: "session/public", summary: "Submit (or edit) a reader comment + optional star rating on a blog article." },
+          { name: "loadMoreBlogCommentsAction", kind: "read", permission: "public", summary: "Fetch the NEXT page of a post's approved comment thread (top-level comments + their replies) for the storefront « Charger plus » append." },
+        ],
+      },
+      {
+        file: "src/lib/actions/blog-comments-admin.ts",
+        label: "Blog — commentaires (admin)",
+        permission: "blog_comments:*",
+        actions: [
+          { name: "setBlogCommentStatusAction", kind: "write", permission: "blog_comments:manage", summary: "" },
+          { name: "deleteBlogCommentAction", kind: "destructive", permission: "blog_comments:delete", summary: "" },
+          { name: "saveBlogCommentsSettingsAction", kind: "settings", permission: "blog_comments:update", summary: "" },
+        ],
+      },
       {
         file: "src/lib/actions/blog.ts",
         label: "Blog",
@@ -474,56 +506,27 @@ export const INTERNAL_API_CATALOG: InternalApiGroup[] = [
         ],
       },
       {
-        file: "src/lib/actions/authors.ts",
-        label: "Auteurs (profils éditoriaux)",
-        permission: "blog_authors:*",
-        actions: [
-          { name: "createAuthorAction", kind: "write", permission: "blog_authors:create", summary: "" },
-          { name: "updateAuthorAction", kind: "write", permission: "blog_authors:update", summary: "" },
-          { name: "deleteAuthorAction", kind: "destructive", permission: "blog_authors:delete", summary: "" },
-          { name: "restoreAuthorAction", kind: "write", permission: "blog_authors:update", summary: "" },
-        ],
-      },
-      {
-        file: "src/lib/actions/blog-comment.ts",
-        label: "Commentaires blog (public)",
-        permission: "session/public",
-        actions: [
-          { name: "submitBlogCommentAction", kind: "write", permission: "session/public", summary: "Submit (or edit) a reader comment + optional star rating on a blog article." },
-          { name: "loadMoreBlogCommentsAction", kind: "read", permission: "session/public", summary: "Fetch the NEXT page of a post's approved comment thread (with replies) for the \"Charger plus\" append." },
-        ],
-      },
-      {
-        file: "src/lib/actions/blog-comments-admin.ts",
-        label: "Commentaires blog (modération)",
-        permission: "blog_comments:*",
-        actions: [
-          { name: "setBlogCommentStatusAction", kind: "write", permission: "blog_comments:manage", summary: "" },
-          { name: "deleteBlogCommentAction", kind: "destructive", permission: "blog_comments:delete", summary: "" },
-          { name: "saveBlogCommentsSettingsAction", kind: "settings", permission: "blog_comments:update", summary: "" },
-        ],
-      },
-      {
         file: "src/lib/actions/cms.ts",
         label: "CMS (pages, nav, badges, bannières)",
-        permission: "trust_badges:* · products:update · categories:update · brands:update · banners:* · pages:* · navigation:update",
+        permission: "trust_badges:* · products:update · categories:update · brands:update · home:update · navigation:update · banners:* · pages:*",
         actions: [
           { name: "createTrustBadgeAction", kind: "write", permission: "trust_badges:create", summary: "" },
           { name: "updateTrustBadgeAction", kind: "write", permission: "trust_badges:update", summary: "" },
           { name: "toggleTrustBadgeActiveAction", kind: "write", permission: "trust_badges:update", summary: "" },
           { name: "deleteTrustBadgeAction", kind: "destructive", permission: "trust_badges:delete", summary: "" },
-          { name: "saveTrustBadgeSettingsAction", kind: "write", permission: "trust_badges:update", summary: "Strip-wide appearance (style / icon style) + per-surface placement (product / cart / checkout) — the `storefront.trust_badges.*` settings." },
+          { name: "saveTrustBadgeSettingsAction", kind: "settings", permission: "trust_badges:update", summary: "" },
           { name: "upsertProductFaqsAction", kind: "write", permission: "products:update", summary: "The legacy global FAQ admin (/admin/cms/faq) is gone — FAQs are now edited from the product / category form." },
           { name: "upsertCategoryFaqsAction", kind: "write", permission: "categories:update", summary: "" },
           { name: "upsertBrandFaqsAction", kind: "write", permission: "brands:update", summary: "" },
-          { name: "createBannerAction", kind: "write", permission: "banners:create", summary: "" },
-          { name: "updateBannerAction", kind: "write", permission: "banners:update", summary: "" },
-          { name: "deleteBannerAction", kind: "destructive", permission: "banners:delete", summary: "" },
+          { name: "createBannerAction", kind: "write", permission: "home:update · navigation:update · banners:create", summary: "" },
+          { name: "updateBannerAction", kind: "write", permission: "home:update · navigation:update · banners:update", summary: "" },
+          { name: "deleteBannerAction", kind: "destructive", permission: "home:update · navigation:update · banners:delete", summary: "" },
           { name: "createPageAction", kind: "write", permission: "pages:create", summary: "" },
           { name: "togglePagePublishAction", kind: "write", permission: "pages:update", summary: "" },
           { name: "updatePageAction", kind: "write", permission: "pages:update", summary: "" },
-          { name: "savePageBlocksAction", kind: "write", permission: "pages:update", summary: "Enregistre la composition des blocs d'une page (pages.blocks)." },
+          { name: "savePageBlocksAction", kind: "write", permission: "pages:update", summary: "" },
           { name: "deletePageAction", kind: "destructive", permission: "pages:delete", summary: "" },
+          { name: "restoreFooterColumnsAction", kind: "write", permission: "navigation:update", summary: "Restore the system footer menus (the three link columns, seeded with the footer's built-in links) + the « Explorer la maison » index — one click after a « Nettoyer › Navigation » or a fresh install…" },
           { name: "createNavMenuAction", kind: "write", permission: "navigation:update", summary: "" },
           { name: "updateNavMenuAction", kind: "write", permission: "navigation:update", summary: "Rename a system menu (CMS → Footer « Renommer » — a footer column's name is its storefront heading)." },
           { name: "createNavItemAction", kind: "write", permission: "navigation:update", summary: "" },
@@ -532,12 +535,29 @@ export const INTERNAL_API_CATALOG: InternalApiGroup[] = [
         ],
       },
       {
+        file: "src/lib/actions/footer.ts",
+        label: "Pied de page",
+        permission: "settings_site:update",
+        actions: [
+          { name: "saveFooterAction", kind: "write", permission: "settings_site:update", summary: "`site.` / `social.` settings the footer reads (single source of truth — the identity/contact/social values shared with the header, invoices and SEO) PLUS the `storefront.footer.` appearance keys." },
+        ],
+      },
+      {
         file: "src/lib/actions/home.ts",
         label: "Page d'accueil (vitrine)",
         permission: "home:update",
         actions: [
-          { name: "saveHomeBlocksAction", kind: "settings", permission: "home:update", summary: "Enregistre la composition des blocs de la page d'accueil (home.blocks)." },
-          { name: "saveHomeSettingsAction", kind: "settings", permission: "home:update", summary: "Enregistre les réglages des pages de liste (mode d'affichage)." },
+          { name: "saveHomeSettingsAction", kind: "settings", permission: "home:update", summary: "Persist the LISTING-PAGE settings (the compact panel under the home composer): the product-grid pagination mode + the « Besoin d'un conseil » help CTA that render on every category / brand listing …" },
+          { name: "saveHomeBlocksAction", kind: "write", permission: "home:update", summary: "Persist the HOME BLOCK COMPOSER layout — the ordered block-instance array the admin composer posts as a JSON blob in `blocks`." },
+        ],
+      },
+      {
+        file: "src/lib/actions/nav-builder.ts",
+        label: "Navigation (constructeur)",
+        permission: "navigation:update",
+        actions: [
+          { name: "saveHeaderNavAction", kind: "write", permission: "navigation:update", summary: "Replace-all save of the HEADER nav (the `main` menu's top-level roots + each root's composable dropdown `config`)." },
+          { name: "repairNavigationAction", kind: "write", permission: "navigation:update", summary: "Repair the navigation after a content import — the UI twin of `scripts/patch-nav-fix.ts`, idempotent and safe to re-run." },
         ],
       },
       {
@@ -562,21 +582,11 @@ export const INTERNAL_API_CATALOG: InternalApiGroup[] = [
         ],
       },
       {
-        file: "src/lib/actions/nav-builder.ts",
-        label: "Nav Menu (composeur)",
-        permission: "navigation:update",
-        actions: [
-          { name: "saveHeaderNavAction", kind: "write", permission: "navigation:update", summary: "Enregistre tout le menu du header (racines + menus déroulants composables) — remplacement intégral de la clé `main`." },
-          { name: "repairNavigationAction", kind: "write", permission: "navigation:update", summary: "Répare la navigation après un import (Système → Import data) : déduplique les éléments de menu, retire l'ancien lien « /aide » et ajoute « Carrières » au pied de page. Idempotent." },
-        ],
-      },
-      {
         file: "src/lib/actions/site.ts",
         label: "Réglages de la vitrine",
         permission: "settings_site:update",
         actions: [
-          { name: "saveSiteSettingsAction", kind: "settings", permission: "settings_site:update", summary: "" },
-          { name: "saveFooterAction", kind: "settings", permission: "settings_site:update", summary: "Enregistre le contenu + l'apparence du footer (sous-ensemble site./social. + storefront.footer.) depuis CMS → Footer." },
+          { name: "saveSiteSettingsAction", kind: "settings", permission: "settings_site:update", summary: "social and legal copy consumed by the header, footer, home page and help/legal pages." },
         ],
       },
       {
@@ -609,7 +619,7 @@ export const INTERNAL_API_CATALOG: InternalApiGroup[] = [
           { name: "resendEmailLogAction", kind: "write", permission: "system_mail:manage", summary: "" },
           { name: "previewAudienceCountAction", kind: "read", permission: "system_mail:create", summary: "the pre-send confirmation." },
           { name: "createAndSendCampaignAction", kind: "write", permission: "system_mail:create", summary: "" },
-          { name: "sendIndividualEmailAction", kind: "write", permission: "system_mail:create", summary: "Write + send a one-off 1:1 email to a single address (always delivers; hard-suppression aside)." },
+          { name: "sendIndividualEmailAction", kind: "write", permission: "system_mail:create", summary: "Send a one-off email to a SINGLE address — « rédigez et envoyez »." },
         ],
       },
       {
@@ -641,8 +651,8 @@ export const INTERNAL_API_CATALOG: InternalApiGroup[] = [
         permission: "system_ai:update",
         actions: [
           { name: "saveAiProviderSettingsAction", kind: "settings", permission: "system_ai:update", summary: "" },
+          { name: "saveAiEmbeddingSettingsAction", kind: "settings", permission: "system_ai:update", summary: "Save the Embeddings (semantic search) config — its OWN action for its OWN sub-tab, split out of the provider save so a plain provider save can never blank these (and vice-versa)." },
           { name: "saveAiFeaturePromptsAction", kind: "settings", permission: "system_ai:update", summary: "Save the AI generation prompts for one feature (e.g." },
-          { name: "saveAiEmbeddingSettingsAction", kind: "settings", permission: "system_ai:update", summary: "Save the semantic-search embedding provider/model settings." },
         ],
       },
     ],
@@ -653,13 +663,13 @@ export const INTERNAL_API_CATALOG: InternalApiGroup[] = [
       {
         file: "src/lib/actions/admin.ts",
         label: "Admin (divers)",
-        permission: "customers:* · system_audit:manage · users:*",
+        permission: "customers:* · system_audit:manage · users:create",
         actions: [
           { name: "setCustomerPromoOptOutAction", kind: "write", permission: "customers:update", summary: "Admin sets whether a customer is EXCLUDED from public promotions (customer_profiles.promo_opt_out)." },
           { name: "updateCustomerNotesAction", kind: "write", permission: "customers:update", summary: "Update admin-only notes on a customer profile." },
           { name: "updateCustomerProfileAction", kind: "write", permission: "customers:update", summary: "Admin-edit a customer's profile fields (notably the phone, which powers guest↔client matching — customerService keeps phone_normalized in step)." },
           { name: "purgeOldAuditEntriesAction", kind: "destructive", permission: "system_audit:manage", summary: "Hard-delete audit entries older than `olderThanDays`." },
-          { name: "inviteUserAction", kind: "write", permission: "users:create", summary: "Invite a user (customer, staff or admin)." },
+          { name: "inviteUserAction", kind: "write", permission: "users:create", summary: "Invite a user." },
           { name: "deleteCustomerAction", kind: "destructive", permission: "customers:delete", summary: "Delete (archive) a customer profile." },
           { name: "setDefaultAddressAction", kind: "write", permission: "customers:update", summary: "" },
         ],
@@ -747,11 +757,11 @@ export const INTERNAL_API_CATALOG: InternalApiGroup[] = [
       {
         file: "src/lib/actions/jobs.ts",
         label: "Tâches planifiées",
-        permission: "system_jobs:* · reviews:manage",
+        permission: "system_jobs:*",
         actions: [
           { name: "listJobRunsAction", kind: "read", permission: "system_jobs:view", summary: "Recent run history — for a single job, or all jobs when `jobKey` is omitted." },
-          { name: "setJobEnabledAction", kind: "write", permission: "system_jobs:manage · reviews:manage", summary: "" },
-          { name: "runJobNowAction", kind: "write", permission: "system_jobs:manage · reviews:manage", summary: "Trigger an immediate run." },
+          { name: "setJobEnabledAction", kind: "write", permission: "system_jobs:manage", summary: "" },
+          { name: "runJobNowAction", kind: "write", permission: "system_jobs:manage", summary: "Trigger an immediate run." },
         ],
       },
       {
