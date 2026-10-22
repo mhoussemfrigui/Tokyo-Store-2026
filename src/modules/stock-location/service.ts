@@ -354,25 +354,16 @@ class StockLocationService {
     ctx: { actorUserId?: string | null; note?: string | null; reason?: StockMovementReason } = {},
   ): Promise<{ productId: string; variantId: string | null; becameAvailable: boolean }> {
     const d = Math.trunc(Number(delta) || 0);
-    const isVariant = target.variantId != null;
-    return db.transaction(async (tx) => {
-      // Lock the current level FOR UPDATE so the computed new value composes with a
-      // concurrent decrement instead of racing it (the canonical lock is re-taken
-      // re-entrantly inside _applyLevelTx below).
-      const [lvl] = await tx
-        .select({ qty: stock_levels.qty })
-        .from(stock_levels)
-        .where(
-          and(
-            eq(stock_levels.location_id, locationId),
-            eq(stock_levels.product_id, target.productId),
-            isVariant ? eq(stock_levels.variant_id, target.variantId!) : isNull(stock_levels.variant_id),
-          ),
-        )
-        .for("update");
-      const current = lvl?.qty ?? 0;
-      return this._applyLevelTx(tx, target, locationId, Math.max(0, current + d), ctx);
-    });
+    // RELATIVE apply, in the CANONICAL lock order. Previously this pre-locked the
+    // level row FOR UPDATE (to read the current qty for the delta) BEFORE
+    // _applyLevelTx took location → TOTAL → level — inverting the order to
+    // level → TOTAL and opening an AB/BA deadlock against every other writer
+    // (a sale / ship / transfer all lock TOTAL then level). _applyLevelTx now
+    // composes the delta from the level IT locks (last, after the total), so the
+    // pre-lock is gone and this ERP/WMS adjust joins the one serialization order.
+    return db.transaction((tx) =>
+      this._applyLevelTx(tx, target, locationId, 0, { ...ctx, relativeDelta: d }),
+    );
   }
 
   /**
@@ -404,6 +395,12 @@ class StockLocationService {
        *  operator-facing setLocationLevel path passes it; the transfer/evacuate/
        *  (de)activate legs omit it and stay last-writer-wins. */
       expectedLevel?: number | null;
+      /** RELATIVE mode (ERP/WMS on-hand adjust): when set, the new level is
+       *  max(0, LOCKED oldLevel + relativeDelta) composed from the level this tx
+       *  locks LAST (canonical order), not the absolute `newQty` arg — so a
+       *  relative adjust can't race a concurrent sale/transfer AND needs no
+       *  out-of-order pre-lock. Mutually exclusive with expectedLevel in practice. */
+      relativeDelta?: number | null;
     } = {},
   ): Promise<{
     productId: string;
@@ -413,7 +410,7 @@ class StockLocationService {
     newInStock: boolean;
   }> {
     const isVariant = target.variantId != null;
-    const clamped = Math.max(0, Math.floor(Number(newQty) || 0));
+    const absClamped = Math.max(0, Math.floor(Number(newQty) || 0));
 
     {
       // The location must exist, be active, and not be soft-deleted. FOR SHARE
@@ -474,6 +471,12 @@ class StockLocationService {
       );
       const [lvl] = await tx.select().from(stock_levels).where(levelWhere).for("update");
       const oldLevel = lvl?.qty ?? 0;
+      // RELATIVE mode composes the delta with the level JUST locked (canonical
+      // order already established above); ABSOLUTE mode uses the caller's newQty.
+      const clamped =
+        ctx.relativeDelta != null
+          ? Math.max(0, oldLevel + Math.trunc(Number(ctx.relativeDelta) || 0))
+          : absClamped;
       // Optimistic compare-and-set: refuse a stale absolute-set (the operator's
       // page-load level no longer matches the committed one — a transfer landed
       // here, or another edit) instead of clobbering it and dropping the total.

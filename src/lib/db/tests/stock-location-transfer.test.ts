@@ -429,6 +429,33 @@ async function main() {
     check("S7: transfer-into-depot vs ship-decrement — no clobber (depot 10, store 2, total 15)", raceOk);
   }
 
+  // ── S8: LOCK ORDER — a relative ERP adjust (adjustLocationLevel) racing a
+  // ship-decrement (adjustLevelOnly) on the SAME (product, location). Pre-fix the
+  // adjust pre-locked the LEVEL then the TOTAL while the ship locks TOTAL→LEVEL —
+  // an AB/BA cycle that Postgres aborts as a deadlock (40P01). Both now take the
+  // TOTAL before the LEVEL, so neither throws and the two compose: 10 +5 −4 = 11
+  // whatever the interleaving (deterministic — each writer reads the other's
+  // committed level under the lock). ───────────────────────────────────────────
+  {
+    let raceOk = true;
+    let deadlocked = false;
+    for (let i = 0; i < 8; i++) {
+      const p = await mkProduct(`s8-${i}`);
+      const depot = await stockLocationService.create({ name: `${TAG}-s8depot${i}`, is_active: true } as never);
+      await stockLocationService.setLocationLevel({ productId: p, variantId: null }, depot.id, 10);
+      const results = await Promise.allSettled([
+        stockLocationService.adjustLocationLevel({ productId: p, variantId: null }, depot.id, 5, { reason: "api_delta", note: "race-erp" }),
+        stockLocationService.adjustLevelOnly({ productId: p, variantId: null }, depot.id, -4, { reason: "order", note: "race-ship" }),
+      ]);
+      for (const r of results) {
+        if (r.status === "rejected" && /deadlock|40P01/i.test(String(r.reason))) deadlocked = true;
+        if (r.status === "rejected") raceOk = false;
+      }
+      if ((await levelAt(p, depot.id)) !== 11) raceOk = false;
+    }
+    check("S8: ERP adjust vs ship-decrement — no deadlock, composes to 11", raceOk && !deadlocked);
+  }
+
   // ── Round-2 R4: moveStockTx dest-first must NOT re-list a delisted product ──
   //    (guards the round-1 HIGH fix). A whole-stock move source→dest crosses the
   //    cached total through 0; dest-first keeps the intermediate total > 0 so a
