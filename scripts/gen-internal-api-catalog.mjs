@@ -49,6 +49,7 @@ const FILE_MAP = {
   "blog-comments-admin.ts": ["Contenu", "Blog — commentaires (admin)"],
   "footer.ts": ["Contenu", "Pied de page"],
   "nav-builder.ts": ["Contenu", "Navigation (constructeur)"],
+  "reels.ts": ["Contenu", "Vidéos (Reels)"],
   "aid.ts": ["Contenu", "Aide (centre d'aide)"],
   "reviews.ts": ["Contenu", "Avis clients"],
   "review-generation.ts": ["Contenu", "Génération d'avis (IA)"],

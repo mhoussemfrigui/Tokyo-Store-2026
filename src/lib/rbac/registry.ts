@@ -129,6 +129,7 @@ export const PERMISSION_MODULES = [
   // `showcase:update` gate) — there is no create/delete of a showcase.
   { id: "showcase", label: "Vitrines", group: "Contenu & Design", actions: VIEW_EDIT },
   { id: "trust_badges", label: "Badges de confiance", group: "Contenu & Design", actions: CRUD },
+  { id: "reels", label: "Vidéos (Reels)", group: "Contenu & Design", actions: VIEW_EDIT },
   { id: "navigation", label: "Navigation", group: "Contenu & Design", actions: VIEW_EDIT },
   { id: "settings_theme", label: "Thème & design", group: "Contenu & Design", actions: VIEW_EDIT },
   { id: "settings_site", label: "Identité & contact", group: "Contenu & Design", actions: VIEW_EDIT },

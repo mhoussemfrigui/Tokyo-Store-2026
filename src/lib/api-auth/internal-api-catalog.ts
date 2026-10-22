@@ -8,7 +8,7 @@
  * label against the RBAC registry). Regenerate after adding a server action or
  * changing a guard: `node scripts/gen-internal-api-catalog.mjs`.
  *
- * Total actions: 294.
+ * Total actions: 295.
  */
 
 export type InternalActionKind = "write" | "read" | "settings" | "destructive" | "auth";
@@ -558,6 +558,14 @@ export const INTERNAL_API_CATALOG: InternalApiGroup[] = [
         actions: [
           { name: "saveHeaderNavAction", kind: "write", permission: "navigation:update", summary: "Replace-all save of the HEADER nav (the `main` menu's top-level roots + each root's composable dropdown `config`)." },
           { name: "repairNavigationAction", kind: "write", permission: "navigation:update", summary: "Repair the navigation after a content import — the UI twin of `scripts/patch-nav-fix.ts`, idempotent and safe to re-run." },
+        ],
+      },
+      {
+        file: "src/lib/actions/reels.ts",
+        label: "Vidéos (Reels)",
+        permission: "reels:update",
+        actions: [
+          { name: "saveReelsAction", kind: "write", permission: "reels:update", summary: "Save the storefront « Nos vidéos » (/reels) library to the `reels.videos` setting." },
         ],
       },
       {

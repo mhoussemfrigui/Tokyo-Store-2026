@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 
 import { getSettingsMap } from "@/modules/cms/setting/queries";
 import { firstUrlByPlatform, resolveSocialList } from "@/lib/cms/social-list";
-import { ReelsView } from "@/storefront/components/storefront/reels-view";
+import { resolveReelsVideos } from "@/lib/cms/reels-content";
+import { findProductBySlug, type Product } from "@/storefront/lib/catalog";
+import { ReelsView, type ReelCard } from "@/storefront/components/storefront/reels-view";
 
 export const metadata: Metadata = {
   title: "Nos vidéos — unboxings, tests & gaming en Tunisie",
@@ -13,11 +15,22 @@ export const metadata: Metadata = {
 };
 
 export default async function ReelsPage() {
-  // Real store accounts for the reels "Suivre" / "Voir sur …" links — the first
-  // configured link per platform from « Identité & contact » (social.links).
-  // Degrades to {} on any failure → those links fall back to "#" (never invented).
-  const socialUrls = await getSettingsMap()
-    .then((s) => firstUrlByPlatform(resolveSocialList(s)))
-    .catch(() => ({}));
-  return <ReelsView socialUrls={socialUrls} />;
+  // Everything is backend-truth: the reels come from « Contenu & Design → Vidéos »
+  // (reels.videos setting), and the shop's REAL account URLs from « Identité &
+  // contact » (social.links). Both degrade to empty on any failure — never invented.
+  const settings = await getSettingsMap().catch(() => ({}) as Record<string, string | null>);
+  const socialUrls = firstUrlByPlatform(resolveSocialList(settings));
+  const videos: ReelCard[] = resolveReelsVideos(settings).map((r) => ({
+    id: r.id,
+    title: r.title,
+    platform: r.platform,
+    topic: r.topic,
+    videoUrl: r.videoUrl,
+    posterUrl: r.posterUrl,
+    products: r.productSlugs
+      .map((slug) => findProductBySlug(slug))
+      .filter((p): p is Product => Boolean(p))
+      .map((p) => ({ slug: p.slug, title: p.title, price: p.price, image: p.image })),
+  }));
+  return <ReelsView videos={videos} socialUrls={socialUrls} />;
 }
