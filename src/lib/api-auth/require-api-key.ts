@@ -15,13 +15,16 @@ import { actorMayGrantScope, hasScope } from "./scopes";
  *  can't amplify into a per-request audit_log INSERT. The low-volume,
  *  high-signal reasons (missing/expired/scope — incl. a creator who lost the
  *  grant) always emit. */
-// Only the attacker-floodable reasons are sampled; the MEANINGFUL ones
-// (missing / expired / scope) are always emitted, so a real mis-scoped or
-// expired-key incident always leaves a trail. SECURITY TODO: route the sampled
-// `invalid` / `rate_limited` firehose to a SEPARATE high-volume telemetry stream
-// (not audit_log) + surface an aggregate "N invalid keys / hour" metric in the
-// admin panel, so a key-guessing storm is visible without amplifying audit_log.
-const FLOODABLE_REASONS = new Set(["invalid", "rate_limited"]);
+// Only the attacker-floodable reasons are sampled; the ones that require a REAL
+// key (expired / scope) are always emitted, so a mis-scoped or expired-key incident
+// always leaves a full trail. `missing` (a request carrying NO credential at all) is
+// trivially floodable by any UNAUTHENTICATED client, so it is sampled too (ISSUE-21):
+// otherwise an anonymous request storm against a keyed endpoint wrote one audit_log
+// row PER request — amplifying, not catching, the attack. SECURITY TODO: route the
+// sampled `missing` / `invalid` / `rate_limited` firehose to a SEPARATE high-volume
+// telemetry stream (not audit_log) + surface an aggregate "N failed auths / hour"
+// metric, so a key-guessing / anonymous storm is visible without bloating audit_log.
+const FLOODABLE_REASONS = new Set(["missing", "invalid", "rate_limited"]);
 const AUTH_FAIL_SAMPLE_PCT = 5;
 
 /**
