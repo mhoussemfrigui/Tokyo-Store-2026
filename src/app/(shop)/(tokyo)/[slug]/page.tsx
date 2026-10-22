@@ -28,6 +28,8 @@ import { resolveOfferValidity } from "@/lib/seo/offer-validity";
 import { getAllSettingsServerOnly } from "@/lib/api/cms";
 import { getSiteContacts, footerEntries } from "@/lib/cms/contact-list";
 import { pageService } from "@/modules/cms/page/service";
+import { resolveMediaSocialUrl } from "@/modules/media";
+import { mediaService } from "@/modules/media/service";
 import {
   getCollectionPageConfig,
   isCollectionSlug,
@@ -94,6 +96,8 @@ type CmsPageRow = {
   meta_title: string | null;
   meta_description: string | null;
   noindex: boolean;
+  og_image_media_id: string | null;
+  canonical_url: string | null;
 };
 type Resolved =
   | { kind: "collection"; slug: CollectionSlug; config: CollectionPageConfig }
@@ -160,6 +164,8 @@ async function resolveSlug(slug: string): Promise<Resolved | null> {
         meta_title: cmsPage.meta_title,
         meta_description: cmsPage.meta_description,
         noindex: cmsPage.noindex,
+        og_image_media_id: cmsPage.og_image_media_id,
+        canonical_url: cmsPage.canonical_url,
       },
     };
   }
@@ -186,13 +192,23 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   if (resolved.kind === "page") {
     const p = resolved.page;
     const title = p.meta_title?.trim() || p.title;
-    return {
+    // Admin SEO tab overrides that used to be dead on the page branch: the OG
+    // image (médiathèque id → social-card URL) and the canonical override. Built
+    // through buildPageMetadata (same path as the product branch) so the title
+    // template + OG/twitter block are applied consistently, then the canonical
+    // override (blank → own URL) wins over the default /slug.
+    const ogMedia = p.og_image_media_id
+      ? await mediaService.findById(p.og_image_media_id).catch(() => null)
+      : null;
+    const base = await buildPageMetadata({
       title,
       description: p.meta_description ?? undefined,
-      alternates: { canonical: `/${resolved.slug}` },
-      ...(p.noindex ? { robots: { index: false, follow: true } } : {}),
-      openGraph: { title, description: p.meta_description ?? undefined, url: `/${resolved.slug}`, type: "website" },
-    };
+      path: `/${resolved.slug}`,
+      index: p.noindex ? false : undefined,
+      image: ogMedia ? resolveMediaSocialUrl(ogMedia) : null,
+    });
+    const canonical = p.canonical_url?.trim();
+    return canonical ? { ...base, alternates: { ...base.alternates, canonical } } : base;
   }
 
   if (resolved.kind === "collection") {
