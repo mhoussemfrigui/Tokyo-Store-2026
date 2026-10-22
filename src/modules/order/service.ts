@@ -171,6 +171,13 @@ class OrderService {
         and(
           eq(orders.status, "pending"),
           isNull(orders.confirmed_at),
+          // A PAID order is never abandoned — an operator who hand-marked a COD
+          // order paid (paid_at set) without yet advancing it to « En préparation »
+          // must not have it auto-cancelled + restocked after 48 h. (Online captures
+          // with a gateway reference are additionally guarded by the sweep's
+          // assertPendingOnlineOrderNotCaptured pre-flight; this also covers COD /
+          // no-reference manual payments, which short-circuit that pre-flight.)
+          isNull(orders.paid_at),
           isNull(orders.external_ref),
           or(
             eq(orders.delivery_method, "home_delivery"),

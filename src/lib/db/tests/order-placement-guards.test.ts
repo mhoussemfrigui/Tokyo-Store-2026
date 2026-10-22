@@ -392,6 +392,7 @@ async function main() {
         payment_method: string;
         delivery_method: string;
         confirmed_at?: Date;
+        paid_at?: Date;
         external_ref?: string;
         pickup_location_name?: string;
       },
@@ -437,6 +438,13 @@ async function main() {
       delivery_method: "in_store",
       pickup_location_name: `${TAG} Boutique`,
     });
+    // An operator hand-marked this COD order paid (paid_at set) but has not yet
+    // advanced it to « En préparation » — it must NOT be auto-cancelled/restocked.
+    const codPaid = await mk("cod-paid", {
+      payment_method: "cod",
+      delivery_method: "home_delivery",
+      paid_at: new Date(),
+    });
 
     const candidates = new Set((await orderService.listAbandonedPending(48, 1000)).map((o) => o.id));
     check("unconfirmed COD home order is a sweep candidate", candidates.has(codUnconfirmed));
@@ -446,6 +454,7 @@ async function main() {
     check("operator-CONFIRMED COD order is NOT a candidate", !candidates.has(codConfirmed));
     check("caisse « Non payé » (in_store COD) is NOT a candidate", !candidates.has(caisseUnpaid));
     check("ERP-pushed order (external_ref) is NOT a candidate", !candidates.has(erpPushed));
+    check("hand-marked-PAID COD order is NOT a candidate", !candidates.has(codPaid));
 
     const swept = await workflows.order.sweepAbandonedOrders({}, { actorUserId: null });
     check("sweep ran", swept.ok);
@@ -457,6 +466,7 @@ async function main() {
     check("…confirmed COD survives (pending)", (await statusOf(codConfirmed)) === "pending");
     check("…caisse non payé survives (pending)", (await statusOf(caisseUnpaid)) === "pending");
     check("…ERP order survives (pending)", (await statusOf(erpPushed)) === "pending");
+    check("…hand-marked-paid COD survives (pending)", (await statusOf(codPaid)) === "pending");
 
     // ── 4. Abuse guards ──────────────────────────────────────────────────────
     console.log("abuse guards");
