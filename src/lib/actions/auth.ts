@@ -132,14 +132,20 @@ export async function signinAction(
   // identical regardless of whether the account exists, so it's not an
   // enumeration/lockout oracle.
   const ip = (await ipFromHeaders()) ?? "anon";
+  // Per-IP pre-check ONLY. A per-ACCOUNT *pre-check* was an availability DoS
+  // (ISSUE-17): anyone could lock out any account — including the super-admin —
+  // just by burning its budget with wrong guesses, which blocked the real user's
+  // CORRECT password too. We cap the single source here; distributed credential-
+  // stuffing is bounded by this cap + the password policy. The per-account counter
+  // is now applied AFTER the attempt and ONLY on failure (below), so it can never
+  // block a correct password — it throttles repeated WRONG guesses and feeds the
+  // Sécurité signal. (A complete "block wrong guesses but still admit the real
+  // user after N failures" needs step-up auth / CAPTCHA — tracked as a follow-up.)
   const ipRl = await checkRateLimit({ bucket: `signin:ip:${ip}`, max: 8, windowSeconds: 60 });
-  const acctRl = email
-    ? await checkRateLimit({ bucket: `signin:acct:${email}`, max: 15, windowSeconds: 900 })
-    : { ok: true };
-  if (!ipRl.ok || !acctRl.ok) {
+  if (!ipRl.ok) {
     await bus
       .emit("auth.rate_limited", {
-        kind: !ipRl.ok ? "signin_ip" : "signin_account",
+        kind: "signin_ip",
         subjectMasked: email ? maskEmail(email) : null,
         ip: ip === "anon" ? null : ip,
       })
@@ -161,6 +167,31 @@ export async function signinAction(
   );
 
   if (!result.ok) {
+    // Count the FAILED attempt against the account (a correct password returns
+    // past this block, so it is NEVER rate-limited). When the per-account failure
+    // budget is spent, show the neutral rate-limit message to further WRONG guesses
+    // and raise the Sécurité signal — without ever locking the real user out.
+    if (email) {
+      const acctRl = await checkRateLimit({
+        bucket: `signin:acct:${email}`,
+        max: 15,
+        windowSeconds: 900,
+      });
+      if (!acctRl.ok) {
+        await bus
+          .emit("auth.rate_limited", {
+            kind: "signin_account",
+            subjectMasked: maskEmail(email),
+            ip: ip === "anon" ? null : ip,
+          })
+          .catch(() => {});
+        return {
+          ok: false,
+          error: "rate_limited",
+          message: "Trop de tentatives. Réessayez dans quelques minutes.",
+        };
+      }
+    }
     return {
       ok: false,
       error: result.error,
