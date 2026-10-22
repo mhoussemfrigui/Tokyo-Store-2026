@@ -10,12 +10,13 @@ import { bus } from "../bus";
 /**
  * Welcome-coupon subscriber for `newsletter.subscribed`.
  *
- * When a shopper joins the newsletter we look up a live promotion whose code
- * is configured by the `newsletter.welcome_code` site setting (case-insensitive,
- * trigger_kind=code), falling back to `WELCOME10` when the setting is unset.
- * If a matching live promotion exists we email it to them; otherwise we no-op
- * silently — the subscriber is best-effort and never fails the subscription
- * action.
+ * When a shopper joins the newsletter we look up a live promotion whose code the
+ * operator configured in the `newsletter.welcome_code` site setting (case-
+ * insensitive, trigger_kind=code). If the setting is UNSET we send nothing — there
+ * is NO hardcoded fallback code (advertising a code the operator never chose, which
+ * may map to an unrelated promo or to nothing, is a fabrication). If the setting
+ * names a code but no matching LIVE promotion exists, we also no-op. Best-effort —
+ * never fails the subscription action.
  *
  * The admin still creates / edits the actual promotion through the normal
  * /admin/promotions surface; this setting only chooses WHICH code we look up.
@@ -30,9 +31,8 @@ import { bus } from "../bus";
  * the coupon.
  */
 
-/** Setting key for the welcome-coupon promo code, with a hardcoded fallback. */
+/** Setting key for the welcome-coupon promo code. Unset ⇒ no welcome coupon sent. */
 const WELCOME_CODE_SETTING_KEY = "newsletter.welcome_code";
-const WELCOME_CODE_FALLBACK = "WELCOME10";
 
 export function registerWelcomeCouponSubscriber() {
   bus.on("newsletter.subscribed", async ({ payload }) => {
@@ -42,8 +42,10 @@ export function registerWelcomeCouponSubscriber() {
     try {
       if (!(await isFlowEnabled("newsletter_coupon"))) return;
       const settings = await getSettingsMap();
-      const welcomeCode =
-        settings[WELCOME_CODE_SETTING_KEY]?.trim() || WELCOME_CODE_FALLBACK;
+      const welcomeCode = settings[WELCOME_CODE_SETTING_KEY]?.trim();
+      // No fabricated fallback: only send a welcome coupon when the operator has
+      // explicitly configured a code (and only if it maps to a LIVE promotion).
+      if (!welcomeCode) return;
       const promo = await promotionService.findLiveByCode(welcomeCode);
       if (!promo || !promo.code) return;
 
