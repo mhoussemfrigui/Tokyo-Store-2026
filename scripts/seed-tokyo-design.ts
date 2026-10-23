@@ -11,6 +11,8 @@
  */
 import { Pool } from "pg";
 
+import { assertDestructiveTargetAllowed } from "./_safety-guard";
+
 const pool = new Pool({
   connectionString:
     process.env.DATABASE_URL ||
@@ -19,6 +21,7 @@ const pool = new Pool({
 const q = (text: string, params: unknown[] = []) => pool.query(text, params);
 
 async function main() {
+  assertDestructiveTargetAllowed(process.env.DATABASE_URL, "DELETE nav banners + rewrite home_hero");
   // ── pick distinct WATCH images from the médiathèque: only images attached to
   //    Homme/Femme products (real watches), excluding Zippo lighters / accessories
   //    so the hero + blocks never show a briquet. Falls back to any product image

@@ -26,6 +26,8 @@
  */
 import { Pool } from "pg";
 
+import { assertDestructiveTargetAllowed } from "./_safety-guard";
+
 const DRY = process.argv.includes("--dry");
 
 const pool = new Pool({
@@ -82,6 +84,7 @@ async function ensureFooterLink(menuKey: string, label: string, href: string): P
 }
 
 async function main() {
+  assertDestructiveTargetAllowed(process.env.DATABASE_URL, "DELETE nav_items (dedup + /aide removal)");
   // ── 1. Deduplicate nav_items ───────────────────────────────────────────────
   const dupCount = Number(
     (

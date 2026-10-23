@@ -19,6 +19,7 @@ import fs from "node:fs";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/client";
+import { assertDestructiveTargetAllowed } from "./_safety-guard";
 import { parseGoogleFeed } from "@/lib/import/parse-google-feed";
 import { slugify } from "@/lib/slug";
 import { categoryService } from "@/modules/catalog/category/service";
@@ -28,6 +29,7 @@ const FEED =
 const SEP = "\u0000";
 
 async function main(): Promise<void> {
+  assertDestructiveTargetAllowed(process.env.DATABASE_URL, "soft-delete ALL categories/brands/products");
   const xml = fs.readFileSync(FEED, "utf8");
   const { products, rowErrors } = parseGoogleFeed(xml);
   console.log(`[categories] parsed ${products.length} products (${rowErrors.length} row errors)`);

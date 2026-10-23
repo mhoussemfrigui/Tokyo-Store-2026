@@ -12,6 +12,7 @@
  */
 import { Pool } from "pg";
 
+import { assertDestructiveTargetAllowed } from "./_safety-guard";
 import {
   buildSeedBlocksJson,
   CONTACT_DEFAULTS,
@@ -27,6 +28,7 @@ const pool = new Pool({
 const q = (t: string, p: unknown[] = []) => pool.query(t, p);
 
 async function main() {
+  assertDestructiveTargetAllowed(process.env.DATABASE_URL, "DELETE + reseed system pages");
   // A few watch packshots (Homme/Femme, non-Zippo) for the page heroes.
   const media = (
     await q(
