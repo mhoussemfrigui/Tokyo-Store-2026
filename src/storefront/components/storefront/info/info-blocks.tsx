@@ -558,6 +558,7 @@ function renderBlock(block: PageBlock, ctx: Ctx): ReactNode {
     case "hero": {
       if (!h.title && !c.body) return null;
       const img = pick(media, c.image, h.title ?? "");
+      const imgMobile = pick(media, c.imageMobile, h.title ?? "");
       // Layout variant (HERO_LAYOUTS): centered (the parser's default), statement
       // (faint watermark numeral), split (text beside a cover image), compact
       // (tighter, no cover). Was ignored (M-04 part 2). The "" fallback is only
@@ -584,12 +585,19 @@ function renderBlock(block: PageBlock, ctx: Ctx): ReactNode {
           )}
         </div>
       );
-      const cover = img ? (
-        <div className="aspect-[16/7] overflow-hidden rounded-[28px] bg-muted">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={img.src} alt={img.alt} loading="lazy" decoding="async" className="size-full object-cover" />
-        </div>
-      ) : null;
+      // The hero photo, swapping to the optional mobile crop at ≤640px (both image
+      // slots exist in the composer; imageMobile was previously ignored — M-04 pt2).
+      const heroImage = (aspectCls: string) =>
+        img ? (
+          <div className={cn("overflow-hidden rounded-[28px] bg-muted", aspectCls)}>
+            <picture className="block size-full">
+              {imgMobile && <source media="(max-width: 640px)" srcSet={imgMobile.src} />}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={img.src} alt={img.alt} loading="lazy" decoding="async" className="size-full object-cover" />
+            </picture>
+          </div>
+        ) : null;
+      const cover = heroImage("aspect-[16/7]");
 
       // split — text beside a cover image (the hero composer has no image-side
       // control, so the image always sits on the right; editorial is the block
@@ -599,10 +607,7 @@ function renderBlock(block: PageBlock, ctx: Ctx): ReactNode {
           <section className="relative overflow-hidden rounded-[clamp(24px,4vw,36px)] bg-card p-[clamp(24px,4vw,48px)]">
             <div className="grid items-center gap-[clamp(24px,4vw,48px)] md:grid-cols-2">
               <div>{text}</div>
-              <div className="aspect-[4/3] overflow-hidden rounded-[28px] bg-muted">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img.src} alt={img.alt} loading="lazy" decoding="async" className="size-full object-cover" />
-              </div>
+              {heroImage("aspect-[4/3]")}
             </div>
           </section>
         );
