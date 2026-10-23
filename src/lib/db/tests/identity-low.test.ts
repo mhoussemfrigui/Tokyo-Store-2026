@@ -245,20 +245,22 @@ function sourceInvariants() {
   );
   check("wiring: lib/wishlist/config exports favoritesPublicEnabled", typeof favoritesPublicEnabled === "function");
 
-  // /account: the Tokyo account page renders for ANY signed-in user — it never
-  // requires a customer_profile row (it gates only on getCurrentUser(), builds the
-  // session from name + email, and defaults orders to []), and it shows EXACT
-  // order totals. The old (shell) account-client.tsx (Profil-tab + ProfilePanel +
-  // `money.exact`) was removed in the storefront swap; the account surface is now
-  // (tokyo)/account/page.tsx → AccountView, with totals formatted server-side.
+  // /account: the Tokyo account page renders for ANY signed-in user — it gates on
+  // getCurrentUser() and treats the customer_profile as OPTIONAL: a signed-in user
+  // with no linked profile still renders (the profile read is `.catch(() => null)`
+  // and the no-profile path passes `profile={null}` to AccountView). It shows EXACT
+  // order totals via `minorToDinars` (millimes → dinars, no float rounding); the old
+  // (shell) account-client.tsx (`money.exact`) was removed in the storefront swap.
   const account = src("src/app/(shop)/(tokyo)/account/page.tsx");
   check(
-    "account: page renders without a customer profile (gates on getCurrentUser, no profile fetch)",
-    /getCurrentUser\(\)/.test(account) && !/customerService|@\/modules\/customer\/service/.test(account),
+    "account: gates on getCurrentUser and the customer profile is OPTIONAL (renders for any signed-in user)",
+    /getCurrentUser\(\)/.test(account) &&
+      /\.catch\(\(\) => null\)/.test(account) &&
+      /profile=\{null\}/.test(account),
   );
   check(
-    "account: order totals use the exact-money helper (no rounding)",
-    /formatDinars\(minorToDinars\(o\.total_cents\)\)/.test(account),
+    "account: order totals use the exact millimes→dinars helper (no float rounding)",
+    /minorToDinars\(/.test(account) && /o\.total_cents/.test(account) && !/Math\.round|toFixed/.test(account),
   );
 }
 
