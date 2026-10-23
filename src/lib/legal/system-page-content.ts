@@ -110,8 +110,8 @@ export const SYSTEM_PAGE_DEFAULTS: Record<SystemPageSlug, SystemPageDefault> = {
       ne peut engager la responsabilité de Tokyo Store.</p>
 
       <h2>Droit de rétractation et retours</h2>
-      <p>Vous disposez d'un délai pour demander le retour d'une montre non portée,
-      complète avec son écrin, ses étiquettes et sa protection d'origine, dans les
+      <p>Vous disposez d'un délai pour demander le retour d'un produit non utilisé,
+      complet avec son emballage, ses étiquettes et sa protection d'origine, dans les
       conditions précisées lors de la commande. Certains produits (appareils
       personnalisés ou gravés, articles dont la protection a été retirée) peuvent
       être exclus du retour. Pour toute demande de retour ou de remboursement,
@@ -220,7 +220,7 @@ export const SYSTEM_PAGE_DEFAULTS: Record<SystemPageSlug, SystemPageDefault> = {
 
       <h2>Éditeur du site</h2>
       <p>Le site est édité par <strong>Tokyo Store</strong>, commerce électronique
-      de montres et d'high-tech en Tunisie. Les coordonnées de contact (téléphone,
+      de produits high-tech en Tunisie. Les coordonnées de contact (téléphone,
       e-mail, adresse) sont disponibles sur la page Support &amp; contact. La
       raison sociale, l'adresse du siège et le matricule fiscal complets sont
       indiqués sur les documents commerciaux et peuvent être complétés ici depuis

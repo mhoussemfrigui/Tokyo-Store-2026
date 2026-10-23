@@ -88,8 +88,8 @@ export type PageSeed = {
  *  deploy has no product imagery yet (the block then renders its graceful no-image state). */
 export const heroImageRef = (heroIndex: number, alt = ""): SeedImageRef => ({ heroIndex, alt });
 
-/** Reference a médiathèque image by its FILENAME (e.g. the demo lifestyle photos
- *  « watch-trio.jpg »). Resolved at seed time; dropped when the file isn't in the
+/** Reference a médiathèque image by its FILENAME (e.g. a demo lifestyle photo
+ *  « boutique.jpg »). Resolved at seed time; dropped when the file isn't in the
  *  médiathèque (the block then falls back to its typographic no-image layout). */
 export const mediaFileRef = (mediaFile: string, alt = ""): SeedImageRef => ({ mediaFile, alt });
 

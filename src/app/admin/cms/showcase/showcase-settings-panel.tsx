@@ -157,7 +157,7 @@ function ShowcaseTabBody({
             name={f("cta_href")}
             label="Bouton — lien (optionnel)"
             defaultValue={config.ctaHref}
-            placeholder="/montres-homme"
+            placeholder="/smartphones"
           />
         </div>
         <div>

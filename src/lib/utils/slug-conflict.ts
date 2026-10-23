@@ -13,7 +13,7 @@ import { findShadowingRedirect } from "@/lib/redirects/guard";
 /**
  * Centralised slug conflict checker.
  *
- * Since URLs are now flat ( `/montres`, `/submariner`, `/about` —
+ * Since URLs are now flat ( `/smartphones`, `/casques`, `/about` —
  * all served from the same top-level namespace), a slug must be unique
  * across **every** entity that can sit on a public URL: CMS pages,
  * categories, products, brands. It must also avoid colliding with any
@@ -26,7 +26,7 @@ import { findShadowingRedirect } from "@/lib/redirects/guard";
  *
  * Use this from every entity-create / entity-update workflow that controls
  * a public-URL slug. The function returns a structured result so the
- * caller can render a precise error ("'montres' is already used by a
+ * caller can render a precise error ("'smartphones' is already used by a
  * category") instead of a generic "Slug déjà utilisé."
  *
  * Trade-off: checking 5 entities serially adds up to 5 round-trips per

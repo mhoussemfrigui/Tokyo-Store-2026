@@ -65,9 +65,9 @@ export function SearchAliasesPanel({
         <AdminNote className="max-w-2xl">
           Les <span className="font-semibold text-foreground">alias</span> élargissent la recherche
           sans toucher au catalogue : « quand on cherche un <span className="font-medium text-foreground">terme</span>,
-          chercher aussi son <span className="font-medium text-foreground">équivalent</span> ». Ex. «&nbsp;chrono&nbsp;»
-          trouve «&nbsp;chronographe&nbsp;», «&nbsp;leather strap&nbsp;» trouve «&nbsp;bracelet cuir&nbsp;». La
-          correspondance se fait mot à mot, donc une règle «&nbsp;chrono → chronographe&nbsp;» s'applique
+          chercher aussi son <span className="font-medium text-foreground">équivalent</span> ». Ex. «&nbsp;earbuds&nbsp;»
+          trouve «&nbsp;écouteurs&nbsp;», «&nbsp;powerbank&nbsp;» trouve «&nbsp;batterie externe&nbsp;». La
+          correspondance se fait mot à mot, donc une règle «&nbsp;earbuds → écouteurs&nbsp;» s'applique
           partout dans la requête.
         </AdminNote>
         <SeedDefaultsButton counts={counts} />
@@ -81,7 +81,7 @@ export function SearchAliasesPanel({
           <p className="mt-3 font-semibold">Aucun alias pour le moment.</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
             Ajoutez-en un ci-dessus, ou chargez les alias par défaut pour l'high-tech
-            (chrono→chronographe, strap→bracelet, étanche, abréviations de marques…).
+            (earbuds→écouteurs, powerbank→batterie externe, coque→étui, abréviations de marques…).
           </p>
         </div>
       ) : (

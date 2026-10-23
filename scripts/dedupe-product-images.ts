@@ -2,17 +2,17 @@
  * De-duplicate per-product gallery images that are the SAME source photo at
  * different resolutions.
  *
- * The demo catalogue was imported from the citywatch feed, whose `image_link`
+ * The demo catalogue was imported from the tokyostore.xml feed, whose `image_link`
  * and `additional_image_link` frequently point at the SAME photo served at two
  * sizes (e.g. an 800x800 main + a 250x250 thumbnail). The importer attached
- * both, so a product's gallery shows the same watch twice — once crisp, once
+ * both, so a product's gallery shows the same photo twice — once crisp, once
  * blurry. This script collapses those duplicates.
  *
  * For each product it groups that product's `product_media` rows by the
  * NORMALIZED base filename of `media.storage_key`:
  *
- *   products/<uuid>-citywatch-12345.jpg        →  citywatch-12345
- *   products/<uuid>-citywatch-12345-nobg.jpg   →  citywatch-12345   (white-bg sweep)
+ *   products/<uuid>-smartec-v2-noir.jpg        →  smartec-v2-noir
+ *   products/<uuid>-smartec-v2-noir-nobg.jpg   →  smartec-v2-noir   (white-bg sweep)
  *
  * i.e. strip the `<scope>/<uuid>-` prefix, strip a trailing `-nobg`, strip the
  * extension. Within any group that has >1 link it KEEPS only the largest media

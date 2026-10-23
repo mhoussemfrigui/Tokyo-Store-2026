@@ -1,8 +1,9 @@
 /**
- * Seed the watch demo: runs the demo import workflow (seeds categories
- * Homme/Femme/Enfants/Accessoires + brands + banners + settings + nav + FAQs),
- * then kicks the product import from public/demo-assets/citywatch.xml and WAITS
- * on the import job so the detached runner isn't killed on process exit.
+ * Seed the demo store: runs the demo import workflow (seeds the high-tech
+ * categories + brands + banners + settings + nav + FAQs), then kicks the product
+ * import from public/demo-assets/tokyostore.xml (the live Tokyo Store catalogue
+ * export) and WAITS on the import job so the detached runner isn't killed on
+ * process exit.
  *
  *   pnpm tsx --conditions=react-server --env-file-if-exists=.env.local scripts/seed-demo.ts
  */

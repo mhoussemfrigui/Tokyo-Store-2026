@@ -3,7 +3,7 @@
  * promo chip hrefs, nav items, settings.*, etc.).
  *
  * Admin can legitimately enter:
- *   - Same-origin paths:  /montres, /submariner, /help
+ *   - Same-origin paths:  /smartphones, /casques, /help
  *   - Anchors:            #section
  *   - Mailto:             mailto:support@tokyostore.tn
  *   - Tel:                tel:+21670000000

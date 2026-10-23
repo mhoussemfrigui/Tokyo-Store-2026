@@ -5,7 +5,7 @@ import { z } from "zod";
  * preview and the server-stored value share ONE algorithm and can never
  * disagree. Re-exported by src/workflows/helpers.ts for server callers.
  *
- *   "Casio G-SHOCK Chronographe (Édition!)" → "casio-g-shock-chronographe-edition"
+ *   "Xiaomi Redmi Note 13 Pro (256 Go!)" → "xiaomi-redmi-note-13-pro-256-go"
  *
  * Conservative — won't touch already-clean strings.
  */

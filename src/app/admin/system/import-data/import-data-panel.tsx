@@ -32,7 +32,7 @@ import { PurgeRelaunchCard } from "./purge-relaunch-card";
  * Three bundled one-click targets drive the shared data-jobs runner:
  *   • Tout importer  → `all`     — tree + content snapshot + catalog + redirects
  *   • Contenu        → `content` — the CMS content snapshot applied verbatim
- *   • Produits       → `products`— tree + the bundled 447-watch catalog + redirects
+ *   • Produits       → `products`— tree + the bundled high-tech catalog + redirects
  * File/URL uploads use the embedded `ImportPanel` (its own action). ONE activity
  * list (this panel's) covers every import job — the embedded panel hides its own
  * history and pings `refreshJobs` after a launch.

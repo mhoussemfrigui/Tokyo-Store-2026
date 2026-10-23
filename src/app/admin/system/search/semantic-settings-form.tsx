@@ -40,7 +40,7 @@ export function SemanticSettingsForm({
       <fieldset disabled={!canManage} className="m-0 min-w-0 space-y-8 border-0 p-0">
         <FieldSection
           title="Recherche sémantique (IA)"
-          description="La recherche vectorielle (pgvector) trouve les produits par le SENS, pas seulement par mots-clés — « montre de plongée » remonte un « diver automatique », « chrono acier » privilégie les CHRONOGRAPHES en acier sur les bracelets. Nécessite un fournisseur d'embeddings configuré dans Système → IA & Automation → onglet Embeddings, puis la vectorisation du catalogue (ci-dessous). Sans effet tant qu'elle est désactivée : la recherche reste identique."
+          description="La recherche vectorielle (pgvector) trouve les produits par le SENS, pas seulement par mots-clés — « écouteurs sans fil » remonte des « AirPods », « smartphone photo » privilégie les téléphones au bon capteur photo. Nécessite un fournisseur d'embeddings configuré dans Système → IA & Automation → onglet Embeddings, puis la vectorisation du catalogue (ci-dessous). Sans effet tant qu'elle est désactivée : la recherche reste identique."
         >
           <ToggleField
             name="search.semantic_enabled"
@@ -55,7 +55,7 @@ export function SemanticSettingsForm({
             min={0}
             max={10}
             step={0.5}
-            helper="Importance de la similarité de sens dans le score (0 à 10 ; 0 n'utilise le vectoriel que pour élargir les résultats — au-delà de la similarité minimale ci-dessous — sans peser sur le classement). Par défaut : 1. Baissez-le si des bracelets/accessoires remontent trop haut ; montez-le pour privilégier le sens."
+            helper="Importance de la similarité de sens dans le score (0 à 10 ; 0 n'utilise le vectoriel que pour élargir les résultats — au-delà de la similarité minimale ci-dessous — sans peser sur le classement). Par défaut : 1. Baissez-le si des accessoires non pertinents remontent trop haut ; montez-le pour privilégier le sens."
           />
           <NumberField
             name="search.semantic_min_similarity"

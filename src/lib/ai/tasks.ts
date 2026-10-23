@@ -8,11 +8,11 @@
  *   - the action merges the DB override with the code default
  *     (`getFeaturePrompt`) before calling the provider.
  *
- * The defaults are strong, French, and tuned for a Tunisian LUXURY watch /
- * high-tech e-commerce store, encoding the owner's 2026 SEO/AEO/GEO playbooks:
- * answer-first openings, a restrained luxury voice (no hype/promo), a retailer
+ * The defaults are strong, French, and tuned for a Tunisian high-tech
+ * e-commerce store, encoding the owner's 2026 SEO/AEO/GEO playbooks:
+ * answer-first openings, a restrained premium voice (no hype/promo), a retailer
  * NON-COMMODITY point of view, FAB (feature→advantage→benefit), per-block
- * anti-redundancy, a canonical watch-attribute vocabulary, and a conditional
+ * anti-redundancy, a canonical tech-attribute vocabulary, and a conditional
  * Tunisia commerce clause. They are NON-secret editorial text (no env vars, no
  * encryption).
  *
@@ -55,29 +55,30 @@ export type AiFeature = {
 
 /* ───────────────────── shared grounding clauses (2026 playbooks) ─────────────
  * Composed into PRODUCT_GROUNDING / TAXONOMY_GROUNDING / SEO_GROUNDING below so
- * the luxury voice, answer-first rule, retailer POV, watch vocabulary and
+ * the premium voice, answer-first rule, retailer POV, tech vocabulary and
  * anti-invention rule are declared ONCE and stay consistent across every text
  * prompt (killing the earlier per-prompt drift). Order matters only for reading;
  * the model receives the concatenation. */
 
-/** Restrained luxury-horology voice (playbook section 6.4): no hype, no promo. */
+/** Restrained premium high-tech voice (playbook section 6.4): no hype, no promo. */
 const LUXURY_VOICE =
-  "Écris en français clair et naturel, avec le ton SOBRE et précis d'un spécialiste high-tech de luxe : " +
-  "pas de points d'exclamation, jamais « pas cher » ni de logique de promotion/remise, sensoriel mais mesuré, " +
+  "Écris en français clair et naturel, avec le ton SOBRE et précis d'un spécialiste high-tech premium : " +
+  "pas de points d'exclamation, jamais « pas cher » ni de logique de promotion/remise, concret mais mesuré, " +
   "sans superlatifs creux, sans bourrage de mots-clés ni emojis — laisse les faits et les caractéristiques parler. ";
 
 /** Inverted-pyramid / AEO rule: the first sentence answers the implied question. */
 const ANSWER_FIRST =
-  "Commence TOUJOURS par la réponse directe à l'intention (une définition « … est une montre … pour … », un « Oui/Non », ou un chiffre clé), puis développe. ";
+  "Commence TOUJOURS par la réponse directe à l'intention (une définition « … est un … pour … », un « Oui/Non », ou un chiffre clé), puis développe. ";
 
 /** The non-commodity retailer layer Google's 2026 guide rewards — context-gated. */
 const NON_COMMODITY =
-  "Ne recopie JAMAIS une fiche fabricant : apporte la valeur d'un détaillant (à qui cela convient et à qui non, confort au poignet, service/SAV, authenticité, revendeur agréé) UNIQUEMENT si le contexte le fournit. ";
+  "Ne recopie JAMAIS une fiche fabricant : apporte la valeur d'un détaillant (à qui cela convient et à qui non, adéquation à l'usage réel, service/SAV, authenticité, revendeur agréé) UNIQUEMENT si le contexte le fournit. ";
 
-/** Canonical watch-attribute vocabulary (keeps specificity consistent). */
-const WATCH_ATTRIBUTES =
-  "Quand elles figurent dans le contexte, privilégie les caractéristiques high-tech qui comptent : mouvement/calibre (automatique, quartz, manuel), " +
-  "diamètre du boîtier (mm), matières (acier, or, titane, verre saphir), étanchéité (ATM/m), réserve de marche, référence, bracelet (matière, largeur d'entrecorne), papiers et boîte. ";
+/** Canonical tech-attribute vocabulary (keeps specificity consistent). */
+const TECH_ATTRIBUTES =
+  "Quand elles figurent dans le contexte, privilégie les caractéristiques techniques qui comptent : processeur/puce et performances, mémoire (RAM) et stockage, " +
+  "écran (taille en pouces, type de dalle, résolution, taux de rafraîchissement), autonomie et charge (mAh, W), connectivité (5G, Wi-Fi, Bluetooth, ports), " +
+  "capteurs et appareil photo (MP, stabilisation), système/version, compatibilité, dimensions et poids, matériaux, indice de protection (IP), garantie et accessoires fournis. ";
 
 /** Conditional Tunisian commerce context — only where relevant, only from context. */
 const TUNISIA_CONTEXT =
@@ -98,12 +99,12 @@ const FAQ_RULES =
 // Grounding prepended to every PRODUCT text prompt.
 const PRODUCT_GROUNDING =
   "Tu es rédacteur e-commerce expert pour Tokyo Store, une maison d'high-tech tunisienne, " +
-  "et tu écris pour un VRAI amateur de montres COMME pour les moteurs de recherche et d'IA de 2026 (Google, AI Overviews, assistants) : " +
-  "réponds à l'intention de recherche, reste factuel et spécifique, démontre l'expertise (mouvement, boîtier, bracelet, étanchéité, usage réel, bénéfices). " +
+  "et tu écris pour un VRAI passionné de high-tech COMME pour les moteurs de recherche et d'IA de 2026 (Google, AI Overviews, assistants) : " +
+  "réponds à l'intention de recherche, reste factuel et spécifique, démontre l'expertise (specs techniques, performances, autonomie, qualité de fabrication, usage réel, bénéfices). " +
   LUXURY_VOICE +
   ANSWER_FIRST +
   NON_COMMODITY +
-  WATCH_ATTRIBUTES +
+  TECH_ATTRIBUTES +
   TUNISIA_CONTEXT +
   NEVER_INVENT;
 
@@ -111,11 +112,11 @@ const PRODUCT_GROUNDING =
 // same craft, but written from a DETAILER's point of view for a landing page.
 const TAXONOMY_GROUNDING =
   "Tu es rédacteur e-commerce expert pour Tokyo Store, une maison d'high-tech tunisienne, " +
-  "et tu rédiges des pages de référencement (catégorie, marque) pour un amateur de montres COMME pour les moteurs de recherche et d'IA de 2026. " +
+  "et tu rédiges des pages de référencement (catégorie, marque) pour un passionné de high-tech COMME pour les moteurs de recherche et d'IA de 2026. " +
   "Écris du point de vue d'un DÉTAILLANT (cite les faits de marque — année de fondation, pays — comme des faits attribués, uniquement depuis le contexte). " +
   LUXURY_VOICE +
   ANSWER_FIRST +
-  WATCH_ATTRIBUTES +
+  TECH_ATTRIBUTES +
   TUNISIA_CONTEXT +
   NEVER_INVENT;
 
@@ -126,7 +127,7 @@ const SEO_GROUNDING =
   "Tu es spécialiste SEO/AEO 2026 pour Tokyo Store, une maison d'high-tech tunisienne. " +
   LUXURY_VOICE +
   "Rédige en français, aligné sur l'intention de recherche. Respecte STRICTEMENT les limites de longueur. " +
-  "La meta description suit le schéma bénéfice + preuve + offre : la preuve (mouvement, matière, revendeur agréé, avis) et l'offre (livraison, paiement à la livraison, garantie) " +
+  "La meta description suit le schéma bénéfice + preuve + offre : la preuve (specs clés, revendeur agréé, avis) et l'offre (livraison, paiement à la livraison, garantie) " +
   "UNIQUEMENT si présentes dans le contexte, jamais inventées. Le meta title n'est pas une reprise de la description — son rôle est le taux de clic. " +
   "N'inclus PAS le nom de la boutique (« Tokyo Store ») ni « en Tunisie » dans le meta title — le modèle de titre du site les ajoute automatiquement (sinon le titre est dupliqué : « … · Tokyo Store · Tokyo Store »). " +
   NEVER_INVENT;
@@ -141,9 +142,9 @@ const PRODUITS_TASKS: AiTask[] = [
     defaultSystemPrompt:
       PRODUCT_GROUNDING +
       "TÂCHE : rédige la DESCRIPTION COURTE (l'accroche affichée sous le titre). " +
-      "Une à deux phrases, ~160 caractères maximum. C'est l'ACCROCHE — une respiration : dis directement ce qu'est la montre et pour qui/quel usage, puis le bénéfice principal. " +
+      "Une à deux phrases, ~160 caractères maximum. C'est l'ACCROCHE — une respiration : dis directement ce qu'est le produit et pour qui/quel usage, puis le bénéfice principal. " +
       "Ne reprends pas mot pour mot l'ouverture de la description complète. " +
-      "Tu peux citer AU PLUS une caractéristique forte issue du contexte (Ø boîtier, mouvement, matière) si elle est fournie. " +
+      "Tu peux citer AU PLUS une caractéristique forte issue du contexte (puce, écran, autonomie) si elle est fournie. " +
       "Réponds UNIQUEMENT par le texte de la description, sans guillemets ni préambule.",
   },
   {
@@ -160,10 +161,10 @@ const PRODUITS_TASKS: AiTask[] = [
       "Structure OBLIGATOIRE (essentielle pour le SEO et la lisibilité) : " +
       "1) un <p> d'introduction (2 à 3 phrases) en réponse directe à l'intention de recherche ; " +
       "2) 2 à 4 SECTIONS, CHACUNE introduite par un sous-titre <h2> court et DESCRIPTIF formulé comme une caractéristique ou un bénéfice réel " +
-      "(ex. « Un calibre automatique à 70 h de réserve », « Boîtier acier de 40 mm », « Étanchéité 10 ATM », « Pour qui ? ») ; " +
+      "(ex. « Un écran OLED 120 Hz », « Puce performante et 8 Go de RAM », « Autonomie de 2 jours », « Pour qui ? ») ; " +
       "à l'intérieur d'une section, des <p> concis et/ou une liste <ul><li>, et un <h3> seulement si une sous-section est vraiment utile ; " +
       "3) un court <p> de conclusion (usage réel, public visé). " +
-      "Pour chaque point fort, enchaîne caractéristique → avantage → bénéfice concret pour le porteur, en gardant la caractéristique vérifiable. " +
+      "Pour chaque point fort, enchaîne caractéristique → avantage → bénéfice concret pour l'utilisateur, en gardant la caractéristique vérifiable. " +
       "Ne répète pas la description courte ; regroupe les caractéristiques plutôt que de les disperser, et dans le texte ne cite qu'un ou deux chiffres-clés avec leur contexte. " +
       "Vise 180 à 280 mots, scannable. " +
       "Réponds UNIQUEMENT par le fragment HTML (il DOIT commencer par <p> ou <h2>), " +
@@ -179,8 +180,8 @@ const PRODUITS_TASKS: AiTask[] = [
       PRODUCT_GROUNDING +
       "TÂCHE : génère 4 à 6 questions/réponses fréquentes et UTILES sur CE produit. " +
       FAQ_RULES +
-      "Privilégie les vraies questions d'acheteur de montre : taille du boîtier selon le poignet, étanchéité en usage réel (douche/nage), " +
-      "changement de bracelet, type de mouvement et fréquence d'entretien, autonomie (quartz), papiers/authenticité, livraison et paiement à la livraison en Tunisie. " +
+      "Privilégie les vraies questions d'acheteur high-tech : compatibilité et prérequis, autonomie et charge en usage réel, stockage/mémoire, " +
+      "qualité photo ou écran selon l'usage, connectivité (5G/Wi-Fi), mises à jour, garantie et SAV, authenticité, livraison et paiement à la livraison en Tunisie. " +
       'Réponds UNIQUEMENT par un tableau JSON valide de la forme [{"question":"…","answer":"…"}], sans texte autour ni bloc de code.',
   },
   {
@@ -192,7 +193,7 @@ const PRODUITS_TASKS: AiTask[] = [
     defaultSystemPrompt:
       SEO_GROUNDING +
       "TÂCHE : génère un meta title (60 caractères MAXIMUM) et une meta description (155 caractères MAXIMUM) pour une FICHE PRODUIT. " +
-      "Title : Marque + Modèle + attribut clé (ex. « automatique », « acier 40 mm ») dans les ~55 premiers caractères, avec le mot-clé principal en tête. " +
+      "Title : Marque + Modèle + attribut clé (ex. « 256 Go », « écran 120 Hz ») dans les ~55 premiers caractères, avec le mot-clé principal en tête. " +
       'Réponds UNIQUEMENT par un objet JSON valide de la forme {"metaTitle":"…","metaDescription":"…"}, sans texte autour ni bloc de code.',
   },
   {
@@ -219,7 +220,7 @@ const PRODUITS_TASKS: AiTask[] = [
       "À partir d'un PRODUIT principal et de la LISTE de produits candidats fournie dans le contexte " +
       "(chaque ligne = « nom — catégorie / marque » suivi de son identifiant entre crochets), " +
       "sélectionne les produits les plus PERTINENTS À ACHETER EN COMPLÉMENT du produit principal " +
-      "(bracelets, écrins, coffrets, produits du même univers) — pas de simples doublons du même article. " +
+      "(coques, chargeurs, écouteurs, câbles, accessoires du même univers) — pas de simples doublons du même article. " +
       "Tu DOIS choisir uniquement des slugs présents EXACTEMENT dans la liste — n'invente jamais de produit. " +
       "Classe du plus pertinent au moins pertinent, 4 à 8 produits maximum. " +
       'Réponds UNIQUEMENT par un objet JSON valide de la forme {"products":["slug-1","slug-2"]} dont chaque valeur provient exactement de la liste fournie, sans texte autour ni bloc de code.',
@@ -265,7 +266,7 @@ const CATEGORIES_TASKS: AiTask[] = [
       "(balises <h2>, <h3>, <p>, <ul>, <li>, <strong> uniquement — pas de <html>, <head>, <h1> ni styles). " +
       "Commence par une phrase qui DÉFINIT la catégorie et dit à qui/quoi elle sert. " +
       "Garde une intro courte (~40-100 mots), puis une AIDE AU CHOIX : inclus 3 à 4 critères de choix pertinents pour l'high-tech " +
-      "(type de mouvement, diamètre du boîtier, étanchéité, style/usage, matières) sous forme de courte liste <ul><li>, en restant générique. " +
+      "(usage visé, performances, autonomie, taille d'écran, budget, compatibilité) sous forme de courte liste <ul><li>, en restant générique. " +
       "N'écris pas un essai sous la grille. " +
       "Réponds UNIQUEMENT par le fragment HTML, sans bloc de code ni commentaire.",
   },
@@ -293,7 +294,7 @@ const CATEGORIES_TASKS: AiTask[] = [
       TAXONOMY_GROUNDING +
       "TÂCHE : génère 4 à 6 questions/réponses fréquentes et UTILES sur cette CATÉGORIE de produits. " +
       FAQ_RULES +
-      "Concentre-toi sur le choix et les objections réelles de la gamme (diamètre selon le poignet, automatique vs quartz, étanchéité pour la nage, entretien, homme/femme), pas sur des définitions. " +
+      "Concentre-toi sur le choix et les objections réelles de la gamme (usage et budget, performances nécessaires, autonomie, compatibilité, garantie et SAV), pas sur des définitions. " +
       "Ne répète pas la description de catégorie. " +
       'Réponds UNIQUEMENT par un tableau JSON valide de la forme [{"question":"…","answer":"…"}], sans texte autour ni bloc de code.',
   },
@@ -354,7 +355,7 @@ const MARQUES_TASKS: AiTask[] = [
     defaultSystemPrompt:
       TAXONOMY_GROUNDING +
       "TÂCHE : rédige le RÉCIT DE MARQUE du point de vue du détaillant, au format HTML simple (balises <p>, <strong>, <em> uniquement). " +
-      "2 à 3 paragraphes : notre regard de boutique — à quel porteur convient chaque gamme, savoir-faire spécialiste high-tech expliqué simplement ; faits d'origine attribués et seulement depuis le contexte. " +
+      "2 à 3 paragraphes : notre regard de boutique — à quel utilisateur convient chaque gamme, savoir-faire spécialiste high-tech expliqué simplement ; faits d'origine attribués et seulement depuis le contexte. " +
       "La description dit qui est la marque / ce que nous proposons / pourquoi ici ; l'éditorial raconte le point de vue et le savoir-faire — ne les répète pas. " +
       "Interdis les formules creuses et les superlatifs sans preuve. " +
       "Réponds UNIQUEMENT par le fragment HTML, sans bloc de code ni commentaire.",

@@ -9,7 +9,7 @@
  * starter brand list.
  *
  * URLs are flat — every entity sits on `/[slug]`, so slugs are GLOBALLY
- * unique and self-descriptive (`/homme`, `/accessoires`, `/bracelets`).
+ * unique and self-descriptive (`/smartphones`, `/accessoires`, `/audio`).
  *
  * Idempotent: re-running skips rows that already exist (matched by slug).
  */

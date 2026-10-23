@@ -270,7 +270,7 @@ export function SeoSettingsPanel({
                   label="Mots-clés du site"
                   defaultValue={values.keywords}
                   rows={2}
-                  placeholder="montres, produits high-tech, high-tech, Tunisie"
+                  placeholder="smartphones, high-tech, accessoires, Tunisie"
                   helper="Balise meta « keywords » de tout le site — séparés par des virgules ou un par ligne. Laissé vide, une liste par défaut est utilisée."
                 />
                 <div>
@@ -625,7 +625,7 @@ export function SeoSettingsPanel({
             <FormTab id="agents" active={active}>
               <FieldSection
                 title="Markdown pour agents IA"
-                description="Sert une version Markdown propre des pages aux agents IA, sans toucher aux pages HTML vues par les humains et sans créer de contenu indexable par Google. Déclenché uniquement par un signal explicite d'agent : l'en-tête « Accept: text/markdown » OU un suffixe « .md » sur l'URL (ex. /montres-homme.md). Toujours servi avec X-Robots-Tag: noindex + un lien canonique vers la page HTML, et exclu du sitemap."
+                description="Sert une version Markdown propre des pages aux agents IA, sans toucher aux pages HTML vues par les humains et sans créer de contenu indexable par Google. Déclenché uniquement par un signal explicite d'agent : l'en-tête « Accept: text/markdown » OU un suffixe « .md » sur l'URL (ex. /smartphones.md). Toujours servi avec X-Robots-Tag: noindex + un lien canonique vers la page HTML, et exclu du sitemap."
               >
                 <ToggleField
                   name="seo.markdown_agents_enabled"

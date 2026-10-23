@@ -9,7 +9,7 @@ import type { CategoryRow } from "@/modules/catalog/category";
  * warranty cascade).
  *
  * The tree allows unlimited nesting (the storefront expects ~4 levels:
- * homme → montres-plongee → submariner …), and both cascades promise "the first
+ * telephonie → smartphones → iphone …), and both cascades promise "the first
  * value walking from the most-specific category up to the ROOT wins". The call
  * sites used to load only the node + its direct parent, so a rate / warranty set
  * on a grand-parent (or higher) was silently ignored and the line fell through

@@ -975,7 +975,7 @@ function StoresEditor({ stores, pickups, onChange }: { stores: StoreItem[]; pick
             <Field label="Ville" value={s.city} onChange={(v) => upd(i, { city: v })} placeholder="Sfax" />
             <Field label="Téléphone (vide = celui du site)" value={s.phone} onChange={(v) => upd(i, { phone: v })} />
             <Field label="E-mail (optionnel)" value={s.email} onChange={(v) => upd(i, { email: v })} placeholder="boutique@…" />
-            <CsvField label="Services (séparés par des virgules)" values={s.services} max={8} onChange={(services) => upd(i, { services })} placeholder="Essai & conseil, Pile & bracelet" />
+            <CsvField label="Services (séparés par des virgules)" values={s.services} max={8} onChange={(services) => upd(i, { services })} placeholder="Essai & conseil, Réparation & accessoires" />
           </div>
           <HoursEditor hours={s.hours} onChange={(hours) => upd(i, { hours })} />
           <Field label="Note (optionnelle)" value={s.note} onChange={(v) => upd(i, { note: v })} multiline />

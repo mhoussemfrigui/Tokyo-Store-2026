@@ -532,7 +532,7 @@ export async function listApiCategories(
 export async function getSubcategoryCounts(
   categorySlug: string,
 ): Promise<Map<string, number>> {
-  // Any-depth resolve — mid-tree categories (homme, montres-plongee…)
+  // Any-depth resolve — mid-tree categories (telephonie, smartphones…)
   // have children of their own.
   const parent = await categoryService.findBySlug(categorySlug);
   if (!parent) return new Map();

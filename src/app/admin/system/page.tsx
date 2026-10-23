@@ -16,7 +16,7 @@ const TILES: {
     href: "/admin/system/import-data",
     title: "Import data",
     description:
-      "Montez toute la boutique en un clic : contenu du site, catalogue (447 montres) et redirections — ou importez un fichier (CSV / XML).",
+      "Montez toute la boutique en un clic : contenu du site, catalogue high-tech et redirections — ou importez un fichier (CSV / XML).",
     icon: Upload,
   },
   {
