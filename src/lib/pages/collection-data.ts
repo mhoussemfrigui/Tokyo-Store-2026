@@ -73,6 +73,12 @@ export async function getCollectionShowcase(
     return { products, salesById: null, daysById, promoById: null };
   }
 
+  if (config.strategy === "preorder") {
+    // Plain selection — the card already renders the "Précommande" badge + release
+    // note from each product's availability/preorderReleasesAt (no extra stats).
+    return { products, salesById: null, daysById: null, promoById: null };
+  }
+
   // on_promotion — carry the live effective price + compare-at per product.
   const promoById: Record<string, { price: number; oldPrice: number | null }> = {};
   for (const p of products) {

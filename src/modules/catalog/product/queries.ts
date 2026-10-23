@@ -379,6 +379,26 @@ export async function countPreorderQueue(): Promise<number> {
   return row?.n ?? 0;
 }
 
+/** PUBLISHED, ACTIVE-preorder products (full rows) for the storefront « Précommandes »
+ *  vitrine — flagged `is_preorder` and not yet released (no date = indefinitely on
+ *  preorder), soonest release first (undated last). Mirrors `isActivePreorder`: a
+ *  product past its release date has reverted to a normal sale and is excluded. */
+export async function listActivePreorderProducts(opts: { limit?: number } = {}): Promise<ProductRow[]> {
+  return db
+    .select()
+    .from(products)
+    .where(
+      and(
+        eq(products.is_preorder, true),
+        eq(products.is_published, true),
+        isNull(products.deleted_at),
+        sql`(${products.preorder_releases_at} IS NULL OR ${products.preorder_releases_at} > now())`,
+      ),
+    )
+    .orderBy(sql`${products.preorder_releases_at} asc nulls last`, desc(products.id))
+    .limit(Math.min(opts.limit ?? 100, 300));
+}
+
 const recentlyReleasedWhere = (days: number) =>
   and(
     isNull(products.deleted_at),

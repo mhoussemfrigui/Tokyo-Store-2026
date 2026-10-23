@@ -886,6 +886,11 @@ export async function listShowcaseProducts(config: CollectionPageConfig): Promis
     // final pinned + auto list is capped (by config.limit, below).
     pool.sort((a, b) => b.deal - a.deal || compareRowsNewest(a.row, b.row));
     autoRows = pool.map((c) => c.row);
+  } else if (config.strategy === "preorder") {
+    // Active-preorder products, soonest release first (undated last) — the mapper
+    // surfaces them as "backorder"/"Précommande". Already published-filtered.
+    const rows = await productQueries.listActivePreorderProducts({ limit: autoFetch });
+    autoRows = rows.filter((r) => !pinnedSet.has(r.id));
   }
 
   // Pinned rows (published, in pin order).

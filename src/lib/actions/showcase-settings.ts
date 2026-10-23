@@ -8,7 +8,8 @@ import { COLLECTION_SLUGS, type CollectionSlug } from "@/lib/pages/collection-pa
 import { type ActionState } from "@/lib/actions/types";
 
 /**
- * Save the showcase collection pages (Nouveautés / Top ventes / Promotions).
+ * Save the showcase collection pages (Nouveautés / Top ventes / Promotions /
+ * Précommandes).
  * Each page's content/selection/SEO fields are stored as `pages.<slug>.*`
  * site_settings (group `pages`), and manual pins go through the showcase
  * workflow. All pages submit together (FormTabs keeps panels mounted), so one
@@ -49,12 +50,14 @@ const EXTRA_FIELDS: Record<CollectionSlug, { key: string; type: FieldType }[]> =
   nouveautes: [],
   "top-ventes": [{ key: "window_days", type: "number" }],
   promotions: [{ key: "promo_strategy", type: "text" }],
+  precommandes: [],
 };
 
 const LABEL: Record<CollectionSlug, string> = {
   nouveautes: "Nouveautés",
   "top-ventes": "Top ventes",
   promotions: "Promotions",
+  precommandes: "Précommandes",
 };
 
 export async function saveShowcaseSettingsAction(

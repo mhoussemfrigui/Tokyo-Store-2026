@@ -1,8 +1,8 @@
 import type { CollectionSlug } from "@/lib/pages/collection-slugs";
 
 /**
- * Editorial copy for the three "Vitrines" / showcase collection pages
- * (Nouveautés / Top ventes / Promotions), keyed by slug.
+ * Editorial copy for the "Vitrines" / showcase collection pages
+ * (Nouveautés / Top ventes / Promotions / Précommandes), keyed by slug.
  *
  * This is the collection equivalent of `categorySeo.ts` (which is label-driven
  * and tuned for real catalogue categories). The copy is HONEST and backend-true:
@@ -178,6 +178,40 @@ const COPY: Record<CollectionSlug, CollectionCopy> = {
       { min: 10, label: "−10 % et plus" },
       { min: 20, label: "−20 % et plus" },
       { min: 30, label: "−30 % et plus" },
+    ],
+  },
+  precommandes: {
+    catDesc:
+      "Les prochaines sorties high-tech à réserver en avant-première chez Tokyo Store. Vous payez, vos unités sont réservées, et votre commande est expédiée dès l'arrivée du produit.",
+    aboutLinkLabel: "Comment fonctionne la précommande",
+    aboutTitle: "La précommande, comment ça marche",
+    aboutParas: [
+      "Cette page regroupe les produits ouverts à la précommande : les nouveautés annoncées mais pas encore sorties, classées par date de sortie la plus proche.",
+      "En précommandant, vos unités sont réservées dès la validation de la commande : aucun risque de rupture au lancement. Votre commande est expédiée automatiquement dès que le produit arrive.",
+      "Comme le reste du catalogue, les précommandes sont livrées en 24h à 72h partout en Tunisie après leur sortie, payables à la livraison et couvertes par la garantie constructeur.",
+    ],
+    faqs: [
+      {
+        q: "Qu'est-ce qu'une précommande ?",
+        a: "Une précommande vous permet de réserver un produit avant sa sortie officielle. Vos unités sont mises de côté et votre commande part dès l'arrivée du produit en stock.",
+      },
+      {
+        q: "Quand ma précommande est-elle expédiée ?",
+        a: "Dès la sortie du produit. La date de sortie prévue est indiquée sur chaque fiche ; vous êtes prévenu dès que votre commande est prête à être expédiée.",
+      },
+      {
+        q: "Quand suis-je débité ?",
+        a: "Comme pour une commande classique : en ligne à la validation, ou à la livraison selon le mode de paiement choisi. La précommande garantit simplement votre unité au lancement.",
+      },
+      {
+        q: "Puis-je annuler une précommande ?",
+        a: "Oui, tant que le produit n'est pas encore sorti. Contactez-nous et nous libérons votre réservation sans frais.",
+      },
+    ],
+    sorts: [
+      { key: "best", label: "Sortie la plus proche" },
+      { key: "asc", label: "Prix croissant" },
+      { key: "desc", label: "Prix décroissant" },
     ],
   },
 };

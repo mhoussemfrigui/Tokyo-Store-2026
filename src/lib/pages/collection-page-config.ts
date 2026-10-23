@@ -14,7 +14,7 @@ import {
 export { COLLECTION_SLUGS, isCollectionSlug, type CollectionSlug };
 
 /**
- * Typed, admin-controllable config for the three "showcase" collection pages.
+ * Typed, admin-controllable config for the "showcase" collection pages.
  * Modeled on `src/lib/checkout/quick-buy-config.ts`: read namespaced
  * `pages.<slug>.*` keys from `site_settings`, fall back to defaults that
  * REPRODUCE the previous hardcoded behaviour, return a plain object.
@@ -26,7 +26,7 @@ export { COLLECTION_SLUGS, isCollectionSlug, type CollectionSlug };
  * layout, so the former `pages.<slug>.design_variant` key is no longer read.
  */
 
-export type CollectionStrategy = "new_arrivals" | "best_sellers" | "on_promotion";
+export type CollectionStrategy = "new_arrivals" | "best_sellers" | "on_promotion" | "preorder";
 export type PromoStrategy = "engine" | "compare_at" | "both";
 
 /**
@@ -44,6 +44,7 @@ export const STRATEGY_BY_SLUG: Record<CollectionSlug, CollectionStrategy> = {
   nouveautes: "new_arrivals",
   "top-ventes": "best_sellers",
   promotions: "on_promotion",
+  precommandes: "preorder",
 };
 
 /** The empty-state card shown when the collection currently has no products. */
@@ -145,6 +146,22 @@ const DEFAULTS: Record<
       title: "Pas trouvé votre bonheur ?",
       subtitle: "Parcourez tout le catalogue Tokyo Store — nouvelles offres ajoutées chaque semaine.",
       ctaLabel: "Voir le catalogue",
+      ctaHref: "/",
+    },
+  },
+  precommandes: {
+    title: "Précommandes",
+    metaTitle: "Précommandes — Tokyo Store",
+    metaDescription: "Réservez en avant-première les prochaines sorties high-tech chez Tokyo Store : smartphones, consoles, audio et plus encore.",
+    empty: {
+      title: "Aucune précommande ouverte pour le moment.",
+      body: "Les prochaines sorties arrivent bientôt. Revenez vite pour réserver en avant-première les nouveautés high-tech de Tokyo Store.",
+    },
+    ctaBand: {
+      eyebrow: "Soyez les premiers servis",
+      title: "Réservez avant tout le monde.",
+      subtitle: "Explorez tout le catalogue Tokyo Store — les précommandes vous garantissent la prochaine sortie dès son arrivée.",
+      ctaLabel: "Explorer la boutique",
       ctaHref: "/",
     },
   },

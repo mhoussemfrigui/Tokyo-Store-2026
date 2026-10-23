@@ -11,18 +11,20 @@
  * Add a 4th collection here and all surfaces stay in sync automatically.
  */
 
-export type CollectionSlug = "nouveautes" | "top-ventes" | "promotions";
+export type CollectionSlug = "nouveautes" | "top-ventes" | "promotions" | "precommandes";
 
 export const COLLECTION_SLUGS: readonly CollectionSlug[] = [
   "nouveautes",
   "top-ventes",
   "promotions",
+  "precommandes",
 ];
 
 export const COLLECTION_PAGE_LABELS: Record<CollectionSlug, string> = {
   nouveautes: "Nouveautés",
   "top-ventes": "Top ventes",
   promotions: "Promotions",
+  precommandes: "Précommandes",
 };
 
 export function isCollectionSlug(s: string): s is CollectionSlug {

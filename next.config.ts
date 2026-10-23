@@ -73,6 +73,14 @@ const nextConfig: NextConfig = {
         destination: "/:slug",
         permanent: true,
       },
+      // The singular `/precommande` (the old dormant nav-alias page) now points at
+      // the admin-managed « Précommandes » vitrine (/precommandes) so there is ONE
+      // canonical, editable preorder showcase instead of two near-identical pages.
+      {
+        source: "/precommande",
+        destination: "/precommandes",
+        permanent: true,
+      },
       // NOTE: the old `/niveaux-avantages → /fidelite` redirect was removed —
       // the loyalty subsystem was dropped (migration 0204) and `/fidelite`
       // does not exist, so the redirect 308'd straight into a 404.
