@@ -139,8 +139,12 @@ export function registerShipDepotDecrementSubscriber() {
   // central mode the depot level would otherwise sit UNDER the total forever
   // (the matrix shows fewer units at the Centrale than are actually sellable —
   // the mirror drift of an un-decremented ship). Credit the depot by each
-  // RESTOCKED, restockable line (`restocked_at` set = it bumped the total;
-  // adjustLevelOnly no-ops an untracked target). ISSUE-31 #3.
+  // RESTOCKED, restockable line (`restocked_at` set). adjustLevelOnly no-ops an
+  // untracked target (stock_qty NULL). EDGE: restockReturnLines stamps
+  // `restocked_at` even on a SOFT-DELETED tracked product whose total it skipped
+  // (its UPDATE is gated on `deleted_at IS NULL`), so this would credit a level
+  // whose total wasn't restored — harmless (a deleted product is unsellable and
+  // absent from the matrix), but not a true "restocked_at ⇒ total moved". ISSUE-31 #3.
   bus.on("order.return.received", async ({ payload }) => {
     try {
       const depot = await depotIfPerLocation();

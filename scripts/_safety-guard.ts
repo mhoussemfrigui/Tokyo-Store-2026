@@ -3,29 +3,24 @@
  * categories/products, DELETE banners/pages/nav rows, …). These take their
  * target from `DATABASE_URL` (often `.env.local`), print no host, and have no
  * confirmation — so running one against a LIVE store wipes or corrupts content
- * (A-Z audit INF-10). This guard refuses to touch a NON-LOCAL database unless the
- * operator explicitly opts in, and always announces the target first.
+ * (A-Z audit INF-10).
  *
- * Opt-in to a remote/prod run: set `ALLOW_DESTRUCTIVE=1` (env) or pass `--yes`.
+ * A hostname CANNOT reliably tell "my dev DB" from "prod": the Coolify stack's
+ * app reaches its database at host `postgres` (the compose service name), and the
+ * runbook tells operators to reach prod through an SSH tunnel on `localhost`. So
+ * there is no host whitelist that is safe — this guard therefore ALWAYS requires
+ * an explicit opt-in and simply makes the target impossible to miss first.
+ *
+ * Opt in for THIS run: set `ALLOW_DESTRUCTIVE=1` (env) or pass `--yes`.
  * Pure Node (no app imports) so it runs regardless of the app's compile state.
  */
 
-/** Hosts we treat as a developer's own machine (safe to wipe without a prompt). */
-function isLocalHost(host: string): boolean {
-  const h = host.toLowerCase().replace(/^\[|\]$/g, ""); // strip IPv6 brackets
-  return (
-    h === "localhost" ||
-    h === "127.0.0.1" ||
-    h === "::1" ||
-    h === "0.0.0.0" ||
-    h.endsWith(".localhost") ||
-    h === "postgres" || // the compose service name on a dev `docker-compose.dev.yml`
-    h === "db"
-  );
-}
-
 /**
- * Call at the TOP of a destructive script's `main()`, before any write.
+ * Call at the TOP of a destructive script's `main()`, before any write. It prints
+ * the exact host + database the script will connect to, then refuses unless the
+ * operator has explicitly confirmed — so a wipe can never happen by simply running
+ * the file, whatever `DATABASE_URL` happens to point at.
+ *
  * @param databaseUrl the URL the script will actually connect to (its resolved
  *   `process.env.DATABASE_URL || <default>`); omit to read `process.env.DATABASE_URL`.
  * @param label a short name of the destructive action, shown in the banner.
@@ -37,35 +32,35 @@ export function assertDestructiveTargetAllowed(databaseUrl?: string, label = "de
     process.argv.includes("--yes") ||
     process.argv.includes("--force");
 
-  let host = "";
-  let dbName = "";
-  try {
-    const u = new URL(url || "postgresql://localhost/unknown");
-    host = u.hostname;
-    dbName = u.pathname.replace(/^\//, "") || "(default)";
-  } catch {
-    host = "(unparseable DATABASE_URL)";
+  let host = "(unset DATABASE_URL → the script's built-in default)";
+  let dbName = "(default)";
+  if (url) {
+    try {
+      const u = new URL(url);
+      host = u.hostname || "(no host)";
+      dbName = u.pathname.replace(/^\//, "") || "(default)";
+    } catch {
+      host = "(unparseable DATABASE_URL)";
+    }
   }
 
-  // An EMPTY DATABASE_URL means the script falls back to its built-in localhost
-  // default, so it can never reach prod without the operator SETTING a non-local
-  // url — treat empty as local (safe).
-  const local = url === "" || isLocalHost(host);
   // eslint-disable-next-line no-console
-  console.error(`\n[safety] ${label} → host "${host}", database "${dbName}"`);
+  console.error(`\n[safety] ABOUT TO RUN: ${label}`);
+  // eslint-disable-next-line no-console
+  console.error(`[safety]   target host: "${host}"   database: "${dbName}"`);
 
-  if (local || confirmed) {
-    if (confirmed && !local) {
-      // eslint-disable-next-line no-console
-      console.error("[safety] NON-LOCAL target explicitly confirmed (ALLOW_DESTRUCTIVE / --yes). Proceeding.\n");
-    }
+  if (confirmed) {
+    // eslint-disable-next-line no-console
+    console.error("[safety] confirmed (ALLOW_DESTRUCTIVE / --yes) — proceeding.\n");
     return;
   }
 
   // eslint-disable-next-line no-console
   console.error(
-    `[safety] REFUSED: "${host}" is not a local database and this run is destructive.\n` +
-      "[safety] If you really mean to wipe/rewrite THIS target, re-run with ALLOW_DESTRUCTIVE=1 (or --yes).\n",
+    "[safety] REFUSED: this is a DESTRUCTIVE one-off and no host is trusted automatically\n" +
+      "[safety]          (prod's DB host is \"postgres\"; a prod tunnel is \"localhost\").\n" +
+      "[safety]          Confirm the host/database above is the one you mean to WIPE, then\n" +
+      "[safety]          re-run with ALLOW_DESTRUCTIVE=1 (or --yes).\n",
   );
   process.exit(1);
 }
