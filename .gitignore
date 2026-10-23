@@ -3,6 +3,9 @@ node_modules/
 .pnp
 .pnp.*
 .yarn/*
+# pnpm content-addressable store (only leaks here when running the Dockerized
+# dev stack; the compose now routes it into a volume — see docker-compose.claude-dev.yml)
+.pnpm-store/
 # pnpm-only repo (packageManager + Dockerfile use pnpm-lock.yaml); a stray npm
 # lockfile would resolve deps without pnpm.overrides (e.g. the dompurify floor)
 package-lock.json

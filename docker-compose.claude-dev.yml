@@ -1,0 +1,123 @@
+# Hot-reload dev app container — runs the whole Tokyo Store stack on Docker
+# (Postgres+pgvector, SeaweedFS, and the Next.js dev server) so the site can be
+# launched and tested without a host-side Node/pnpm install.
+#
+# Self-contained (does NOT merge with docker-compose.dev.yml) and uses its own
+# project name + host ports so it coexists with any other stack already running
+# on this machine (e.g. the Game-Zone dev stack on 3000/5434/9100).
+#
+# Usage:
+#   docker compose -p tokyo-claude-dev -f docker-compose.claude-dev.yml up -d
+#   docker compose -p tokyo-claude-dev -f docker-compose.claude-dev.yml logs -f app
+#
+# Host ports:  app http://localhost:3100 · Postgres 5435 · SeaweedFS S3 9110
+#
+# The source tree is bind-mounted (host edits hot-reload via Turbopack polling).
+# node_modules and .next live in named volumes so the Alpine/musl native builds
+# (sharp) stay correct and host perms stay clean.
+
+name: tokyo-claude-dev
+
+services:
+  postgres:
+    build:
+      context: ./docker/pgvector
+    image: tokyo-pgvector:16.14-alpine
+    container_name: tokyo-cdev-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tokyo
+      POSTGRES_PASSWORD: tokyo_dev_pwd
+      POSTGRES_DB: tokyo
+    ports:
+      - "5435:5432" # host-side inspection only; the app talks to it by service name
+    volumes:
+      - tokyo_cdev_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tokyo -d tokyo"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.47
+    container_name: tokyo-cdev-seaweedfs
+    restart: unless-stopped
+    environment:
+      S3_ACCESS_KEY: seaweedfs
+      S3_SECRET_KEY: seaweedfs_dev_secret
+      S3_BUCKET: tokyo
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    volumes:
+      - ./docker/seaweedfs/entrypoint.sh:/entrypoint.sh:ro
+      - tokyo_cdev_seaweedfs:/data
+    ports:
+      - "9110:8333" # S3 API on host :9110
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8333/status"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+
+  app:
+    image: node:22-alpine
+    container_name: tokyo-cdev-app
+    working_dir: /app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      # Container-internal hostnames (service names on the shared network).
+      DATABASE_URL: postgresql://tokyo:tokyo_dev_pwd@postgres:5432/tokyo
+      S3_ENDPOINT: http://seaweedfs:8333
+      # Browser-facing values (the browser runs on the host → localhost:3100).
+      NEXT_PUBLIC_SITE_URL: http://localhost:3100
+      BETTER_AUTH_URL: http://localhost:3100
+      BETTER_AUTH_SECRET: tokyo_dev_better_auth_secret_change_me_0123456789abcdef
+      S3_PUBLIC_URL: http://localhost:9110/tokyo
+      S3_REGION: us-east-1
+      S3_BUCKET: tokyo
+      S3_ACCESS_KEY: seaweedfs
+      S3_SECRET_KEY: seaweedfs_dev_secret
+      S3_FORCE_PATH_STYLE: "true"
+      EMAIL_PROVIDER: console
+      EMAIL_FROM: "Tokyo Store <noreply@tokyostore.tn>"
+      ADMIN_BOOTSTRAP_TOKEN: dev_bootstrap_token_replace_in_prod_min_8_chars
+      # Turbopack file-watching inside a bind mount.
+      WATCHPACK_POLLING: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Keep pnpm's content-addressable store inside a Docker volume (NOT the
+      # bind-mounted project root), so it never leaks onto the host. Honoured by
+      # every pnpm command via npm-style env config.
+      npm_config_store_dir: /pnpm-store
+    ports:
+      - "3100:3000"
+    volumes:
+      - .:/app
+      - tokyo_cdev_node_modules:/app/node_modules
+      - tokyo_cdev_next:/app/.next
+      - tokyo_cdev_pnpm_store:/pnpm-store
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        corepack enable
+        corepack prepare pnpm@9.15.0 --activate
+        echo "[dev] installing deps (first run is slow; cached in a volume after)…"
+        pnpm install --frozen-lockfile
+        echo "[dev] applying migrations…"
+        pnpm db:migrate
+        echo "[dev] starting Next.js dev server on 0.0.0.0:3000…"
+        exec pnpm exec next dev -H 0.0.0.0 -p 3000
+
+volumes:
+  tokyo_cdev_pgdata:
+  tokyo_cdev_seaweedfs:
+  tokyo_cdev_node_modules:
+  tokyo_cdev_next:
+  tokyo_cdev_pnpm_store:
