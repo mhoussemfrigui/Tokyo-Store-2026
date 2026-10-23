@@ -632,11 +632,16 @@ export default async function SlugPage({ params }: Params) {
         offer: {
           price: p.price,
           currency: "TND",
+          // Tokyo's "backorder" state is PRÉCOMMANDE — a not-yet-released product
+          // on preorder — so it maps to schema.org/PreOrder (not BackOrder, which
+          // means released-but-temporarily-OOS), with the release date as
+          // `availabilityStarts` when known.
           availability: {
             in_stock: "https://schema.org/InStock",
-            backorder: "https://schema.org/BackOrder",
+            backorder: "https://schema.org/PreOrder",
             out_of_stock: "https://schema.org/OutOfStock",
           }[stockState(p)],
+          availabilityStarts: p.preorderReleasesAt ?? undefined,
           itemCondition,
           validFrom: offerValidity.validFrom,
           priceValidUntil: offerValidity.priceValidUntil,

@@ -33,6 +33,12 @@ export type Product = {
   oldPrice?: number | null;
   currency: string;
   availability: "in_stock" | "out_of_stock" | string;
+  /** Précommande release instant (ISO) for a dated active preorder (`availability
+   *  === "backorder"`); null/absent otherwise. Drives the PDP release note + the
+   *  Offer `availabilityStarts` / feed `availability_date`. */
+  preorderReleasesAt?: string | null;
+  /** Operator précommande note shown near the PDP buy CTA; null/absent when none. */
+  preorderMessage?: string | null;
   condition: string;
   brand: string;
   /** Category slug this product belongs to (matches a `Category.slug`). */

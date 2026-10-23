@@ -112,6 +112,26 @@ const BACKORDER: FeedProduct = {
 };
 ok("g:availability backorder passes through", buildGoogleMerchantFeed([BACKORDER], META).includes("<g:availability>backorder</g:availability>"));
 
+// A dated PRÉCOMMANDE maps to g:availability=preorder + g:availability_date (the
+// release instant) — Google separates it from backorder (released-but-OOS).
+const PREORDER: FeedProduct = {
+  id: "po-1",
+  title: "iPhone 18 Pro — Précommande",
+  description: "Sortie prochaine.",
+  url: "https://tokyostore.tn/iphone-18-pro-precommande",
+  imageUrl: "https://tokyostore.tn/img/iphone18.jpg",
+  priceMinor: 4_999_000,
+  availability: "preorder",
+  availabilityDate: "2026-10-28T16:30:25Z",
+  condition: "new",
+  brand: "Apple",
+};
+const preorderXml = buildGoogleMerchantFeed([PREORDER], META);
+ok("g:availability preorder", preorderXml.includes("<g:availability>preorder</g:availability>"));
+ok("g:availability_date = release instant", preorderXml.includes("<g:availability_date>2026-10-28T16:30:25Z</g:availability_date>"));
+const preorderAcp = buildAcpProduct(PREORDER, META);
+ok("ACP availability preorder + availability_date", preorderAcp.availability === "preorder" && preorderAcp.availability_date === "2026-10-28T16:30:25Z");
+
 // matière/capacité axes + a scheduled sale window.
 const MAT_CAP: FeedProduct = {
   id: "mc-1",

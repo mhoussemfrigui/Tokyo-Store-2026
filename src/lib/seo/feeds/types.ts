@@ -7,8 +7,10 @@
 
 import { formatMoneyMachine } from "@/lib/price";
 
-/** Internal availability vocabulary; each builder maps it to its own spelling. */
-export type FeedAvailability = "in_stock" | "out_of_stock" | "backorder";
+/** Internal availability vocabulary; each builder maps it to its own spelling.
+ *  `preorder` = not yet released (carries `availabilityDate`); `backorder` =
+ *  released but temporarily out of stock / ships later (no release date). */
+export type FeedAvailability = "in_stock" | "out_of_stock" | "backorder" | "preorder";
 
 /** One feed row (already resolved to absolute URLs + plain text + millimes). */
 export type FeedProduct = {
@@ -29,6 +31,9 @@ export type FeedProduct = {
   /** Sale price in millimes; included only when present AND <= priceMinor. */
   salePriceMinor?: number | null;
   availability: FeedAvailability;
+  /** ISO-8601 release instant for a `preorder` row → Google `g:availability_date`
+   *  (and ACP `availability_date`). Set only when `availability === "preorder"`. */
+  availabilityDate?: string | null;
   condition: "new" | "used" | "refurbished";
   brand?: string | null;
   gtin?: string | null;

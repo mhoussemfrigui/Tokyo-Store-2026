@@ -148,6 +148,21 @@ export type Product = {
    *  variable count). Empty ⇒ none (PDP falls back to attribute specs). */
   highlights?: string[];
   inStock: boolean;
+  /**
+   * Three-state sell signal the storefront + feeds read (SSOT computed in the
+   * catalog mapper). `"backorder"` is Tokyo's PRÉCOMMANDE state: an active-preorder
+   * product (`is_preorder` + not yet released) is orderable regardless of stock —
+   * it reserves units instead of decrementing (see `@/lib/inventory/preorder`).
+   * Regular products are `"in_stock"` / `"out_of_stock"` from `inStock`. Undefined
+   * on hand-built objects → consumers fall back to `inStock`.
+   */
+  availability?: "in_stock" | "out_of_stock" | "backorder";
+  /** Précommande release instant (ISO 8601, `products.preorder_releases_at`) when
+   *  this is an active preorder with a date; null for an undated/indefinite preorder
+   *  or a non-preorder. Drives the PDP release note + the feed `availability_date`. */
+  preorderReleasesAt?: string | null;
+  /** Operator précommande note shown near the PDP buy CTA; null when none. */
+  preorderMessage?: string | null;
   /** Optional product video — YouTube URL (watch or short) or any embeddable URL. */
   videoUrl?: string;
   /** Optional poster image shown before the video plays. Falls back to product.image. */

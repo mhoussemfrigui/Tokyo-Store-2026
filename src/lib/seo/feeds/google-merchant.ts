@@ -18,6 +18,7 @@ const GOOGLE_AVAILABILITY: Record<FeedAvailability, string> = {
   in_stock: "in_stock",
   out_of_stock: "out_of_stock",
   backorder: "backorder",
+  preorder: "preorder",
 };
 
 function tag(name: string, value: string): string {
@@ -81,6 +82,11 @@ function item(p: FeedProduct, meta: FeedMeta): string {
     }
   }
   lines.push(tag("g:availability", GOOGLE_AVAILABILITY[p.availability]));
+  // Google requires g:availability_date alongside a preorder availability (when it
+  // ships). ISO-8601 instant, straight from the product's release date.
+  if (p.availability === "preorder" && p.availabilityDate) {
+    lines.push(tag("g:availability_date", xmlEscape(p.availabilityDate)));
+  }
   lines.push(tag("g:condition", p.condition));
   if (p.brand) lines.push(tag("g:brand", xmlEscape(p.brand.slice(0, 70))));
   if (p.gtin) lines.push(tag("g:gtin", xmlEscape(p.gtin)));

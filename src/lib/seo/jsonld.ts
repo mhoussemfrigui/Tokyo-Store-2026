@@ -457,6 +457,9 @@ export function buildProductGraph(
       itemCondition: string;
       validFrom?: string;
       priceValidUntil?: string;
+      /** Précommande release instant (ISO) — schema.org `availabilityStarts`, the
+       *  moment a PreOrder item becomes available. Set only for a dated preorder. */
+      availabilityStarts?: string;
       /** Real shipping fee (from the delivery backend) → OfferShippingDetails. Null omits it. */
       shippingRate?: { value: number; currency: string } | null;
     };
@@ -480,6 +483,7 @@ export function buildProductGraph(
   };
   if (opts.offer.validFrom) offerNode.validFrom = opts.offer.validFrom;
   if (opts.offer.priceValidUntil) offerNode.priceValidUntil = opts.offer.priceValidUntil;
+  if (opts.offer.availabilityStarts) offerNode.availabilityStarts = opts.offer.availabilityStarts;
   if (opts.offer.shippingRate) {
     offerNode.shippingDetails = {
       "@type": "OfferShippingDetails",

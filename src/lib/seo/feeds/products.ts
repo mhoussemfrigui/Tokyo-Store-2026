@@ -99,9 +99,20 @@ function toFeedProducts(p: ApiProduct, origin: string, ctx: FeedContext): FeedPr
   const reviewCount = p.reviews || null;
   const starRating = p.rating || null;
 
+  // Précommande (product-level): the catalog mapper sets availability="backorder"
+  // for an ACTIVE preorder. A DATED preorder maps to the feed's "preorder" +
+  // availability_date (Google separates it from backorder = released-but-OOS); an
+  // undated one stays "backorder". Overrides the per-row stock state for every row
+  // of the product (variants of a preorder product are preorder too).
+  const productPreorder = p.availability === "backorder";
+  const preorderDate =
+    productPreorder && p.preorderReleasesAt ? isoNoMs(new Date(p.preorderReleasesAt)) : null;
+  const resolveAvailability = (base: FeedAvailability): FeedAvailability =>
+    productPreorder ? (preorderDate ? "preorder" : "backorder") : base;
+
   if (p.productType === "variable" && p.variants && p.variants.length > 0) {
     return p.variants.map((v) => {
-      const availability = availabilityOf(v);
+      const availability = resolveAvailability(availabilityOf(v));
       const { price, sale } = priceSplit(v.priceCents, v.oldPriceCents);
       // The variant's own image becomes this row's primary; dedupe the shared
       // gallery against THAT (not just the product-level `img`) so the primary
@@ -125,6 +136,7 @@ function toFeedProducts(p: ApiProduct, origin: string, ctx: FeedContext): FeedPr
         // row that carries no sale (it would describe a price that isn't there).
         salePriceEffective: sale != null ? ctx.saleWindow : null,
         availability,
+        availabilityDate: preorderDate,
         condition,
         brand,
         gtin: v.gtin || null,
@@ -137,7 +149,7 @@ function toFeedProducts(p: ApiProduct, origin: string, ctx: FeedContext): FeedPr
     });
   }
 
-  const availability = availabilityOf(p);
+  const availability = resolveAvailability(availabilityOf(p));
   const { price, sale } = priceSplit(p.priceCents, p.oldPriceCents);
   return [
     {
@@ -151,6 +163,7 @@ function toFeedProducts(p: ApiProduct, origin: string, ctx: FeedContext): FeedPr
       salePriceMinor: sale,
       salePriceEffective: sale != null ? ctx.saleWindow : null,
       availability,
+      availabilityDate: preorderDate,
       condition,
       brand,
       gtin: p.gtin || null,

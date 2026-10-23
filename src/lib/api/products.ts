@@ -30,6 +30,7 @@ import {
   type PromotionRow,
 } from "@/modules/promotion";
 import { resolveProductDiscount } from "@/lib/promotions/product-discount";
+import { isActivePreorder } from "@/lib/inventory/preorder";
 import type { CollectionPageConfig } from "@/lib/pages/collection-page-config";
 import { dinarsToMinor, minorToDinars } from "@/lib/price";
 import { AUTH_POLICY } from "@/lib/auth/policy";
@@ -1064,6 +1065,11 @@ async function mapProductRows(
     // Publication instant for the storefront « Nouveautés » sort. Present on every
     // real ProductRow; optional here so narrower row shapes still type-check.
     published_at?: Date | null;
+    // Précommande overlay — present on every real ProductRow; optional here so
+    // narrower row shapes still type-check (absent ⇒ treated as non-preorder).
+    is_preorder?: boolean;
+    preorder_releases_at?: Date | null;
+    preorder_message?: string | null;
   }>,
 ): Promise<Product[]> {
   if (rows.length === 0) return [];
@@ -1358,6 +1364,21 @@ async function mapProductRows(
         ? variants.some(variantInStock)
         : row.product_type !== "variable" && row.in_stock && (row.stock_qty == null || row.stock_qty > 0);
 
+    // PRÉCOMMANDE: an active-preorder product sells regardless of stock — it
+    // reserves units (see @/lib/inventory/preorder + place-order). Surface it as
+    // the storefront's "backorder" state ("Précommande" label, orderable CTA,
+    // schema.org/PreOrder, feed availability) once it releases it reverts to a
+    // normal in/out sale. SSOT: computed ONCE here for cards, export, PDP + feeds.
+    const preorderActive = isActivePreorder({
+      is_preorder: row.is_preorder ?? false,
+      preorder_releases_at: row.preorder_releases_at ?? null,
+    });
+    const availability: "in_stock" | "out_of_stock" | "backorder" = preorderActive
+      ? "backorder"
+      : displayInStock
+        ? "in_stock"
+        : "out_of_stock";
+
     // Official-URL sameAs → validated absolute http(s) list (single parse here;
     // the PDP gates emission on the global seo.product_sameas_enabled switch).
     const sameAs = parseSameAs(row.same_as);
@@ -1414,6 +1435,11 @@ async function mapProductRows(
       description: row.description,
       highlights: row.highlights ?? [],
       inStock: displayInStock,
+      availability,
+      // Dated active preorder only → drives the PDP release note + feed
+      // availability_date; null for an undated/indefinite preorder or non-preorder.
+      preorderReleasesAt: preorderActive ? (row.preorder_releases_at?.toISOString() ?? null) : null,
+      preorderMessage: preorderActive ? (row.preorder_message ?? null) : null,
       videoUrl: row.video_url ?? undefined,
       videoPoster: posterUrl,
       videoPosterAlt: posterAlt,

@@ -15,7 +15,7 @@ import {
   type FeedProduct,
 } from "./types";
 
-/** ACP availability vocabulary (in_stock | out_of_stock | backorder). */
+/** ACP availability vocabulary (in_stock | out_of_stock | backorder | preorder). */
 function acpAvailability(a: FeedAvailability): string {
   return a;
 }
@@ -45,6 +45,7 @@ export function buildAcpProduct(p: FeedProduct, meta: FeedMeta): Record<string, 
     image_url: p.imageUrl,
     price: formatFeedPrice(p.priceMinor, meta.currency, meta.priceDecimals),
     availability: acpAvailability(p.availability),
+    ...(p.availability === "preorder" && p.availabilityDate ? { availability_date: p.availabilityDate } : {}),
     seller_name: meta.sellerName.slice(0, 70),
     seller_url: meta.sellerUrl,
     return_policy: meta.returnPolicyUrl,

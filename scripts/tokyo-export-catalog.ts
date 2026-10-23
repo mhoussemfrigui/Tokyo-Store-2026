@@ -43,7 +43,12 @@ type RawProduct = {
    *  discounted (stored old price or a live promotion); null otherwise. */
   oldPrice: number | null;
   currency: string;
-  availability: "in_stock" | "out_of_stock";
+  /** `"backorder"` = précommande (active preorder, orderable regardless of stock). */
+  availability: "in_stock" | "out_of_stock" | "backorder";
+  /** Précommande release instant (ISO) for a dated active preorder; null otherwise. */
+  preorderReleasesAt: string | null;
+  /** Operator précommande note for the PDP; null when none. */
+  preorderMessage: string | null;
   condition: string;
   brand: string;
   category: string;
@@ -144,7 +149,10 @@ async function main(): Promise<void> {
         price: p.price,
         oldPrice: p.oldPrice ?? null,
         currency: "TND",
-        availability: p.inStock ? "in_stock" : "out_of_stock",
+        // Mapper-computed SSOT (preorder → "backorder"); fall back for safety.
+        availability: p.availability ?? (p.inStock ? "in_stock" : "out_of_stock"),
+        preorderReleasesAt: p.preorderReleasesAt ?? null,
+        preorderMessage: p.preorderMessage ?? null,
         condition: p.condition ?? "new",
         brand: p.brand ?? "",
         category: leaf,

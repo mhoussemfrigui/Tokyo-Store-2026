@@ -242,6 +242,12 @@ export function ProductView({
   const strike = productStrike({ price, oldPrice: product.oldPrice });
   const stock = currentCombo ? (currentCombo.inStock ? "in_stock" : "out_of_stock") : stockState(product);
   const orderable = currentCombo ? currentCombo.inStock : isOrderable(product);
+  // Précommande: "backorder" is Tokyo's active-preorder state — orderable, but the
+  // CTA + a release note signal that it ships later (units are reserved, not sold now).
+  const preorder = stock === "backorder";
+  const preorderReleaseLabel = product.preorderReleasesAt
+    ? new Date(product.preorderReleasesAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })
+    : null;
 
   /* Quantity (respects the backend min/max). */
   const minQty = Math.max(1, product.minPurchaseQty ?? 1);
@@ -344,7 +350,13 @@ export function ProductView({
     .filter(Boolean);
   const [descOpen, setDescOpen] = useState(false);
 
-  const addLabel = added ? "Ajouté au panier" : orderable ? "Ajouter au panier" : "Indisponible";
+  const addLabel = added
+    ? "Ajouté au panier"
+    : !orderable
+      ? "Indisponible"
+      : preorder
+        ? "Précommander"
+        : "Ajouter au panier";
   const curImg = gallery[img] ?? product.image;
 
   return (
@@ -861,6 +873,18 @@ export function ProductView({
                 <Zap size={16} /> Achat rapide
               </button>
             </div>
+
+            {/* Précommande note — only for an active-preorder product. Signals the
+                deferred ship date + any operator message right under the CTA. */}
+            {preorder && (
+              <div className="rounded-[20px] border border-[#f0d9a8] bg-[#fdf6e9] px-4 py-3 text-[13px] leading-relaxed text-[#7a5a1a]">
+                <span className="font-bold">Précommande</span>
+                {preorderReleaseLabel ? ` — expédié à partir du ${preorderReleaseLabel}.` : " — expédié dès sa sortie."}
+                {product.preorderMessage ? (
+                  <div className="mt-1 text-[#8a6a2a]">{product.preorderMessage}</div>
+                ) : null}
+              </div>
+            )}
 
             {/* Contact rows — its own mobile pill; on desktop keeps the top
                 border + mt-auto (pins to the bottom of the buy-box card). */}
