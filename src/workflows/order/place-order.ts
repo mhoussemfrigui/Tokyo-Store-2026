@@ -55,6 +55,8 @@ import { bus } from "@/events/bus";
 import { emitProductStockCacheBust } from "@/lib/catalog/product-cache-bust";
 import { getSharedStockDefault, isSharedStock } from "@/lib/inventory/variant-stock";
 import { resolveLowStockConfig, classifyStockCrossing } from "@/lib/inventory/low-stock";
+import { isActivePreorder } from "@/lib/inventory/preorder";
+import { stockReservationService } from "@/modules/stock-reservation/service";
 import { stockMovementService } from "@/modules/stock-movement";
 import { fail, ok, workflow } from "../shared";
 
@@ -489,12 +491,17 @@ export const placeOrderWorkflow = workflow<
       // disables regardless of quantity.
       const shared = Boolean(variant) && isSharedStock(product.shared_variant_stock, sharedStockDefault);
       const label = variant ? ` (${variant.label})` : "";
-      if (!(variant ?? product).in_stock || (shared && !product.in_stock)) {
-        throw new PlaceOrderError("product_unavailable", `${product.name}${label} n'est plus disponible.`);
-      }
-      const qtyTarget = shared ? product : (variant ?? product);
-      if (qtyTarget.stock_qty !== null && item.quantity > qtyTarget.stock_qty) {
-        throw new PlaceOrderError("out_of_stock", `${product.name}${label} n'est plus disponible.`);
+      // Active-preorder lines sell WITHOUT stock — they RESERVE units (below)
+      // instead of decrementing, so they bypass the in_stock + quantity gates.
+      const preorder = isActivePreorder(product);
+      if (!preorder) {
+        if (!(variant ?? product).in_stock || (shared && !product.in_stock)) {
+          throw new PlaceOrderError("product_unavailable", `${product.name}${label} n'est plus disponible.`);
+        }
+        const qtyTarget = shared ? product : (variant ?? product);
+        if (qtyTarget.stock_qty !== null && item.quantity > qtyTarget.stock_qty) {
+          throw new PlaceOrderError("out_of_stock", `${product.name}${label} n'est plus disponible.`);
+        }
       }
       const primaryMediaId = primaryMediaIdsByProduct.get(product.id);
       // Walk the full url-resolver chain (url_override → webp → url → original)
@@ -509,7 +516,7 @@ export const placeOrderWorkflow = workflow<
       const variantImageUrl = variant?.image_media_id
         ? resolveMediaThumbUrl(mediaMap.get(variant.image_media_id))
         : null;
-      return { product, variant, item, imageUrl, variantImageUrl };
+      return { product, variant, item, imageUrl, variantImageUrl, preorder };
     });
 
     // Per-product purchase-quantity limits (authoritative gate) — aggregated by
@@ -947,6 +954,9 @@ export const placeOrderWorkflow = workflow<
           (operatorUserId ? "operator" : deliveryChannel === "operator" ? "erp" : "storefront"),
         // Marketing source (operator-supplied; NULL everywhere but a manual order).
         source: source ?? null,
+        // Précommande: the order has ≥1 active-preorder line (reserves units, no
+        // stock decrement, revenue deferred until conversion).
+        is_preorder: snapshots.some((s) => s.preorder),
       }, tx);
 
       const insertedItems = await orderService.insertItems(
@@ -975,6 +985,10 @@ export const placeOrderWorkflow = workflow<
           // disabled, so the column stays clean for tax-free stores.
           tax_cents: lineTaxes[i].taxCents,
           tax_rate_bps: lineTaxes[i].rateBps,
+          // Preorder lines claim no stock at placement (stock_claimed=false,
+          // flipped true at conversion); regular lines are claimed now.
+          is_preorder: s.preorder,
+          stock_claimed: !s.preorder,
         })),
         tx,
       );
@@ -1005,6 +1019,27 @@ export const placeOrderWorkflow = workflow<
         await orderService.insertCareItems(careRows, tx);
       }
 
+      // Preorder lines RESERVE units instead of decrementing — one open hold per
+      // line, bumping reserved_qty (the variant for per-variant stock, else the
+      // product pool, matching the decrement target below). Nothing leaves the
+      // sellable total until conversion. insertedItems is index-aligned with snapshots.
+      for (let i = 0; i < snapshots.length; i++) {
+        const s = snapshots[i];
+        if (!s.preorder) continue;
+        const reserveVariantId =
+          s.variant && !isSharedStock(s.product.shared_variant_stock, sharedStockDefault)
+            ? s.variant.id
+            : null;
+        await stockReservationService.reserveForOrderLine(tx, {
+          orderId: inserted.id,
+          orderItemId: insertedItems[i].id,
+          productId: s.product.id,
+          variantId: reserveVariantId,
+          qty: s.item.quantity,
+          actorUserId: auditActorUserId,
+        });
+      }
+
       // Atomically decrement tracked stock inside the same transaction. The
       // `stock_qty >= quantity` guard makes this race-safe: if a concurrent
       // checkout claimed the last units between the earlier read and here, the
@@ -1030,6 +1065,7 @@ export const placeOrderWorkflow = workflow<
         return ka < kb ? -1 : ka > kb ? 1 : 0;
       });
       for (const s of ordered) {
+        if (s.preorder) continue; // reserved above — a preorder line never decrements at placement
         const qty = s.item.quantity;
         if (decrementsVariant(s)) {
           if (s.variant!.stock_qty === null) continue;

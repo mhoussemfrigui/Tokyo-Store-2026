@@ -54,9 +54,6 @@ export async function createBrandAction(
         : undefined,
       isActive: formData.get("isActive") === "on",
       isDiscountable: formData.get("isDiscountable") === "on",
-      isPreorder: formData.get("isPreorder") === "on",
-      preorderReleasesAt: nullable(formData, "preorderReleasesAt"),
-      preorderMessage: nullable(formData, "preorderMessage"),
       displayOrder: optionalInt(formData, "displayOrder"),
       heroMediaId: formData.has("heroMediaId")
         ? (optionalUuid(formData, "heroMediaId") ?? null)
@@ -106,9 +103,6 @@ export async function updateBrandAction(
         : undefined,
       isActive: formData.get("isActive") === "on",
       isDiscountable: formData.get("isDiscountable") === "on",
-      isPreorder: formData.get("isPreorder") === "on",
-      preorderReleasesAt: nullable(formData, "preorderReleasesAt"),
-      preorderMessage: nullable(formData, "preorderMessage"),
       displayOrder: optionalInt(formData, "displayOrder"),
       heroMediaId: formData.has("heroMediaId")
         ? (optionalUuid(formData, "heroMediaId") ?? null)
@@ -266,9 +260,6 @@ export async function createCategoryAction(
         : undefined,
       isActive: formData.get("isActive") === "on",
       isDiscountable: formData.get("isDiscountable") === "on",
-      isPreorder: formData.get("isPreorder") === "on",
-      preorderReleasesAt: nullable(formData, "preorderReleasesAt"),
-      preorderMessage: nullable(formData, "preorderMessage"),
       editorialEyebrow: nullable(formData, "editorialEyebrow"),
       editorialTitle: nullable(formData, "editorialTitle"),
       editorialBody: nullable(formData, "editorialBody"),
@@ -339,9 +330,6 @@ export async function updateCategoryAction(
         : undefined,
       isActive: formData.get("isActive") === "on",
       isDiscountable: formData.get("isDiscountable") === "on",
-      isPreorder: formData.get("isPreorder") === "on",
-      preorderReleasesAt: nullable(formData, "preorderReleasesAt"),
-      preorderMessage: nullable(formData, "preorderMessage"),
       editorialEyebrow: nullable(formData, "editorialEyebrow"),
       editorialTitle: nullable(formData, "editorialTitle"),
       editorialBody: nullable(formData, "editorialBody"),

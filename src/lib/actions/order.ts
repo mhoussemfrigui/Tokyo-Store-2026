@@ -424,6 +424,24 @@ export async function switchOrderToCodAction(orderId: string): Promise<ActionSta
 }
 
 /**
+ * Convert a précommande order at RELEASE — consume its stock reservations,
+ * decrement real stock for each, and mark the order converted. Mirrors the
+ * placement flow's deferred decrement. See `convertPreorderOrderWorkflow`.
+ */
+export async function convertPreorderOrderAction(orderId: string): Promise<ActionState> {
+  const session = await requirePermission("orders", "manage");
+  const result = await workflows.order.convertPreorder({ orderId }, { actorUserId: session.user.id });
+  if (!result.ok) return { ok: false, error: result.error, message: result.message };
+  if (!result.data.converted) {
+    return { ok: false, error: "conflict", message: "Cette commande n'est pas une précommande à convertir." };
+  }
+  revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath("/admin/orders");
+  revalidatePath("/admin/catalog/preorders");
+  return { ok: true, message: "Précommande convertie : stock décrémenté." };
+}
+
+/**
  * Admin-side patch for `payment_method` + `payment_reference`. Used when
  * payment lands outside the gateway (wire transfer, in-person cash) and
  * the order needs the receipt fields backfilled.

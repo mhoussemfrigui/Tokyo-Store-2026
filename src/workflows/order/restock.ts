@@ -75,6 +75,7 @@ export async function restockOrderLines(
       product_id: order_items.product_id,
       variant_id: order_items.variant_id,
       quantity: order_items.quantity,
+      stock_claimed: order_items.stock_claimed,
     })
     .from(order_items)
     .where(eq(order_items.order_id, orderId));
@@ -106,6 +107,11 @@ export async function restockOrderLines(
       ? Math.max(0, line.quantity - (opts.shippedByItem.get(line.id) ?? 0))
       : line.quantity;
     if (qty <= 0) continue;
+    // Never restock a line whose stock was never decremented — an OPEN preorder
+    // line (stock_claimed=false). It reserved units; the reservation is released
+    // separately (stockReservationService.releaseForOrder). Only regular / converted
+    // lines (stock_claimed=true) restock.
+    if (line.stock_claimed === false) continue;
     const shared = sharedOf(line.product_id);
     if (line.variant_id && !shared) {
       const r = await tx

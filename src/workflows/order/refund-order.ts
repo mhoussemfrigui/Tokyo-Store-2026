@@ -10,6 +10,7 @@ import { goodsLeftWarehouse } from "@/lib/order/fulfilment-state";
 import { getSharedStockDefault } from "@/lib/inventory/variant-stock";
 import { reconcileOrderPromos } from "./reconcile-order-promos";
 import { restockOrderLines, emitRestockEvents, type RestockOutcome } from "./restock";
+import { stockReservationService } from "@/modules/stock-reservation";
 import { fail, ok, workflow } from "../shared";
 import type { WorkflowFail } from "../shared";
 
@@ -170,6 +171,21 @@ export const refundOrderWorkflow = workflow<
           });
         }
       }
+      // Release any OPEN précommande reservations on a full refund — the held
+      // units were never decremented, so there is nothing to restock; the hold
+      // just drops out of `reserved_qty`. No-op if already released (a prior
+      // cancel) or converted (those lines restock above). Fold the freed products
+      // into the cache-bust set so availability (stock − reserved) refreshes.
+      const openHolds = await stockReservationService.listOpenForOrder(tx, order.id);
+      if (openHolds.length > 0) {
+        await stockReservationService.releaseForOrder(tx, order.id);
+        const freedIds = [...new Set(openHolds.map((h) => h.product_id))];
+        restockOutcome = {
+          touchedProductIds: [...new Set([...(restockOutcome?.touchedProductIds ?? []), ...freedIds])],
+          restockedProductIds: restockOutcome?.restockedProductIds ?? [],
+        };
+      }
+
       // Full refund → reverse the coupon redemption. Shared with the
       // cancellation path so both undo identically.
       await reconcileOrderPromos(tx, order);

@@ -138,6 +138,7 @@ import { confirmOrderWorkflow } from "./order/confirm-order";
 import { setOrderPaymentReferenceWorkflow } from "./order/set-payment-reference";
 import { setOrderInvoiceTaxWorkflow } from "./order/set-invoice-tax";
 import { refundOrderWorkflow } from "./order/refund-order";
+import { convertPreorderOrderWorkflow } from "./order/convert-preorder";
 import { switchOrderToCodWorkflow } from "./order/switch-to-cod";
 import { setOrderSpamWorkflow } from "./order/set-spam";
 import {
@@ -340,6 +341,7 @@ export const workflows = {
     setPaymentReference: setOrderPaymentReferenceWorkflow,
     setInvoiceTax: setOrderInvoiceTaxWorkflow,
     refund: refundOrderWorkflow,
+    convertPreorder: convertPreorderOrderWorkflow,
     switchToCod: switchOrderToCodWorkflow,
     setSpam: setOrderSpamWorkflow,
     linkGuestOrder: linkGuestOrderWorkflow,

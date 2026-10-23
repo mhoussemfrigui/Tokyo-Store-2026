@@ -11,6 +11,7 @@ import { goodsLeftWarehouse, isFullyRefunded, sumRefundCents } from "@/lib/order
 import { getSharedStockDefault } from "@/lib/inventory/variant-stock";
 import { reconcileOrderPromos } from "./reconcile-order-promos";
 import { restockOrderLines, emitRestockEvents, type RestockOutcome } from "./restock";
+import { stockReservationService } from "@/modules/stock-reservation";
 // Circular with gateway-payment (confirmPaymentWorkflow → this workflow, to
 // `paid` only) — safe: both bindings are only dereferenced at call time.
 import { assertPendingOnlineOrderNotCaptured } from "./gateway-payment";
@@ -262,6 +263,22 @@ export const transitionOrderStatusWorkflow = workflow<
         restockOutcome = await restockOrderLines(tx, parsed.data.orderId, "cancellation", actorUserId, {
           sharedDefault,
         });
+      }
+
+      // Release any OPEN précommande reservations — an unconverted preorder line
+      // claimed no stock (it RESERVED units), so there is nothing to restock; the
+      // hold just drops out of `reserved_qty`. No-op once converted (those lines
+      // restock above via `stock_claimed=true`) or already released. Fold the
+      // freed products into the cache-bust set so the storefront availability
+      // (stock − reserved) refreshes post-commit.
+      const openHolds = await stockReservationService.listOpenForOrder(tx, parsed.data.orderId);
+      if (openHolds.length > 0) {
+        await stockReservationService.releaseForOrder(tx, parsed.data.orderId);
+        const freedIds = [...new Set(openHolds.map((h) => h.product_id))];
+        restockOutcome = {
+          touchedProductIds: [...new Set([...(restockOutcome?.touchedProductIds ?? []), ...freedIds])],
+          restockedProductIds: restockOutcome?.restockedProductIds ?? [],
+        };
       }
 
       // Reverse promotion effects (P2 fix): free the coupon slot — the same

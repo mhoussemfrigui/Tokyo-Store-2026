@@ -65,6 +65,7 @@ import { RETURNABLE_STATUSES } from "@/workflows/order/returns";
 import { isUuid } from "@/lib/utils/uuid";
 import { returnService } from "@/modules/order/returns.service";
 import { OrderStatusControls } from "./order-status-controls";
+import { PreorderConvertControl } from "./preorder-convert-control";
 import { VerificationPanel } from "./verification-panel";
 import { DocumentsPanel } from "./documents-panel";
 import { OrderLineEditor } from "./order-line-editor";
@@ -794,6 +795,10 @@ export default async function OrderDetailPage({
                 />
                 {refundLockNote && (
                   <AdvisoryNote advisory={{ level: "warn", message: refundLockNote }} />
+                )}
+                {/* Précommande release — consume reservations + decrement stock. */}
+                {canManage && order.is_preorder && order.preorder_converted_at == null && (
+                  <PreorderConvertControl orderId={order.id} releasesAt={null} />
                 )}
                 {/* Spam triage — flag junk orders out of the default list + queue. */}
                 <SpamControl orderId={order.id} flaggedSpam={order.flagged_spam_at != null} />
