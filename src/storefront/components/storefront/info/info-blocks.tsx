@@ -139,22 +139,66 @@ function renderBlock(block: PageBlock, ctx: Ctx): ReactNode {
       if (cards.length === 0 && !h.title) return null;
       const dark = block.type === "feature_cards" || c.presentation?.background === "dark";
       const plain = c.presentation?.background === "default";
+      // Layout variant (TRUST_LAYOUTS): cards (grid), plain (hairline rows),
+      // tiles (compact centred), numbered (ordered rows). Was ignored (M-04 part 2).
+      const layout = c.layout ?? "cards";
       const cardBg = dark ? "bg-foreground text-background" : plain ? "bg-card" : "bg-muted";
+      const bodyCls = dark ? "block text-[14px] leading-[1.55] text-background/70" : cn("block", INFO_MUTED);
       return (
         <InfoSection tone={plain ? "plain" : dark ? "dark" : "card"}>
           <SectionHead header={h} eyebrowTone={dark ? "pink" : "crimson"} />
-          <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr))]">
-            {cards.map((card, i) => (
-              <div key={i} className={cn("flex flex-col gap-3.5 rounded-[28px] p-[22px]", cardBg)}>
-                {card.icon && <IconDisc icon={card.icon} />}
-                <div className="flex flex-col gap-1.5">
-                  {card.title && <span className="text-[18px] font-extrabold tracking-[-0.01em]">{card.title}</span>}
-                  {card.body && <span className={cn("block", dark ? "text-[14px] leading-[1.55] text-background/70" : INFO_MUTED)}>{card.body}</span>}
-                  {card.meta && <span className="mt-1 text-[13px] font-bold text-primary">{card.meta}</span>}
+          {layout === "plain" ? (
+            <div className={cn("flex flex-col", dark ? "divide-y divide-background/15" : "divide-y divide-border/60")}>
+              {cards.map((card, i) => (
+                <div key={i} className="flex items-start gap-4 py-4 first:pt-0 last:pb-0">
+                  {card.icon && <IconDisc icon={card.icon} />}
+                  <div className="flex flex-col gap-1">
+                    {card.title && <span className="text-[17px] font-extrabold">{card.title}</span>}
+                    {card.body && <span className={bodyCls}>{card.body}</span>}
+                    {card.meta && <span className="text-[13px] font-bold text-primary">{card.meta}</span>}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : layout === "numbered" ? (
+            <ol className="m-0 flex list-none flex-col gap-4 p-0">
+              {cards.map((card, i) => (
+                <li key={i} className="flex items-start gap-4">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-[14px] font-black tabular-nums text-primary">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <div className="flex flex-col gap-1">
+                    {card.title && <span className="text-[17px] font-extrabold">{card.title}</span>}
+                    {card.body && <span className={bodyCls}>{card.body}</span>}
+                    {card.meta && <span className="text-[13px] font-bold text-primary">{card.meta}</span>}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          ) : layout === "tiles" ? (
+            <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))]">
+              {cards.map((card, i) => (
+                <div key={i} className={cn("flex flex-col items-center gap-2.5 rounded-[22px] p-4 text-center", cardBg)}>
+                  {card.icon && <IconDisc icon={card.icon} />}
+                  {card.title && <span className="text-[14px] font-extrabold leading-tight">{card.title}</span>}
+                  {card.meta && <span className="text-[12px] font-bold text-primary">{card.meta}</span>}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr))]">
+              {cards.map((card, i) => (
+                <div key={i} className={cn("flex flex-col gap-3.5 rounded-[28px] p-[22px]", cardBg)}>
+                  {card.icon && <IconDisc icon={card.icon} />}
+                  <div className="flex flex-col gap-1.5">
+                    {card.title && <span className="text-[18px] font-extrabold tracking-[-0.01em]">{card.title}</span>}
+                    {card.body && <span className={bodyCls}>{card.body}</span>}
+                    {card.meta && <span className="mt-1 text-[13px] font-bold text-primary">{card.meta}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </InfoSection>
       );
     }
@@ -242,18 +286,52 @@ function renderBlock(block: PageBlock, ctx: Ctx): ReactNode {
     case "steps": {
       const steps = c.steps ?? [];
       if (steps.length === 0 && !h.title) return null;
+      // Layout variant (STEPS_LAYOUTS): cards (grid), ladder (horizontal, linked),
+      // vertical (numbered rail). Was ignored (M-04 part 2).
+      const layout = c.layout ?? "cards";
+      const num = (i: number) => String(i + 1).padStart(2, "0");
       return (
         <InfoSection>
           <SectionHead header={h} />
-          <ol className="m-0 grid list-none gap-3.5 p-0 [grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr))]">
-            {steps.map((s, i) => (
-              <li key={i} className="relative flex flex-col gap-2.5 rounded-[28px] border-[1.5px] border-border p-[22px]">
-                <span className="text-[13px] font-black tracking-[0.08em] text-primary">{String(i + 1).padStart(2, "0")}</span>
-                {s.title && <span className="text-[17px] font-extrabold">{s.title}</span>}
-                {s.body && <span className={INFO_MUTED}>{s.body}</span>}
-              </li>
-            ))}
-          </ol>
+          {layout === "vertical" ? (
+            <ol className="m-0 flex list-none flex-col p-0">
+              {steps.map((s, i) => (
+                <li key={i} className="grid grid-cols-[auto_1fr] gap-x-5">
+                  <div className="flex flex-col items-center">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-[13px] font-black tabular-nums text-primary-foreground">{num(i)}</span>
+                    {i < steps.length - 1 && <span className="w-px flex-1 bg-border" />}
+                  </div>
+                  <div className="pb-8">
+                    {s.title && <span className="text-[17px] font-extrabold">{s.title}</span>}
+                    {s.body && <p className={cn("mt-1", INFO_MUTED)}>{s.body}</p>}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          ) : layout === "ladder" ? (
+            <ol className="m-0 flex list-none flex-wrap gap-x-3 gap-y-7 p-0">
+              {steps.map((s, i) => (
+                <li key={i} className="flex min-w-[min(100%,200px)] flex-1 flex-col gap-2.5">
+                  <div className="flex items-center gap-3">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-[15px] font-black tabular-nums text-primary-foreground">{num(i)}</span>
+                    {i < steps.length - 1 && <span aria-hidden className="h-px flex-1 bg-border" />}
+                  </div>
+                  {s.title && <span className="text-[16px] font-extrabold">{s.title}</span>}
+                  {s.body && <span className={INFO_MUTED}>{s.body}</span>}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <ol className="m-0 grid list-none gap-3.5 p-0 [grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr))]">
+              {steps.map((s, i) => (
+                <li key={i} className="relative flex flex-col gap-2.5 rounded-[28px] border-[1.5px] border-border p-[22px]">
+                  <span className="text-[13px] font-black tracking-[0.08em] text-primary">{num(i)}</span>
+                  {s.title && <span className="text-[17px] font-extrabold">{s.title}</span>}
+                  {s.body && <span className={INFO_MUTED}>{s.body}</span>}
+                </li>
+              ))}
+            </ol>
+          )}
         </InfoSection>
       );
     }
@@ -325,15 +403,49 @@ function renderBlock(block: PageBlock, ctx: Ctx): ReactNode {
     // ── rich_text (sanitised HTML / legal prose) ───────────────────────────
     case "rich_text": {
       if (!c.body && !h.title) return null;
+      // Layout variant (RICH_TEXT_LAYOUTS): split (sticky title column beside the
+      // prose), centered (title + column centred), auto/default (title above a
+      // left-aligned prose column). Was ignored (M-04 part 2).
+      const layout = c.layout ?? "auto";
+      const proseCls =
+        "tk-prose text-[16px] leading-[1.7] text-graphite [&_a]:font-semibold [&_a]:text-primary [&_a]:underline [&_h2]:mb-2 [&_h2]:mt-8 [&_h2]:text-[clamp(20px,2vw,26px)] [&_h2]:font-black [&_h2]:tracking-[-0.02em] [&_h2]:text-foreground [&_h3]:mb-1.5 [&_h3]:mt-5 [&_h3]:text-[17px] [&_h3]:font-bold [&_h3]:text-foreground [&_li]:mt-1.5 [&_ol]:mt-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mt-3 [&_strong]:font-semibold [&_strong]:text-foreground [&_ul]:mt-3 [&_ul]:list-disc [&_ul]:pl-5";
+      // Sanitise once; each layout just picks the column classes.
+      const html = c.body ? sanitizeRichHtml(c.body) : null;
+      const prose = (extra: string) =>
+        html != null ? <div className={cn(proseCls, extra)} dangerouslySetInnerHTML={{ __html: html }} /> : null;
+
+      // split — a sticky heading column beside the prose (reads like a contract).
+      if (layout === "split" && h.title) {
+        return (
+          <InfoSection>
+            <div className="grid gap-[clamp(20px,4vw,56px)] md:grid-cols-[minmax(0,240px)_1fr]">
+              <div className="md:sticky md:top-24 md:self-start">
+                {h.eyebrow && <Eyebrow>{h.eyebrow}</Eyebrow>}
+                <SectionTitle className="mt-2">{h.title}</SectionTitle>
+              </div>
+              {prose("max-w-[74ch]")}
+            </div>
+          </InfoSection>
+        );
+      }
+
+      // centered — title and prose column centred on the page.
+      if (layout === "centered") {
+        return (
+          <InfoSection>
+            <div className="flex flex-col items-center text-center">
+              {h.title && <SectionTitle className="text-center">{h.title}</SectionTitle>}
+              {prose("mt-4 max-w-[70ch] text-left")}
+            </div>
+          </InfoSection>
+        );
+      }
+
+      // auto / default — title above a left-aligned prose column.
       return (
         <InfoSection>
           {h.title && <SectionTitle>{h.title}</SectionTitle>}
-          {c.body && (
-            <div
-              className="tk-prose max-w-[74ch] text-[16px] leading-[1.7] text-graphite [&_a]:font-semibold [&_a]:text-primary [&_a]:underline [&_h2]:mb-2 [&_h2]:mt-8 [&_h2]:text-[clamp(20px,2vw,26px)] [&_h2]:font-black [&_h2]:tracking-[-0.02em] [&_h2]:text-foreground [&_h3]:mb-1.5 [&_h3]:mt-5 [&_h3]:text-[17px] [&_h3]:font-bold [&_h3]:text-foreground [&_li]:mt-1.5 [&_ol]:mt-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mt-3 [&_strong]:font-semibold [&_strong]:text-foreground [&_ul]:mt-3 [&_ul]:list-disc [&_ul]:pl-5"
-              dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(c.body) }}
-            />
-          )}
+          {prose("max-w-[74ch]")}
         </InfoSection>
       );
     }
@@ -446,27 +558,76 @@ function renderBlock(block: PageBlock, ctx: Ctx): ReactNode {
     case "hero": {
       if (!h.title && !c.body) return null;
       const img = pick(media, c.image, h.title ?? "");
-      return (
-        <section className="relative overflow-hidden rounded-[clamp(24px,4vw,36px)] bg-card p-[clamp(24px,4vw,48px)]">
-          <div className="flex flex-col gap-4">
-            {h.eyebrow && <Eyebrow>{h.eyebrow}</Eyebrow>}
-            {h.title && <SectionTitle as="h1" className="text-[clamp(32px,5vw,64px)] leading-[0.98] tracking-[-0.045em]">{h.title}</SectionTitle>}
-            {c.body && <p className={cn("m-0", INFO_LEDE)}>{c.body}</p>}
-            {h.ctaLabel && h.ctaHref && (
-              <div className="mt-2 flex flex-wrap gap-2.5">
-                <SmartLink href={h.ctaHref} className={btnPrimary}>{h.ctaLabel}<ArrowRight aria-hidden className="size-[17px]" strokeWidth={2.2} /></SmartLink>
-                {c.secondaryCtaLabel && c.secondaryCtaHref && (
-                  <SmartLink href={c.secondaryCtaHref} className={btnOutline}>{c.secondaryCtaLabel}</SmartLink>
-                )}
-              </div>
-            )}
-          </div>
-          {img && (
-            <div className="mt-6 aspect-[16/7] overflow-hidden rounded-[28px] bg-muted">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.src} alt={img.alt} loading="lazy" decoding="async" className="size-full object-cover" />
+      // Layout variant (HERO_LAYOUTS): centered (the parser's default), statement
+      // (faint watermark numeral), split (text beside a cover image), compact
+      // (tighter, no cover). Was ignored (M-04 part 2). The "" fallback is only
+      // hit if the config somehow lacks a layout → the plain left-aligned render.
+      const layout = c.layout ?? "";
+      const centered = layout === "centered";
+      const compact = layout === "compact";
+      const text = (
+        <div className={cn("flex flex-col gap-4", centered && "items-center text-center")}>
+          {h.eyebrow && <Eyebrow>{h.eyebrow}</Eyebrow>}
+          {h.title && (
+            <SectionTitle as="h1" className={cn("leading-[0.98] tracking-[-0.045em]", compact ? "text-[clamp(26px,3.5vw,42px)]" : "text-[clamp(32px,5vw,64px)]")}>
+              {h.title}
+            </SectionTitle>
+          )}
+          {c.body && <p className={cn("m-0 max-w-[62ch]", INFO_LEDE, centered && "mx-auto")}>{c.body}</p>}
+          {h.ctaLabel && h.ctaHref && (
+            <div className={cn("mt-2 flex flex-wrap gap-2.5", centered && "justify-center")}>
+              <SmartLink href={h.ctaHref} className={btnPrimary}>{h.ctaLabel}<ArrowRight aria-hidden className="size-[17px]" strokeWidth={2.2} /></SmartLink>
+              {c.secondaryCtaLabel && c.secondaryCtaHref && (
+                <SmartLink href={c.secondaryCtaHref} className={btnOutline}>{c.secondaryCtaLabel}</SmartLink>
+              )}
             </div>
           )}
+        </div>
+      );
+      const cover = img ? (
+        <div className="aspect-[16/7] overflow-hidden rounded-[28px] bg-muted">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={img.src} alt={img.alt} loading="lazy" decoding="async" className="size-full object-cover" />
+        </div>
+      ) : null;
+
+      // split — text beside a cover image (the hero composer has no image-side
+      // control, so the image always sits on the right; editorial is the block
+      // that offers a left/right choice).
+      if (layout === "split" && img) {
+        return (
+          <section className="relative overflow-hidden rounded-[clamp(24px,4vw,36px)] bg-card p-[clamp(24px,4vw,48px)]">
+            <div className="grid items-center gap-[clamp(24px,4vw,48px)] md:grid-cols-2">
+              <div>{text}</div>
+              <div className="aspect-[4/3] overflow-hidden rounded-[28px] bg-muted">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={img.src} alt={img.alt} loading="lazy" decoding="async" className="size-full object-cover" />
+              </div>
+            </div>
+          </section>
+        );
+      }
+
+      // statement — an oversized faint watermark numeral behind a big title.
+      if (layout === "statement") {
+        return (
+          <section className="relative overflow-hidden rounded-[clamp(24px,4vw,36px)] bg-card p-[clamp(28px,5vw,64px)]">
+            {c.watermark && (
+              <span aria-hidden className="pointer-events-none absolute -right-2 top-0 select-none font-black leading-none tracking-tighter text-primary/[0.06] text-[clamp(120px,28vw,300px)]">
+                {c.watermark}
+              </span>
+            )}
+            <div className="relative">{text}</div>
+            {cover && <div className="relative mt-6">{cover}</div>}
+          </section>
+        );
+      }
+
+      // centered / compact / default (left) — text, then the cover below (not compact).
+      return (
+        <section className={cn("relative overflow-hidden rounded-[clamp(24px,4vw,36px)] bg-card", compact ? "p-[clamp(20px,3vw,32px)]" : "p-[clamp(24px,4vw,48px)]")}>
+          {text}
+          {cover && !compact && <div className="mt-6">{cover}</div>}
         </section>
       );
     }
@@ -474,24 +635,48 @@ function renderBlock(block: PageBlock, ctx: Ctx): ReactNode {
     case "stats": {
       const stats = c.stats ?? [];
       if (stats.length === 0) return null;
+      // A live `brands` source overrides the manual value; shared across variants.
+      const statValue = (s: (typeof stats)[number]) =>
+        s.source === "brands" && ctx.r.brandCount != null ? String(ctx.r.brandCount) : s.value;
+      // Layout variant (STATS_LAYOUTS): grid (cards), row (inline), ledger (rows).
+      // Was ignored (M-04 part 2).
+      const layout = c.layout ?? "grid";
       return (
         <InfoSection>
           <SectionHead header={h} />
-          <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))]">
-            {stats.map((s, i) => {
-              const value =
-                s.source === "brands" && ctx.r.brandCount != null
-                  ? String(ctx.r.brandCount)
-                  : s.value;
-              return (
+          {layout === "row" ? (
+            <div className="flex flex-wrap gap-x-10 gap-y-6">
+              {stats.map((s, i) => (
+                <div key={i} className="flex flex-col gap-1">
+                  <span className="text-[clamp(32px,4vw,48px)] font-black leading-none tracking-[-0.04em] text-primary tabular-nums">{statValue(s)}</span>
+                  {s.label && <span className="text-[14px] font-bold">{s.label}</span>}
+                  {s.caption && <span className={INFO_MUTED}>{s.caption}</span>}
+                </div>
+              ))}
+            </div>
+          ) : layout === "ledger" ? (
+            <div className="flex flex-col divide-y divide-border/60">
+              {stats.map((s, i) => (
+                <div key={i} className="flex items-baseline justify-between gap-4 py-4 first:pt-0 last:pb-0">
+                  <div className="flex min-w-0 flex-col">
+                    {s.label && <span className="text-[16px] font-extrabold">{s.label}</span>}
+                    {s.caption && <span className={INFO_MUTED}>{s.caption}</span>}
+                  </div>
+                  <span className="shrink-0 text-[clamp(26px,3vw,38px)] font-black leading-none tracking-[-0.03em] text-primary tabular-nums">{statValue(s)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))]">
+              {stats.map((s, i) => (
                 <div key={i} className="flex flex-col gap-1.5 rounded-[28px] bg-muted p-[22px]">
-                  <span className="text-[40px] font-black leading-none tracking-[-0.04em] text-primary">{value}</span>
+                  <span className="text-[40px] font-black leading-none tracking-[-0.04em] text-primary tabular-nums">{statValue(s)}</span>
                   {s.label && <span className="text-[15px] font-bold">{s.label}</span>}
                   {s.caption && <span className={INFO_MUTED}>{s.caption}</span>}
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
         </InfoSection>
       );
     }
