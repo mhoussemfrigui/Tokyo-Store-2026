@@ -51,6 +51,7 @@ import {
   Lock,
   Bot,
   Clock,
+  CalendarClock,
   Zap,
   Undo2,
   Heart,
@@ -131,6 +132,7 @@ const NAV_GROUPS: { label: string; icon: React.ElementType; items: NavItem[] }[]
     items: [
       { id: "products", label: "Produits", href: "/admin/catalog/products", icon: Package },
       { id: "stock", label: "Stock", href: "/admin/catalog/stock", icon: Boxes },
+      { id: "preorders", label: "Précommandes", href: "/admin/catalog/preorders", icon: CalendarClock },
       { id: "reviews", label: "Avis clients", href: "/admin/catalog/reviews", icon: Star },
       { id: "media", label: "Médiathèque", href: "/admin/media", icon: ImageIcon },
     ],

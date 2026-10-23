@@ -568,3 +568,25 @@ export async function getNewUsersSeries(
 
 // Guest-clients listing moved to src/lib/customers/guest-filter.ts (the filterable
 // « Invités » tab: search + stats + keyset pagination + account enrichment + export).
+
+/** Open (unconverted) preorder reservation counts per product — total UNITS +
+ *  distinct ORDERS — from the order lines flagged is_preorder. Drives the
+ *  Précommandes queue's per-product cue. (Empty until placement wires preorders
+ *  in phase 3.) */
+export async function openPreorderCountsByProduct(
+  productIds: string[],
+): Promise<Map<string, { units: number; orders: number }>> {
+  const out = new Map<string, { units: number; orders: number }>();
+  if (productIds.length === 0) return out;
+  const rows = await db
+    .select({
+      productId: order_items.product_id,
+      units: sql<number>`coalesce(sum(${order_items.quantity}), 0)::int`,
+      orders: sql<number>`count(distinct ${order_items.order_id})::int`,
+    })
+    .from(order_items)
+    .where(and(inArray(order_items.product_id, productIds), eq(order_items.is_preorder, true)))
+    .groupBy(order_items.product_id);
+  for (const r of rows) out.set(r.productId, { units: r.units, orders: r.orders });
+  return out;
+}

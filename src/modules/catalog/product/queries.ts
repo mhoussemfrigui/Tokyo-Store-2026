@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, count, desc, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/lib/db/client";
 import {
@@ -335,4 +335,76 @@ export async function findVariantBySku(sku: string): Promise<ProductVariantRow |
     .where(and(eq(product_variants.sku, sku), isNull(product_variants.deleted_at)))
     .limit(1);
   return row ?? null;
+}
+
+// ── Précommandes queue (the /admin/catalog/preorders page) ───────────────────
+
+/** How long a just-released preorder lingers in the « Récemment sorties » bucket. */
+export const RECENTLY_RELEASED_DEFAULT_DAYS = 21;
+
+export type PreorderQueueRow = {
+  id: string;
+  slug: string;
+  name: string;
+  price_cents: number;
+  preorder_releases_at: Date | null;
+  is_published: boolean;
+};
+
+const PREORDER_QUEUE_COLS = {
+  id: products.id,
+  slug: products.slug,
+  name: products.name,
+  price_cents: products.price_cents,
+  preorder_releases_at: products.preorder_releases_at,
+  is_published: products.is_published,
+};
+
+/** Live products flagged `is_preorder` — the queue. Soonest release first
+ *  (undated last). Partial `products_preorder_idx` serves the filter. */
+export async function listPreorderQueue(opts: { limit?: number } = {}): Promise<PreorderQueueRow[]> {
+  return db
+    .select(PREORDER_QUEUE_COLS)
+    .from(products)
+    .where(and(eq(products.is_preorder, true), isNull(products.deleted_at)))
+    .orderBy(sql`${products.preorder_releases_at} asc nulls last`, desc(products.id))
+    .limit(Math.min(opts.limit ?? 500, 1000));
+}
+
+export async function countPreorderQueue(): Promise<number> {
+  const [row] = await db
+    .select({ n: count() })
+    .from(products)
+    .where(and(eq(products.is_preorder, true), isNull(products.deleted_at)));
+  return row?.n ?? 0;
+}
+
+const recentlyReleasedWhere = (days: number) =>
+  and(
+    isNull(products.deleted_at),
+    isNotNull(products.preorder_releases_at),
+    sql`${products.preorder_releases_at} <= now()`,
+    sql`${products.preorder_releases_at} >= now() - make_interval(days => ${days}::int)`,
+  );
+
+/** Products whose release date fell within the last N days — kept visible after
+ *  launch so an operator can still track their orders. Independent of the
+ *  is_preorder flag (catches rows already swept back to a normal sale). */
+export async function listRecentlyReleasedPreorders(
+  opts: { limit?: number; days?: number } = {},
+): Promise<PreorderQueueRow[]> {
+  const days = opts.days ?? RECENTLY_RELEASED_DEFAULT_DAYS;
+  return db
+    .select(PREORDER_QUEUE_COLS)
+    .from(products)
+    .where(recentlyReleasedWhere(days))
+    .orderBy(sql`${products.preorder_releases_at} desc nulls last`, desc(products.id))
+    .limit(Math.min(opts.limit ?? 500, 1000));
+}
+
+export async function countRecentlyReleasedPreorders(
+  days = RECENTLY_RELEASED_DEFAULT_DAYS,
+): Promise<number> {
+  const [row] = await db.select({ n: count() }).from(products).where(recentlyReleasedWhere(days));
+  return row?.n ?? 0;
 }

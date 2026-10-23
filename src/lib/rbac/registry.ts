@@ -72,6 +72,7 @@ export const PERMISSION_MODULES = [
   // (The reserved `stock:manage` was dropped in migration 0129 — it was never
   // wired, and its promise of a distinct transfers grant was misleading.)
   { id: "stock", label: "Stock", group: "Catalogue", actions: ["view", "update"] },
+  { id: "preorders", label: "Précommandes", group: "Catalogue", actions: VIEW_ONLY },
   { id: "categories", label: "Catégories", group: "Structure du catalogue", actions: CRUD },
   { id: "brands", label: "Marques", group: "Structure du catalogue", actions: CRUD },
   { id: "care", label: "Tokyo Care", group: "Structure du catalogue", actions: ["view", "create", "update", "delete", "manage"] },

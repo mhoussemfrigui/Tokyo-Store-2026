@@ -158,13 +158,13 @@ function main() {
     /if \(canViewOrders\) router\.push\(/.test(read("src/app/admin/orders/new/manual-order-form.tsx")),
   );
   check(
-    "sign-out is reachable on mobile (shared icon rail rendered in the mobile drawer)",
-    // The rebuilt shell puts the sign-out form once inside the shared `renderRail`
-    // block, which is rendered BOTH in the desktop aside and in the mobile drawer
-    // (`renderRail(` is invoked ≥2×). So a mobile user always has a sign-out —
-    // the requirement the old two-form heuristic protected.
-    /action=\{signoutAction\}/.test(shell) &&
-      (shell.match(/renderRail\(/g) ?? []).length >= 2,
+    "sign-out is reachable on both desktop and mobile",
+    // The master/detail shell renders the desktop rail (`renderRail`) and the
+    // mobile drawer (`renderMobileNav`) SEPARATELY — each embeds its own sign-out
+    // `<form action={signoutAction}>`. So the sign-out form appears ≥2× (once per
+    // surface); a mobile user always has a sign-out — the requirement the old
+    // shared-rail heuristic protected.
+    (shell.match(/action=\{signoutAction\}/g) ?? []).length >= 2,
   );
 
   console.log(`\n=== done: ${passed} passed, ${failed} failed ===`);
