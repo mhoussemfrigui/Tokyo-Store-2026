@@ -241,6 +241,20 @@ function assertProductionSecrets(env: ServerEnv): void {
     );
   }
 
+  // ADMIN_BOOTSTRAP_TOKEN is the one-shot super-admin bootstrap credential
+  // (POST /api/admin/bootstrap, honoured until the first admin exists). The
+  // Path-B `.env.example` ships a repo-PUBLIC sample token, so a copy-paste
+  // deploy would let anyone seize super_admin. It's optional — unset simply 404s
+  // the endpoint — so reject only a placeholder/example value in production
+  // (the sample contains "replace", which isPlaceholderSecret already matches).
+  if (env.ADMIN_BOOTSTRAP_TOKEN && isPlaceholderSecret(env.ADMIN_BOOTSTRAP_TOKEN)) {
+    errors.push(
+      "ADMIN_BOOTSTRAP_TOKEN is the repo-public example/placeholder value — anyone " +
+        "could use it to create the first super-admin. Unset it (the bootstrap " +
+        "endpoint then 404s), or set a freshly generated token (`openssl rand -hex 24`).",
+    );
+  }
+
   // Reject a DATABASE_URL that still points at localhost — almost certainly
   // a missed env override. We match the host portion of the URL so query
   // strings (e.g. ?host=...) don't trigger false positives.
