@@ -20,6 +20,7 @@ export const PRODUCT_SOURCE_MODES = [
   "new", // newest published
   "best_sellers", // top sellers over a window
   "on_promotion", // active auto-promotion pool
+  "preorder", // active-preorder products (soonest release first)
   "category", // products in a category (by slug)
   "brand", // products of a brand (by slug)
   "manual", // an explicit, ordered list of product ids (pins)

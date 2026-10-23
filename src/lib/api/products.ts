@@ -538,6 +538,14 @@ export async function listNewArrivals(limit = 4): Promise<Product[]> {
   return mapAndEnrichRows(rows);
 }
 
+/** Active-preorder products (published, flagged + not yet released), soonest
+ *  release first — the home rail/grid "Précommandes" source. Same mapper/enrich
+ *  as every other listing, so the cards show the "Précommande" badge + price. */
+export async function listPreorderProducts(limit = 4): Promise<Product[]> {
+  const rows = await productQueries.listActivePreorderProducts({ limit });
+  return mapAndEnrichRows(rows);
+}
+
 export async function listPromotions(limit = 4): Promise<Product[]> {
   // A product is "on promotion" if it has a merchandiser compare-at (the CARD's
   // old > new — cheapest variant for a variable product) OR a live engine AUTO
@@ -936,6 +944,8 @@ export async function listProductsForSource(
       return listNewArrivals(n);
     case "on_promotion":
       return listPromotions(n);
+    case "preorder":
+      return listPreorderProducts(n);
     case "best_sellers": {
       const top = await getTopSellingProducts(n + 4, source.windowDays);
       // No sale in the window → EMPTY (the rail/grid hides). It deliberately does NOT

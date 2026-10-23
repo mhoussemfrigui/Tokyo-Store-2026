@@ -1049,7 +1049,7 @@ function JobsEditor({ jobs, onChange }: { jobs: JobItem[]; onChange: (j: JobItem
 }
 
 function SourceEditor({ source, count, onSource, onCount, categories, brands }: { source: ProductSource; count: number; onSource: (s: ProductSource) => void; onCount: (n: number) => void; categories: Choice[]; brands: Choice[] }) {
-  const modeLabels: Record<string, string> = { new: "Nouveautés", best_sellers: "Meilleures ventes", on_promotion: "En promotion", category: "Catégorie", brand: "Marque", manual: "Sélection manuelle" };
+  const modeLabels: Record<string, string> = { new: "Nouveautés", best_sellers: "Meilleures ventes", on_promotion: "En promotion", preorder: "Précommandes", category: "Catégorie", brand: "Marque", manual: "Sélection manuelle" };
   const refChoices = source.mode === "category" ? categories : source.mode === "brand" ? brands : [];
   return (
     <div className="grid gap-3 sm:grid-cols-2">

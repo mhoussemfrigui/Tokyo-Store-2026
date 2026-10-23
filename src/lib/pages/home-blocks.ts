@@ -437,6 +437,7 @@ export const SOURCE_SHOWCASE_SLUG: Partial<Record<ProductSourceMode, CollectionS
   new: "nouveautes",
   best_sellers: "top-ventes",
   on_promotion: "promotions",
+  preorder: "precommandes",
 };
 
 /**

@@ -766,6 +766,7 @@ function SourceEditor({
     new: "Nouveautés",
     best_sellers: "Meilleures ventes",
     on_promotion: "En promotion",
+    preorder: "Précommandes",
     category: "Catégorie",
     brand: "Marque",
     manual: "Sélection manuelle",
