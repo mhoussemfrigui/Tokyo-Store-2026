@@ -8,7 +8,7 @@
  * label against the RBAC registry). Regenerate after adding a server action or
  * changing a guard: `node scripts/gen-internal-api-catalog.mjs`.
  *
- * Total actions: 295.
+ * Total actions: 296.
  */
 
 export type InternalActionKind = "write" | "read" | "settings" | "destructive" | "auth";
@@ -235,6 +235,7 @@ export const INTERNAL_API_CATALOG: InternalApiGroup[] = [
           { name: "bulkSetOrderSpamAction", kind: "write", permission: "orders:manage", summary: "Bulk spam-flag / unflag from the Commandes list toolbar — the triage workhorse (select the junk, mark it spam, it leaves the default view)." },
           { name: "refundOrderAction", kind: "write", permission: "orders:manage", summary: "Issue a partial refund against an order." },
           { name: "switchOrderToCodAction", kind: "write", permission: "orders:manage", summary: "Convert a stuck pending online-gateway order to cash-on-delivery." },
+          { name: "convertPreorderOrderAction", kind: "write", permission: "orders:manage", summary: "Convert a précommande order at RELEASE — consume its stock reservations, decrement real stock for each, and mark the order converted." },
           { name: "setOrderPaymentReferenceAction", kind: "write", permission: "orders:manage", summary: "Admin-side patch for `payment_method` + `payment_reference`." },
           { name: "setOrderInvoiceTaxAction", kind: "write", permission: "orders:manage | orders:update", summary: "Per-order invoice TVA control (manual override / recompute) — the admin \"TVA facture\" form." },
           { name: "linkGuestOrderAction", kind: "write", permission: "orders:manage", summary: "Link a guest order (`user_id IS NULL`) to an existing customer account so it joins that customer's history." },

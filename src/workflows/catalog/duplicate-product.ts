@@ -141,6 +141,14 @@ export const duplicateProductWorkflow = workflow<
     // reset the copy to "no limit").
     min_purchase_qty: source.min_purchase_qty,
     max_purchase_qty: source.max_purchase_qty,
+    // Pre-order configuration is a product POLICY (like warranty / purchase limits),
+    // not physical stock — carry it so a duplicated pre-order listing stays a
+    // pre-order with the same planned release date + customer message. `reserved_qty`
+    // is a LIVE reservation counter tied to the source's units, so it is intentionally
+    // NOT copied — the copy starts with zero reservations (schema default).
+    is_preorder: source.is_preorder,
+    preorder_releases_at: source.preorder_releases_at,
+    preorder_message: source.preorder_message,
     video_url: source.video_url,
     video_poster_media_id: source.video_poster_media_id,
     video_title: source.video_title,

@@ -23,6 +23,12 @@ export const metadata: Metadata = {
   openGraph: { url: "/" },
 };
 
+// The home reads LIVE backend data (CMS hero/blocks + real in-store pickups), so it
+// must render per request — never be frozen into a build-time static export. Without
+// this, `next build` tries to prerender `/` and, with no DB reachable at build time,
+// the pickup/CMS reads throw ECONNREFUSED and abort the whole build.
+export const dynamic = "force-dynamic";
+
 /** Map the backend hero slides (CMS → Page d'accueil, médiathèque-backed) to the
  *  carousel's slide shape. A slide with no resolved desktop image is skipped. The
  *  full-image link target is the first CTA's href (the baked-in-artwork model);
@@ -98,7 +104,9 @@ export default async function HomePage() {
   //    DB-backed (CMS Bannières → home_hero). ──
   const [heroSlides, pickups] = await Promise.all([
     getHeroSlides(),
-    listEnabledPickups("in_store"),
+    // Fail CLOSED like every sibling read above: a transient delivery-query error
+    // degrades « Nos boutiques » to empty rather than 500-ing (or breaking) the home.
+    listEnabledPickups("in_store").catch(() => []),
   ]);
   // « Nos boutiques » cards from the REAL in-store pickup locations (delivery module,
   // admin-editable) — never hardcoded in the component.
