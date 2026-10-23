@@ -101,6 +101,9 @@ export * from "@/modules/stock-location/schema";
 // --- Stock transfers (inter-location moves: stores ↔ central depot)
 export * from "@/modules/stock-transfer/schema";
 
+// --- Stock reservations (open holds; backs the précommande/preorder flow)
+export * from "@/modules/stock-reservation/schema";
+
 // --- Showcase (manual product pins for the controllable collection pages)
 export * from "@/modules/showcase/schema";
 

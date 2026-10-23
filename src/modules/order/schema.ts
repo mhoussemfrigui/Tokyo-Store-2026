@@ -1,4 +1,6 @@
+import { sql } from "drizzle-orm";
 import {
+  boolean,
   index,
   integer,
   pgEnum,
@@ -166,6 +168,17 @@ export const orders = pgTable(
     delivery_note_at: timestamp("delivery_note_at", { withTimezone: true }),
 
     notes: text("notes"),
+    /**
+     * Précommande overlay (migration 0215). `is_preorder` = the order was placed
+     * with ≥1 ACTIVE-preorder line — such lines claim NO stock at placement and the
+     * order is EXCLUDED from recognized-revenue stats until conversion.
+     * `preorder_converted_at` is NULL while still a reservation; set when the
+     * product releases / the operator converts, at which point the preorder lines
+     * decrement stock. Cancelling an UNCONVERTED preorder releases the reservation
+     * with NO restock (the lines never decremented). See `@/lib/order/preorder-state`.
+     */
+    is_preorder: boolean("is_preorder").notNull().default(false),
+    preorder_converted_at: timestamp("preorder_converted_at", { withTimezone: true }),
     ...timestamps(),
   },
   (table) => ({
@@ -192,6 +205,11 @@ export const orders = pgTable(
     // uniques `orders_external_ref_uniq` (0055) + `orders_{invoice,credit_note,
     // delivery_note}_number_uniq` (0052) are migration-only (partial uniques the
     // Drizzle builder can't express) — see the column doc-comments above.
+    // Partial (preorder rows only) — the Commandes « Précommandes » filter, newest
+    // first. is_preorder is rare, so the index stays tiny (migration 0215).
+    preorderIdx: index("orders_preorder_idx")
+      .on(table.created_at.desc())
+      .where(sql`${table.is_preorder} = true`),
   }),
 );
 
@@ -233,6 +251,20 @@ export const order_items = pgTable(
     /** Operator pick/pack stamp — set when this line is ticked "préparé" in the
      *  preparation panel. Advisory only (does not gate the "shipped" transition). */
     picked_at: timestamp("picked_at", { withTimezone: true }),
+    /**
+     * Précommande reservation flag (migration 0215): true at placement for an
+     * active-preorder line (which claims no stock), flipped false at conversion.
+     * Drives the Précommandes queue COUNT + the revenue exclusion until conversion.
+     */
+    is_preorder: boolean("is_preorder").notNull().default(false),
+    /**
+     * Whether this line's stock has ACTUALLY been decremented. Tokyo decrements at
+     * PLACEMENT, so a regular line is claimed at placement (DEFAULT true); a
+     * preorder line is false until CONVERSION. The cancel/refund restock gate reads
+     * THIS (via `lineWasDecremented`), never is_preorder, so a never-decremented
+     * line is never restocked. See `@/lib/order/preorder-state`.
+     */
+    stock_claimed: boolean("stock_claimed").notNull().default(true),
     ...timestamps(),
   },
   (table) => ({
@@ -240,6 +272,11 @@ export const order_items = pgTable(
     // Declared to match the baseline raw-SQL index (getTopSellingProducts relies
     // on it) so the Drizzle schema stays the source of truth.
     productIdx: index("order_items_product_idx").on(table.product_id),
+    // Per-product open-preorder reservation COUNT (Précommandes queue) — partial
+    // over the preorder lines only (migration 0215).
+    preorderIdx: index("order_items_preorder_idx")
+      .on(table.product_id)
+      .where(sql`${table.is_preorder} = true`),
   }),
 );
 

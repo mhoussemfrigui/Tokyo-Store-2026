@@ -288,6 +288,11 @@ export default async function ProductEditPage({
           displayOrder: product.display_order,
           isPublished: product.is_published,
           isDiscountable: product.is_discountable,
+          isPreorder: product.is_preorder,
+          preorderReleasesAt: product.preorder_releases_at
+            ? product.preorder_releases_at.toISOString().slice(0, 10)
+            : "",
+          preorderMessage: product.preorder_message,
           mediaIds,
           categoryIds,
           primaryCategoryId,

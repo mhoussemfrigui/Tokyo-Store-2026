@@ -103,6 +103,13 @@ function scalarKey(
   return JSON.stringify([n, t]);
 }
 
+/** Parse a date-only preorder release string (yyyy-mm-dd) to a Date, or null. */
+function parsePreorderReleaseDate(input: string | null | undefined): Date | null {
+  if (!input) return null;
+  const parsed = new Date(input);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export const createProductSchema = z.object({
   name: z.string().trim().min(1).max(200),
   slug: slugSchema.optional(),
@@ -186,6 +193,15 @@ export const createProductSchema = z.object({
    * redemption) are unaffected. Defaults true.
    */
   isDiscountable: z.boolean().default(true),
+
+  /**
+   * Précommande (preorder). `preorderReleasesAt` is a date-only string
+   * (yyyy-mm-dd) or null; a FUTURE date makes the product an ACTIVE preorder
+   * (sold without stock, reserving units). `preorderMessage` is optional copy.
+   */
+  isPreorder: z.boolean().default(false),
+  preorderReleasesAt: z.string().trim().max(40).nullable().optional(),
+  preorderMessage: z.string().trim().max(500).nullable().optional(),
 
   categoryIds: z.array(z.string().uuid()).default([]),
   primaryCategoryId: z.string().uuid().optional(),
@@ -329,6 +345,9 @@ export const createProductWorkflow = workflow<
       published_at: d.publish ? new Date() : null,
       is_discountable: d.isDiscountable,
       related_mode: d.relatedMode,
+      is_preorder: d.isPreorder,
+      preorder_releases_at: parsePreorderReleaseDate(d.preorderReleasesAt),
+      preorder_message: d.preorderMessage ?? null,
     }, tx);
 
     if (d.categoryIds.length > 0) {
@@ -551,6 +570,8 @@ export const updateProductWorkflow = workflow<
     displayOrder: "display_order",
     isDiscountable: "is_discountable",
     relatedMode: "related_mode",
+    isPreorder: "is_preorder",
+    preorderMessage: "preorder_message",
   };
 
   // `changed` lists only what ACTUALLY differs from the stored row: the editor
@@ -572,6 +593,17 @@ export const updateProductWorkflow = workflow<
     if (v === existingCols[dbKey]) continue;
     patch[dbKey] = v as never;
     changed.push(String(dbKey));
+  }
+
+  // Preorder release date: the editor sends a yyyy-mm-dd STRING; the column is a
+  // Date. Parse + timestamp-compare so a no-op save doesn't flag a false change.
+  if (provided.has("preorderReleasesAt")) {
+    const next = parsePreorderReleaseDate(d.preorderReleasesAt);
+    const prev = existing.preorder_releases_at ?? null;
+    if ((next?.getTime() ?? null) !== (prev ? new Date(prev).getTime() : null)) {
+      patch.preorder_releases_at = next;
+      changed.push("preorder_releases_at");
+    }
   }
 
   // Highlights (jsonb string[]) — content-compared, NOT via the map's `===`, which

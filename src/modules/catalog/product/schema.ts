@@ -205,6 +205,22 @@ export const products = pgTable(
     /** How the "Vous aimerez aussi" rail is populated (see PRODUCT_RELATED_MODES). */
     related_mode: text("related_mode").$type<ProductRelatedMode>().notNull().default("auto"),
 
+    /**
+     * Précommande (preorder) overlay. `is_preorder` is an admin toggle,
+     * independent of `in_stock`, so a SKU can be sold before its stock arrives.
+     * `preorder_releases_at` is when it ships / reverts to a normal sale — a past
+     * date means it is no longer an ACTIVE preorder (see `@/lib/inventory/preorder`
+     * `isActivePreorder`). `preorder_message` is optional free text shown on the
+     * product page. `reserved_qty` is a CACHED count of the OPEN preorder
+     * reservation units for this product's pool (SUM of active `stock_reservations`),
+     * so `available = stock_qty − reserved_qty`. Maintained atomically by the
+     * reservation service, exactly as `stock_qty` caches SUM(stock_levels.qty).
+     */
+    is_preorder: boolean("is_preorder").notNull().default(false),
+    preorder_releases_at: timestamp("preorder_releases_at", { withTimezone: true }),
+    preorder_message: text("preorder_message"),
+    reserved_qty: integer("reserved_qty").notNull().default(0),
+
     ...timestamps(),
     ...softDelete(),
   },
@@ -248,6 +264,12 @@ export const products = pgTable(
     // NULL) lives ONLY in migration 0107 — Drizzle can't express gin_trgm_ops.
     // It index-backs the admin search's `sku ILIKE '%term%'` branch (the name
     // branch already has products_name_trgm in the baseline).
+    // Partial index over the preorder rows only — drives the
+    // /admin/catalog/preorders queue + the storefront preorder rail. Tiny on disk
+    // (is_preorder is rare).
+    preorderIdx: index("products_preorder_idx")
+      .on(table.preorder_releases_at)
+      .where(sql`${table.is_preorder} = true`),
   }),
 );
 
@@ -288,6 +310,9 @@ export const product_variants = pgTable(
     display_order: integer("display_order").notNull().default(0),
     /** The variant pre-selected on the PDP. Exactly one per product ideally. */
     is_default: boolean("is_default").notNull().default(false),
+    /** CACHED count of OPEN preorder reservation units for this variant (SUM of
+     *  active `stock_reservations`), so `available = stock_qty − reserved_qty`. */
+    reserved_qty: integer("reserved_qty").notNull().default(0),
     ...timestamps(),
     ...softDelete(),
   },

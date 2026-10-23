@@ -150,6 +150,11 @@ export type ProductFormInitial = {
   isPublished: boolean;
   /** When false this product never receives any reduction. Defaults true. */
   isDiscountable?: boolean;
+  /** Précommande: sold before its stock arrives. `preorderReleasesAt` is a
+   *  yyyy-mm-dd string ("" / null = no date). */
+  isPreorder?: boolean;
+  preorderReleasesAt?: string | null;
+  preorderMessage?: string | null;
   mediaIds: string[];
   categoryIds: string[];
   primaryCategoryId: string | null;
@@ -216,6 +221,7 @@ type TabId =
   | "related"
   | "complementary"
   | "care"
+  | "preorder"
   | "faq"
   | "video"
   | "seo";
@@ -257,6 +263,7 @@ const TABS: { id: TabId; label: string; group: string }[] = [
   { id: "related", label: "Vous aimerez aussi", group: "Marketing" },
   { id: "complementary", label: "Produits supplémentaires", group: "Marketing" },
   { id: "care", label: "Tokyo Care", group: "Marketing" },
+  { id: "preorder", label: "Précommande", group: "Marketing" },
   // Référencement.
   { id: "seo", label: "SEO", group: "Référencement" },
 ];
@@ -313,6 +320,9 @@ const FIELD_TAB: Record<string, TabId> = {
   relatedProductIds: "related",
   complementaryProductIds: "complementary",
   isDiscountable: "promotions",
+  isPreorder: "preorder",
+  preorderReleasesAt: "preorder",
+  preorderMessage: "preorder",
   metaTitle: "seo",
   metaDescription: "seo",
   canonicalUrl: "seo",
@@ -337,7 +347,7 @@ const TAB_GROUPS: { label: string; ids: TabId[] }[] = [
     label: "Contenu",
     ids: ["description", "highlights", "media", "video", "faq"],
   },
-  { label: "Marketing", ids: ["promotions", "related", "complementary", "care"] },
+  { label: "Marketing", ids: ["promotions", "related", "complementary", "care", "preorder"] },
   { label: "Référencement", ids: ["seo"] },
 ];
 
@@ -371,7 +381,7 @@ const WIZARD_STEPS: { id: string; label: string; panels: TabId[] }[] = [
     // checkbox + submit live in the action bar below the steps.
     id: "finalisation",
     label: "Finalisation",
-    panels: ["promotions", "related", "seo"],
+    panels: ["promotions", "related", "preorder", "seo"],
   },
 ];
 
@@ -1073,6 +1083,42 @@ export function ProductForm({
                   scopeOfferedIds={careScopeOfferedIds ?? []}
                   initial={initial?.careLinks ?? []}
                 />
+              </Section>
+            </FormTab>
+
+            {/* ─── Précommande (preorder) ──────────────────────────────────
+                Opt-in. With a future release date the storefront shows
+                « Précommande — sortie le X » instead of the add-to-cart CTA, and
+                ordering it RESERVES stock instead of decrementing. The badge
+                reverts on its own once the date passes (the Stock page also
+                clears the stale flag). Applies to the whole product — every
+                variant is sold on preorder until release. */}
+            <FormTab id="preorder" active={activeTab} visible={vis("preorder")}>
+              <Section
+                title="Précommande"
+                description="Marquez ce produit comme précommande et définissez une date de sortie. Les précommandes se vendent sans stock : les unités sont réservées (non déduites du stock) jusqu'à la conversion à la sortie."
+              >
+                <CheckboxCard
+                  name="isPreorder"
+                  title="Marquer ce produit comme précommande"
+                  defaultChecked={initial?.isPreorder ?? false}
+                  description="Avec une date de sortie future, la boutique affiche « Précommande — sortie le X » à la place du bouton d'achat, et la commande réserve le stock au lieu de le déduire. Le badge revient automatiquement à la normale une fois la date passée. Sans date, la précommande reste active en permanence."
+                />
+                <div className="grid gap-4 sm:grid-cols-[220px_1fr]">
+                  <Field
+                    name="preorderReleasesAt"
+                    label="Date de sortie"
+                    type="date"
+                    defaultValue={initial?.preorderReleasesAt ?? ""}
+                    helper="Le badge disparaît automatiquement après cette date."
+                  />
+                  <Field
+                    name="preorderMessage"
+                    label="Message (optionnel)"
+                    defaultValue={initial?.preorderMessage ?? ""}
+                    helper="Ex. : « Édition limitée — quantités réduites »"
+                  />
+                </div>
               </Section>
             </FormTab>
 
