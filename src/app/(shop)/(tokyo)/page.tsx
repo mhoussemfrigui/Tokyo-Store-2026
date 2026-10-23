@@ -8,8 +8,15 @@ import { HomeExtras } from "@/storefront/components/storefront/home-extras";
 import { Newsletter } from "@/storefront/components/storefront/newsletter";
 import { PromoGrid } from "@/storefront/components/storefront/promo-grid";
 import { listEnabledPickups } from "@/modules/delivery/queries";
+import { getHomeBlocks, hasStoredHomeBlocks, resolveHomeBlocks } from "@/lib/pages/home-blocks-data";
+import { HomeBlocksRenderer } from "@/components/storefront/home/home-blocks-render";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+/** The page's only h1 (the hero is baked-in artwork, so without this the heading outline
+ *  started at h2 and the page never stated what it is). In the composed path the hero block
+ *  prints its own h1; this is the sr-only fallback the renderer falls back to. */
+const HOME_H1 = "Tokyo Store — iPhone, Mac & high-tech neufs et reconditionnés en Tunisie";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -41,7 +48,49 @@ async function getHeroSlides(): Promise<Slide[]> {
   });
 }
 
+const GRAPH = [
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Tokyo Store",
+    url: SITE_URL,
+    slogan: "iPhone, Mac & High-Tech en Tunisie",
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Tokyo Store",
+    url: SITE_URL,
+  },
+];
+
 export default async function HomePage() {
+  // The home renders the OPERATOR'S block composition only once they SAVE a layout in
+  // Contenu → Page d'accueil (a `home.blocks` settings row then exists). Until then —
+  // and on a DB hiccup — it renders the fixed Tokyo sections below, byte-for-byte the
+  // same as before the composer was wired: H-02 is ADDITIVE, never a redesign of the
+  // default home. Branch on PRESENCE, not length: a deliberately-emptied layout ("[]")
+  // is the operator's and still wins over the default sections (an empty home, not a
+  // silent revert). Fail CLOSED to the default home so a settings read error never 500s.
+  const configured = await hasStoredHomeBlocks().catch(() => false);
+
+  if (configured) {
+    const resolved = await getHomeBlocks()
+      .then(resolveHomeBlocks)
+      .catch(() => null);
+    return (
+      <>
+        <JsonLd data={GRAPH} />
+        {/* The renderer prints the <h1> from a visible hero carousel block; with no hero
+            (or no slides) it falls back to this sr-only heading, so the page always has
+            exactly one h1 and never emits an empty body. */}
+        <HomeBlocksRenderer resolved={resolved} fallbackHeading={HOME_H1} />
+      </>
+    );
+  }
+
+  // ── Default home — no composer layout saved. The fixed Tokyo sections (pixel-identical
+  //    to before H-02). The hero is still DB-backed (CMS Bannières → home_hero). ──
   const [heroSlides, pickups] = await Promise.all([
     getHeroSlides(),
     listEnabledPickups("in_store"),
@@ -54,25 +103,10 @@ export default async function HomePage() {
     hours: p.hours_label ?? "",
     phone: p.phone ?? "",
   }));
-  const graph = [
-    {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      name: "Tokyo Store",
-      url: SITE_URL,
-      slogan: "iPhone, Mac & High-Tech en Tunisie",
-    },
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      name: "Tokyo Store",
-      url: SITE_URL,
-    },
-  ];
 
   return (
     <>
-      <JsonLd data={graph} />
+      <JsonLd data={GRAPH} />
       {/* The page's only h1. The hero is baked-in artwork, so without this the
           heading outline started at h2 and the page never stated what it is. */}
       <h1 className="sr-only">

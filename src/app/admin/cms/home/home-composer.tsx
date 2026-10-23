@@ -129,8 +129,10 @@ export function HomeComposer({
     <div className="space-y-5">
       {usingLegacy && (
         <AdminCallout tone="warning" icon={AlertTriangle}>
-          Cette mise en page a été reconstituée à partir de l&apos;ancien accueil. Réorganisez,
-          modifiez ou ajoutez des blocs, puis <strong>Enregistrez</strong> pour l&apos;adopter.
+          Point de départ reconstitué à partir de l&apos;ancienne configuration. L&apos;accueil
+          en ligne affiche encore ses sections Tokyo par défaut : réorganisez, modifiez ou
+          ajoutez des blocs, puis <strong>Enregistrez</strong> pour que cette composition les
+          remplace.
         </AdminCallout>
       )}
 

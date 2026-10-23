@@ -365,12 +365,19 @@ export function BannerForm({
                 />
               </div>
               {showDescription && (
-                <Field
-                  name="description"
-                  label="Description"
-                  textarea
-                  defaultValue={initial?.description ?? ""}
-                />
+                <div>
+                  <Field
+                    name="description"
+                    label="Description"
+                    textarea
+                    defaultValue={initial?.description ?? ""}
+                  />
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                    Affichée uniquement par le bloc « Héro » d&apos;une page d&apos;accueil
+                    composée (Contenu → Page d&apos;accueil). Le carrousel par défaut n&apos;affiche
+                    que le surtitre, le titre, le sous-titre et les boutons par-dessus le visuel.
+                  </p>
+                </div>
               )}
 
               {/* Hero: show / hide the text overlay (requirement #4). The hidden
@@ -480,7 +487,9 @@ export function BannerForm({
                       placeholder="https://cdn.exemple.com/hero.mp4"
                     />
                     <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
-                      {VIDEO_RECO}
+                      {VIDEO_RECO} Lue uniquement par le bloc « Héro » d&apos;une page
+                      d&apos;accueil composée (Contenu → Page d&apos;accueil) ; le carrousel par
+                      défaut affiche le visuel seul.
                     </p>
                   </div>
                 )}

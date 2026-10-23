@@ -20,11 +20,13 @@ import type { Product } from "@/types/catalog";
 
 /**
  * Server reader for the HOME block composer. Reads the stored `home.blocks` JSON and
- * parses it; when it is ABSENT (the composer has never been saved) it SYNTHESISES the
- * current 8-section home from the live `home.*` settings — so the storefront homepage
- * is byte-for-byte unchanged until an operator edits it in the new composer (a
- * non-destructive rollover, no migration write). Once the composer saves, `home.blocks`
- * wins and the legacy `home.*` keys become dormant.
+ * parses it; when it is ABSENT (the composer has never been saved) it SYNTHESISES an
+ * editable STARTER from the legacy `home.*` settings (hero + the two product rails + the
+ * dormant editorial sections). That starter is what the admin composer SEEDS with — NOT
+ * what the live storefront renders by default: the storefront home shows its fixed Tokyo
+ * sections (CategoryTabs / HomeExtras / PromoGrid / Newsletter) until a layout is SAVED,
+ * at which point page.tsx (hasStoredHomeBlocks) switches it to these blocks. The synthesis
+ * is therefore only a composer starting point, not a faithful 1:1 of the live default home.
  *
  * Data resolution (products per listing block, médiathèque URLs, hero slides) lives in
  * the storefront loader alongside the renderer; this module only produces the ordered,
@@ -33,12 +35,14 @@ import type { Product } from "@/types/catalog";
 
 const HOME_BLOCKS_KEY = "home.blocks";
 
-/** Get the composed home blocks: the stored list, or the synthesised legacy default.
+/** Get the composed home blocks: the stored list, or the synthesised legacy STARTER.
  *
  *  Branch on PRESENCE, not length: an ABSENT `home.blocks` row means "never configured"
- *  → reproduce today's home from the legacy `home.*` config (non-destructive rollover). A
- *  PRESENT row — even one the operator deliberately emptied to `[]` — is their layout and
- *  wins verbatim (an empty home, not a silent revert to the legacy 8-section page). */
+ *  → return the legacy-`home.*` starter so the composer opens on an editable layout (the
+ *  live storefront, meanwhile, shows its fixed default sections — see page.tsx, which reads
+ *  hasStoredHomeBlocks, not this). A PRESENT row — even one the operator deliberately
+ *  emptied to `[]` — is their layout and wins verbatim (on the storefront too: an empty
+ *  home, never a silent revert to the default sections). */
 export async function getHomeBlocks(): Promise<HomeBlock[]> {
   let raw: string | null = null;
   try {
@@ -54,8 +58,10 @@ export async function getHomeBlocks(): Promise<HomeBlock[]> {
 }
 
 /** True when a composer layout has been SAVED (the `home.blocks` row exists), vs the
- *  synthesised legacy one. Lets the admin panel tell "you're editing the new layout" from
- *  "seeded from legacy" — and a saved-but-empty layout still counts as the operator's. */
+ *  synthesised legacy starter. The storefront home (page.tsx) renders the composed blocks
+ *  only when this is true, else its fixed default sections; the admin panel uses it to tell
+ *  "you're editing the saved layout" from "seeded from legacy". A saved-but-empty layout
+ *  still counts as the operator's. */
 export async function hasStoredHomeBlocks(): Promise<boolean> {
   try {
     const s = await getSettingsMap();
@@ -66,10 +72,12 @@ export async function hasStoredHomeBlocks(): Promise<boolean> {
 }
 
 /**
- * Map the legacy HomePageConfig (the fixed 8 sections) to composer blocks, preserving
- * order + content + per-section visibility. Images carry their médiathèque id; copy is
- * moved verbatim. This is what an operator first sees in the composer — fully editable,
- * reorderable, and a faithful 1:1 of the current storefront home.
+ * Map the legacy HomePageConfig (the dormant `home.*` sections: hero, the two product
+ * rails, and the editorial blocks) to composer blocks, preserving order + content +
+ * per-section visibility. Images carry their médiathèque id; copy is moved verbatim. This
+ * is the editable STARTER an operator first sees in the composer before saving — NOT a 1:1
+ * of the live default home (which renders the fixed Tokyo sections; see page.tsx). Saving
+ * it REPLACES those default sections with this composition.
  */
 export function synthesizeLegacyHomeBlocks(config: HomePageConfig): HomeBlock[] {
   const blocks: HomeBlock[] = [];

@@ -47,8 +47,11 @@ export async function saveHomeSettingsAction(
  * composer posts as a JSON blob in `blocks`. Re-validated + cleaned server-side through
  * parseHomeBlocks (unknown types dropped, every config field coerced through the
  * médiathèque/safe-href/enum guards, stable ids, 40-block cap) before it is stored under
- * `home.blocks`, so a crafted payload can never persist bad data. Once saved, this list
- * drives the storefront home (the legacy `home.*` keys become dormant).
+ * `home.blocks`, so a crafted payload can never persist bad data. Once this row exists the
+ * storefront home renders THESE blocks (src/app/(shop)/(tokyo)/page.tsx branches on
+ * hasStoredHomeBlocks → HomeBlocksRenderer), REPLACING the fixed default Tokyo sections;
+ * until then the home shows those default sections. A deliberately-emptied layout ("[]")
+ * is still the operator's and wins (an empty home, not a revert to the defaults).
  */
 export async function saveHomeBlocksAction(
   _prev: ActionState | null,

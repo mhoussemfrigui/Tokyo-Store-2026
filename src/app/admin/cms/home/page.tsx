@@ -20,9 +20,12 @@ export const dynamic = "force-dynamic";
  * « Page d'accueil » admin — the instance-based BLOCK COMPOSER. Loads the stored block
  * layout (or the synthesised legacy one when the composer has never been saved) plus the
  * live catalogue choices (categories / brands / collections) that feed the block pickers,
- * and hands them to the client composer. The storefront home renders the same blocks via
- * getHomeBlocks() + resolveHomeBlocks(). A failed read reaches the admin error boundary
- * (retry) rather than rendering an empty composer whose save would wipe the layout.
+ * and hands them to the client composer. Once a layout is SAVED the storefront home renders
+ * these blocks (page.tsx branches on hasStoredHomeBlocks → getHomeBlocks + resolveHomeBlocks),
+ * replacing the fixed default Tokyo sections; until then the storefront shows those defaults
+ * and the composer is seeded with the legacy `home.*` layout as an editable starting point.
+ * A failed read reaches the admin error boundary (retry) rather than rendering an empty
+ * composer whose save would wipe the layout.
  */
 export default async function AdminHomePage() {
   await requirePermission("home", "view");

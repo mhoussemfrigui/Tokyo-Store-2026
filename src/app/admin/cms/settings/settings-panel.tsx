@@ -87,12 +87,12 @@ export function SiteSettingsPanel({ values }: { values: Record<string, string> }
       </FieldSection>
 
       <AdminCallout tone="info" icon={Info}>
-        Le bandeau de confiance et la bannière réparation de l&apos;accueil — ainsi que les
-        rangées de produits et le bloc promo — se règlent désormais dans{" "}
+        La page d&apos;accueil se compose dans{" "}
         <Link href="/admin/cms/home" className="font-bold text-primary hover:underline">
           Contenu → Page d&apos;accueil
-        </Link>
-        .
+        </Link>{" "}
+        (rails de produits, bannières, éditoriaux, cartes de réassurance…). Tant qu&apos;aucune
+        composition n&apos;y est enregistrée, l&apos;accueil affiche ses sections Tokyo par défaut.
       </AdminCallout>
 
       <FieldSection title="Informations légales" description="Pour les mentions légales / la facturation.">
