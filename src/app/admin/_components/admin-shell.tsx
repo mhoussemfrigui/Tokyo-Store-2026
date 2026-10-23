@@ -22,6 +22,7 @@ import {
   Sparkles,
   Palette,
   ChevronLeft,
+  ChevronRight,
   Mail,
   Send,
   ShoppingBag,
@@ -297,6 +298,20 @@ function initialsFor(name: string): string {
     .toUpperCase();
 }
 
+// A rail label that collapses to zero width + fades out when the rail is in its
+// narrow icon-only mode (module scope so the CSS transition isn't remounted).
+function RailLabel({ children, hide }: { children: React.ReactNode; hide: boolean }) {
+  return (
+    <span
+      className={`overflow-hidden whitespace-nowrap text-left text-[12.5px] font-semibold transition-all duration-200 ${
+        hide ? "max-w-0 opacity-0" : "max-w-[150px] opacity-100"
+      }`}
+    >
+      {children}
+    </span>
+  );
+}
+
 export function AdminShell({
   children,
   userName,
@@ -319,7 +334,6 @@ export function AdminShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [palOpen, setPalOpen] = useState(false);
   const [palQuery, setPalQuery] = useState("");
@@ -353,10 +367,13 @@ export function AdminShell({
     return null;
   }, [visibleGroups, pathname]);
 
-  // The section whose sub-tabs the pane is showing: a user "preview" selection
-  // falls back to the active section. Reset the preview when navigation changes
-  // the active section so the pane follows the page.
+  // Two-bar sidebar: the dark rail (bar 1) lists the sections; the light pane
+  // (bar 2) shows the tabs of whichever section is "previewed" — a click in the
+  // rail — falling back to the section of the current page. Resetting the
+  // preview on navigation keeps the pane following the page. `paneGroup.label`
+  // keys the pane so switching sections replays the slide-in transition.
   const [previewLabel, setPreviewLabel] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [syncedActive, setSyncedActive] = useState(activeGroup?.label ?? null);
   if ((activeGroup?.label ?? null) !== syncedActive) {
     setSyncedActive(activeGroup?.label ?? null);
@@ -364,6 +381,14 @@ export function AdminShell({
   }
   const paneGroup =
     visibleGroups.find((g) => g.label === previewLabel) ?? activeGroup ?? visibleGroups[0] ?? null;
+
+  // Master/detail: pick a section → collapse the rail + slide its tabs open;
+  // « Retour » → collapse the tabs back and re-expand the labelled rail.
+  const selectSection = (label: string) => {
+    setPreviewLabel(label);
+    setDetailOpen(true);
+  };
+  const closeDetail = () => setDetailOpen(false);
 
   const activeTitle = activeItem?.label ?? "Administration";
   const sectionLabel = activeGroup?.label ?? "Administration";
@@ -416,19 +441,75 @@ export function AdminShell({
   // Bare passthrough for the printable document routes.
   if (isOrderDocRoute) return <>{children}</>;
 
-  const railWidth = collapsed ? "lg:grid-cols-[76px_minmax(0,1fr)]" : "lg:grid-cols-[312px_minmax(0,1fr)]";
+  const railWidth = "lg:grid-cols-[268px_minmax(0,1fr)]";
 
-  // ── Sidebar internals (shared by desktop aside + mobile drawer) ───────────
-  const renderRail = (onNavigate?: () => void) => (
-    <div className="flex w-16 shrink-0 flex-col items-center gap-1.5 rounded-[26px] bg-[#0e1218] py-3.5">
+  // ── Desktop sidebar (two-state master/detail) ─────────────────────────────
+  // Bar 1 — the dark SECTION rail. Default = full width + labels. When a section
+  // is chosen it collapses (transition-[width]) to an icon strip; its labels fade
+  // to max-w-0. Bar 2 — the light TAB pane — then slides/fades from a thin peek
+  // to full width. « Retour » reverses both. Total sidebar width stays constant
+  // (rail shrinks as the pane grows) so the page content never reflows.
+  const railSectionBtn = (g: (typeof NAV_GROUPS)[number]) => {
+    const Icon = g.icon;
+    const isActive = g.label === activeGroup?.label;
+    const isViewing = detailOpen && g.label === paneGroup?.label;
+    return (
+      <div key={g.label}>
+        {DIVIDE_BEFORE.has(g.label) && <span className="my-1.5 mx-1 block h-px bg-white/10" />}
+        <button
+          type="button"
+          onClick={() => selectSection(g.label)}
+          title={g.label}
+          aria-pressed={isViewing}
+          className={`relative flex w-full items-center rounded-[12px] py-[7px] text-left transition ${
+            detailOpen ? "justify-center gap-0 px-0" : "gap-2.5 px-2"
+          } ${
+            isViewing
+              ? "bg-white/[0.12] text-white"
+              : isActive
+                ? "text-white hover:bg-white/[0.07]"
+                : "text-white/60 hover:bg-white/[0.06] hover:text-white"
+          }`}
+        >
+          <span
+            className={`grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[8px] transition ${
+              isActive ? "bg-[#d40530] text-white" : "bg-white/[0.07] text-white/75"
+            }`}
+          >
+            <Icon className="h-[14px] w-[14px]" strokeWidth={2} />
+          </span>
+          <RailLabel hide={detailOpen}>{g.label}</RailLabel>
+          <span
+            className="absolute left-[-10px] top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r bg-[#d40530] transition-opacity"
+            style={{ opacity: isViewing ? 1 : 0 }}
+          />
+        </button>
+      </div>
+    );
+  };
+
+  const renderRail = () => (
+    <div
+      className={`relative z-10 flex shrink-0 flex-col gap-1 rounded-[24px] bg-[#252a33] p-2.5 transition-[width] duration-300 ease-out ${
+        detailOpen ? "w-[60px]" : "w-[250px]"
+      }`}
+    >
+      {/* Brand */}
       <Link
         href="/admin"
-        onClick={onNavigate}
         title="Tokyo Store"
-        className="mb-2 grid h-10 w-10 place-items-center overflow-hidden rounded-full bg-white/5 ring-[3px] ring-white/10"
+        className={`mb-1 flex items-center pt-0.5 ${detailOpen ? "justify-center px-0" : "gap-2.5 px-1"}`}
       >
-        <img src={logoUrl} alt="Tokyo Store" className="max-h-[28px] max-w-[30px] object-contain" />
+        <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-white">
+          <img src={logoUrl} alt="Tokyo Store" className="max-h-[26px] max-w-[28px] object-contain" />
+        </span>
+        <span className={`min-w-0 flex-col ${detailOpen ? "hidden" : "flex"}`}>
+          <span className="truncate text-[13px] font-black leading-tight tracking-[-0.02em] text-white">Tokyo Store</span>
+          <span className="truncate text-[9.5px] font-semibold uppercase tracking-[0.18em] text-white/45">Administration</span>
+        </span>
       </Link>
+
+      {/* Search */}
       <button
         type="button"
         onClick={() => {
@@ -436,124 +517,239 @@ export function AdminShell({
           setPalQuery("");
         }}
         title="Rechercher (⌘K)"
-        aria-label="Rechercher"
-        className="grid h-11 w-11 place-items-center rounded-[14px] bg-white/[0.08] text-white transition hover:bg-white/[0.16]"
+        className={`mb-0.5 flex items-center rounded-[12px] bg-white/[0.06] py-2 text-white/70 transition hover:bg-white/[0.12] hover:text-white ${
+          detailOpen ? "justify-center px-0" : "gap-2.5 px-2.5"
+        }`}
       >
-        <SearchIcon className="h-[17px] w-[17px]" strokeWidth={2} />
+        <SearchIcon className="h-[16px] w-[16px] shrink-0" strokeWidth={2} />
+        <RailLabel hide={detailOpen}>Rechercher</RailLabel>
       </button>
-      <span className="my-1.5 h-px w-6 bg-white/10" />
-      <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto [scrollbar-width:none]">
-        {visibleGroups.map((g) => {
-          const Icon = g.icon;
-          const isActive = g.label === activeGroup?.label;
-          const isViewing = g.label === paneGroup?.label;
-          return (
-            <div key={g.label} className="flex flex-col items-center">
-              {DIVIDE_BEFORE.has(g.label) && <span className="my-1.5 h-px w-6 bg-white/10" />}
-              <button
-                type="button"
-                title={g.label}
-                aria-label={g.label}
-                aria-pressed={isViewing}
-                onClick={() => {
-                  if (collapsed) setCollapsed(false);
-                  setPreviewLabel(g.label);
-                }}
-                className={`relative grid h-11 w-11 place-items-center rounded-[14px] transition ${
-                  isActive
-                    ? "bg-[#d40530] text-white"
-                    : isViewing
-                      ? "bg-white/[0.16] text-white"
-                      : "text-[#8f939b] hover:bg-white/[0.12] hover:text-white"
-                }`}
-              >
-                <Icon className="h-[19px] w-[19px]" strokeWidth={2} />
-                <span
-                  className="absolute left-[-10px] top-1/2 w-1 -translate-y-1/2 rounded-r bg-[#d40530] transition-all"
-                  style={{ height: isViewing ? 20 : 0 }}
-                />
-              </button>
-            </div>
-          );
-        })}
+
+      <span className="my-1 h-px w-full bg-white/10" />
+
+      {/* Sections */}
+      <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {visibleGroups.map((g) => railSectionBtn(g))}
       </div>
+
+      <span className="my-1 h-px w-full bg-white/10" />
+
+      {/* Footer actions */}
       <a
         href="/"
         title="Retour à la boutique"
-        className="grid h-11 w-11 place-items-center rounded-[14px] bg-white/[0.08] text-white transition hover:bg-white/[0.16]"
+        className={`flex items-center rounded-[12px] py-2 text-white/65 transition hover:bg-white/[0.08] hover:text-white ${
+          detailOpen ? "justify-center px-0" : "gap-2.5 px-2.5"
+        }`}
       >
-        <Home className="h-[17px] w-[17px]" strokeWidth={2} />
+        <Home className="h-[16px] w-[16px] shrink-0" strokeWidth={2} />
+        <RailLabel hide={detailOpen}>Retour à la boutique</RailLabel>
       </a>
       <form action={signoutAction}>
         <button
           type="submit"
           title="Se déconnecter"
-          aria-label="Se déconnecter"
-          className="grid h-11 w-11 place-items-center rounded-[14px] text-[#8f939b] transition hover:bg-white/[0.12] hover:text-white"
+          className={`flex w-full items-center rounded-[12px] py-2 text-white/65 transition hover:bg-white/[0.08] hover:text-white ${
+            detailOpen ? "justify-center px-0" : "gap-2.5 px-2.5"
+          }`}
         >
-          <LogOut className="h-[17px] w-[17px]" strokeWidth={2} />
+          <LogOut className="h-[16px] w-[16px] shrink-0" strokeWidth={2} />
+          <RailLabel hide={detailOpen}>Se déconnecter</RailLabel>
         </button>
       </form>
-      <span
-        title={`${userName} · ${userEmail}`}
-        className="mt-1 grid h-10 w-10 place-items-center rounded-full bg-[#d40530] text-[13px] font-extrabold text-white"
+      <div
+        className={`mt-0.5 flex items-center rounded-[12px] bg-white/[0.05] py-1.5 ${
+          detailOpen ? "justify-center px-0" : "gap-2.5 px-2.5"
+        }`}
       >
-        {initialsFor(userName)}
-      </span>
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#d40530] text-[11px] font-extrabold text-white">
+          {initialsFor(userName)}
+        </span>
+        <div className={`min-w-0 flex-col ${detailOpen ? "hidden" : "flex"}`}>
+          <span className="truncate text-[12px] font-bold text-white">{userName}</span>
+          <span className="truncate text-[10px] text-white/45">{userEmail}</span>
+        </div>
+      </div>
     </div>
   );
 
-  const renderPane = (onNavigate?: () => void, onClose?: () => void) =>
+  // Soft custom scrollbar for the light tab lists (desktop + mobile).
+  const paneScroll =
+    "flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+
+  const tabLink = (item: NavItem, onNavigate?: () => void) => {
+    const current = paneGroup?.label === activeGroup?.label && isNavActive(item.href, pathname);
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={onNavigate}
+        aria-current={current ? "page" : undefined}
+        className={`flex min-h-[40px] items-center gap-3 rounded-[12px] px-3 text-[13.5px] transition ${
+          current ? "bg-[#fdecef] font-extrabold text-[#d40530]" : "font-semibold text-[#3d4046] hover:bg-[#f6f2ed]"
+        }`}
+      >
+        <span
+          className={`h-2 w-2 shrink-0 rounded-full border-[1.5px] ${
+            current
+              ? "border-[#d40530] bg-[#d40530] shadow-[0_0_0_4px_rgba(212,5,48,0.15)]"
+              : "border-[#c9c2ba] bg-transparent"
+          }`}
+        />
+        <span className="flex-1 truncate">{item.label}</span>
+      </Link>
+    );
+  };
+
+  // Bar 2 — the light TAB pane. flex-1 fills whatever the rail leaves: a thin
+  // white peek by default, full width once a section is chosen. The fixed-width
+  // inner (w-[192px]) is clipped + faded in the peek state, and keyed on the
+  // section so switching replays the slide-in.
+  const renderPane = () =>
     paneGroup && (
-      <div className="flex min-w-0 flex-1 flex-col gap-3.5 py-3.5 pl-3 pr-1.5">
-        <div className="flex items-start justify-between gap-2 px-1 pt-0.5">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <span className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#8a857f]">
-              {paneGroup.items.length} onglets
-            </span>
-            <span className="truncate text-[22px] font-black leading-[1.1] tracking-[-0.03em] text-[#0e1218]">
-              {paneGroup.label}
-            </span>
-          </div>
+      <div className="relative min-w-0 flex-1 overflow-hidden">
+        <div
+          className={`flex h-full w-[192px] flex-col py-2 pl-2.5 pr-1 transition-opacity duration-200 ${
+            detailOpen ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+        >
           <button
             type="button"
-            onClick={onClose ?? (() => setCollapsed(true))}
-            aria-label="Masquer le panneau"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-[#f6f2ed] text-[#0e1218] transition hover:bg-[#efe9e3]"
+            onClick={closeDetail}
+            className="mb-2 flex w-full items-center gap-1.5 rounded-[10px] bg-[#f3eee7] px-3 py-2 text-[12.5px] font-bold text-[#3d4046] transition hover:bg-[#ece4da] hover:text-[#0e1218]"
           >
-            {onClose ? <X className="h-4 w-4" strokeWidth={2.4} /> : <ChevronLeft className="h-4 w-4" strokeWidth={2.4} />}
+            <ChevronLeft className="h-4 w-4" strokeWidth={2.4} />
+            Retour
           </button>
-        </div>
-        <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto [scrollbar-width:thin]">
-          {paneGroup.items.map((item, i) => {
-            const current = paneGroup.label === activeGroup?.label && isNavActive(item.href, pathname);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onNavigate}
-                aria-current={current ? "page" : undefined}
-                className={`flex min-h-[42px] items-center gap-3 rounded-[14px] px-3 text-[14px] transition ${
-                  current
-                    ? "bg-[#fdecef] font-extrabold text-[#d40530]"
-                    : "font-semibold text-[#3d4046] hover:bg-[#f6f2ed]"
-                }`}
-              >
-                <span
-                  className={`h-2 w-2 shrink-0 rounded-full border-[1.5px] ${
-                    current ? "border-[#d40530] bg-[#d40530] shadow-[0_0_0_4px_rgba(212,5,48,0.15)]" : "border-[#c9c2ba] bg-transparent"
-                  }`}
-                />
-                <span className="flex-1 truncate">{item.label}</span>
-                <span className="text-[11px] font-extrabold text-[#c9c2ba]">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-              </Link>
-            );
-          })}
+          <div
+            key={paneGroup.label}
+            className="flex min-h-0 flex-1 flex-col gap-2.5 duration-200 animate-in fade-in slide-in-from-left-2"
+          >
+            <div className="px-1.5">
+              <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#a79f96]">
+                {paneGroup.items.length} onglets
+              </span>
+              <h2 className="truncate text-[18px] font-black leading-[1.15] tracking-[-0.02em] text-[#0e1218]">
+                {paneGroup.label}
+              </h2>
+            </div>
+            <div className={paneScroll}>{paneGroup.items.map((item) => tabLink(item))}</div>
+          </div>
         </div>
       </div>
     );
+
+  // ── Mobile / tablet drawer (single-column master/detail) ──────────────────
+  // Full-width section list that slides left to reveal the chosen section's tabs
+  // (and a « Retour » back to the list). Same `detailOpen` state as desktop.
+  // (responsive master/detail)
+  const renderMobileNav = (onNavigate: () => void) => (
+    <div className="relative h-full w-full overflow-hidden rounded-r-[26px] bg-[#252a33]">
+      {/* Sections */}
+      <div
+        className={`absolute inset-0 flex flex-col gap-1 p-3 transition-transform duration-300 ease-out ${
+          detailOpen ? "-translate-x-full" : "translate-x-0"
+        }`}
+      >
+        <div className="mb-1 flex items-center gap-2.5 px-1">
+          <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-white">
+            <img src={logoUrl} alt="Tokyo Store" className="max-h-[26px] max-w-[28px] object-contain" />
+          </span>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate text-[14px] font-black leading-tight text-white">Tokyo Store</span>
+            <span className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">Administration</span>
+          </div>
+          <button
+            type="button"
+            onClick={onNavigate}
+            aria-label="Fermer le menu"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-white/[0.08] text-white transition hover:bg-white/[0.16]"
+          >
+            <X className="h-4 w-4" strokeWidth={2.4} />
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setPalOpen(true);
+            setPalQuery("");
+          }}
+          className="mb-0.5 flex items-center gap-2.5 rounded-[12px] bg-white/[0.06] px-3 py-2.5 text-white/70 transition hover:bg-white/[0.12] hover:text-white"
+        >
+          <SearchIcon className="h-[16px] w-[16px]" strokeWidth={2} />
+          <span className="flex-1 text-left text-[13px] font-semibold">Rechercher</span>
+          <span className="rounded-[6px] bg-white/[0.08] px-1.5 py-0.5 text-[10px] font-extrabold text-white/50">⌘K</span>
+        </button>
+        <span className="my-1 h-px w-full bg-white/10" />
+        <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {visibleGroups.map((g) => {
+            const Icon = g.icon;
+            const isActive = g.label === activeGroup?.label;
+            return (
+              <div key={g.label}>
+                {DIVIDE_BEFORE.has(g.label) && <span className="my-1.5 mx-1 block h-px bg-white/10" />}
+                <button
+                  type="button"
+                  onClick={() => selectSection(g.label)}
+                  className={`flex w-full items-center gap-3 rounded-[12px] px-2.5 py-2.5 text-left transition ${
+                    isActive ? "text-white" : "text-white/70 hover:bg-white/[0.06] hover:text-white"
+                  }`}
+                >
+                  <span
+                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-[8px] ${
+                      isActive ? "bg-[#d40530] text-white" : "bg-white/[0.07] text-white/80"
+                    }`}
+                  >
+                    <Icon className="h-[15px] w-[15px]" strokeWidth={2} />
+                  </span>
+                  <span className="flex-1 truncate text-[13.5px] font-semibold">{g.label}</span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-white/35" strokeWidth={2.4} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        <span className="my-1 h-px w-full bg-white/10" />
+        <a href="/" className="flex items-center gap-2.5 rounded-[12px] px-2.5 py-2 text-white/65 transition hover:bg-white/[0.08] hover:text-white">
+          <Home className="h-[16px] w-[16px]" strokeWidth={2} />
+          <span className="text-[12.5px] font-semibold">Retour à la boutique</span>
+        </a>
+        <form action={signoutAction}>
+          <button type="submit" className="flex w-full items-center gap-2.5 rounded-[12px] px-2.5 py-2 text-white/65 transition hover:bg-white/[0.08] hover:text-white">
+            <LogOut className="h-[16px] w-[16px]" strokeWidth={2} />
+            <span className="text-[12.5px] font-semibold">Se déconnecter</span>
+          </button>
+        </form>
+      </div>
+
+      {/* Tabs */}
+      <div
+        className={`absolute inset-0 flex flex-col bg-white transition-transform duration-300 ease-out ${
+          detailOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {paneGroup && (
+          <div className="flex h-full flex-col p-3">
+            <button
+              type="button"
+              onClick={closeDetail}
+              className="mb-2 flex w-full items-center gap-1.5 rounded-[10px] bg-[#f3eee7] px-3 py-2.5 text-[13px] font-bold text-[#3d4046] transition hover:bg-[#ece4da] hover:text-[#0e1218]"
+            >
+              <ChevronLeft className="h-4 w-4" strokeWidth={2.4} />
+              Retour
+            </button>
+            <div className="mb-2 px-1">
+              <span className="text-[10.5px] font-extrabold uppercase tracking-[0.16em] text-[#a79f96]">
+                {paneGroup.items.length} onglets
+              </span>
+              <h2 className="text-[20px] font-black tracking-[-0.02em] text-[#0e1218]">{paneGroup.label}</h2>
+            </div>
+            <div className={paneScroll}>{paneGroup.items.map((item) => tabLink(item, onNavigate))}</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div className="admin min-h-screen bg-background text-foreground">
@@ -561,7 +757,7 @@ export function AdminShell({
         {/* ── Desktop sidebar ─────────────────────────────────────────────── */}
         <aside className="sticky top-3 hidden h-[calc(100vh-24px)] overflow-hidden rounded-[32px] bg-white p-1.5 lg:flex">
           {renderRail()}
-          {!collapsed && renderPane()}
+          {renderPane()}
         </aside>
 
         {/* ── Content column ──────────────────────────────────────────────── */}
@@ -570,7 +766,10 @@ export function AdminShell({
           <header className="flex min-w-0 items-center gap-3.5 rounded-[28px] bg-white p-3 pl-3 lg:pl-[18px]">
             <button
               type="button"
-              onClick={() => setMobileOpen(true)}
+              onClick={() => {
+                setDetailOpen(false);
+                setMobileOpen(true);
+              }}
               aria-label="Menu"
               className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-[#f6f2ed] text-[#0e1218] lg:hidden"
             >
@@ -645,10 +844,9 @@ export function AdminShell({
           <div
             role="dialog"
             aria-label="Menu"
-            className="fixed inset-y-0 left-0 z-[61] flex w-[min(360px,92vw)] rounded-r-[28px] bg-white p-2 lg:hidden"
+            className="fixed inset-y-0 left-0 z-[61] w-[min(340px,86vw)] lg:hidden"
           >
-            {renderRail(() => setMobileOpen(false))}
-            {renderPane(() => setMobileOpen(false), () => setMobileOpen(false))}
+            {renderMobileNav(() => setMobileOpen(false))}
           </div>
         </>
       )}
