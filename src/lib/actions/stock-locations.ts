@@ -95,8 +95,11 @@ export async function saveInventorySettingsAction(
   }
 
   // First switch into per-location: align stock_levels with the live totals.
+  // `overwrite` reseeds any stale leftover default levels — safe here because the
+  // totals ARE the baseline at the moment of the switch (no unshipped-order
+  // divergence exists in shared mode).
   if (mode === "per_location" && prevMode !== "per_location") {
-    await stockLocationService.reconcileDefaultLevels().catch(() => {});
+    await stockLocationService.reconcileDefaultLevels({ overwrite: true }).catch(() => {});
   }
 
   revalidatePath("/admin/catalog/stock");

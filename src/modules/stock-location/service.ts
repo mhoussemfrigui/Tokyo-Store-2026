@@ -172,14 +172,23 @@ class StockLocationService {
    * (`products`/`product_variants`.stock_qty). The default gets the remainder
    * after every OTHER active location, floored at 0.
    *
-   * Run when switching shared → per_location: while in shared mode, stock edits
-   * (and order decrements) move `stock_qty` WITHOUT touching `stock_levels`, so
-   * the default-location level drifts from the total. This set-based upsert
-   * closes that gap so the per-location matrix opens consistent. Idempotent —
-   * re-running is a no-op when already reconciled, and it never disturbs the
-   * quantities an operator has placed at non-default locations.
+   * Backfill (and optionally reseed) the DEFAULT location's `stock_levels` rows
+   * from the cached totals. While in shared mode, stock edits (and order
+   * decrements) move `stock_qty` WITHOUT touching `stock_levels`, so a target can
+   * carry a total with no default-location level.
+   *
+   * - Default (`overwrite` false): **backfill-only** — create MISSING default
+   *   rows, never touch an existing one. Safe to call before every matrix save:
+   *   a default level that diverges from the total on purpose (e.g. a web order
+   *   placed but not yet shipped) is preserved. Idempotent no-op once every
+   *   target is level-tracked.
+   * - `overwrite: true`: also **reseed** existing default rows to
+   *   `stock_qty − Σ(others)` — used ONLY on the shared → per_location switch, to
+   *   realign any stale leftover levels to the totals that are the baseline then.
+   *
+   * Never disturbs quantities an operator has placed at NON-default locations.
    */
-  async reconcileDefaultLevels(): Promise<void> {
+  async reconcileDefaultLevels(opts?: { overwrite?: boolean }): Promise<void> {
     const [def] = await db
       .select({ id: stock_locations.id })
       .from(stock_locations)
@@ -193,6 +202,16 @@ class StockLocationService {
     // per-variant levels. The global default isn't a DB default, so resolve it in
     // JS and interpolate. Needed by BOTH parts below, so resolve it up-front.
     const globalDefault = await getSharedStockDefault();
+
+    // Conflict strategy. DEFAULT = backfill-only (`DO NOTHING`): only insert the
+    // MISSING default rows, never overwrite an existing level — so a default
+    // level that legitimately diverges from the total (an unshipped order) is
+    // preserved. `overwrite: true` RESEEDS existing rows to the totals (shared →
+    // per_location switch only). Overwriting on every save was the depot-clobber
+    // bug; see the two call sites in src/lib/actions/stock-locations.ts.
+    const conflictAction = opts?.overwrite
+      ? sql`DO UPDATE SET qty = EXCLUDED.qty, updated_at = now()`
+      : sql`DO NOTHING`;
 
     // Product pools (variant_id IS NULL): default = stock_qty − Σ(other active).
     // Gated to products whose authoritative stock IS the pool: a SIMPLE product, or
@@ -223,7 +242,7 @@ class StockLocationService {
           OR COALESCE(p.shared_variant_stock, ${globalDefault}::boolean) IS TRUE
         )
       ON CONFLICT (location_id, product_id) WHERE variant_id IS NULL
-      DO UPDATE SET qty = EXCLUDED.qty, updated_at = now()
+      ${conflictAction}
     `);
 
     // Per-variant levels: default = variant.stock_qty − Σ(other active). Only for
@@ -249,7 +268,7 @@ class StockLocationService {
         AND p.deleted_at IS NULL
         AND COALESCE(p.shared_variant_stock, ${globalDefault}::boolean) IS NOT TRUE
       ON CONFLICT (location_id, variant_id) WHERE variant_id IS NOT NULL
-      DO UPDATE SET qty = EXCLUDED.qty, updated_at = now()
+      ${conflictAction}
     `);
     });
   }
