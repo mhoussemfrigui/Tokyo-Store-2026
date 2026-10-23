@@ -263,14 +263,36 @@ function renderBlock(block: PageBlock, ctx: Ctx): ReactNode {
     case "banner": {
       if (!h.title && !h.ctaLabel) return null;
       const style = c.style ?? "brand";
-      const tone =
-        style === "light" ? "bg-card text-foreground" : style === "brand" ? "bg-primary text-primary-foreground" : "bg-foreground text-background";
+      // Optional background image (médiathèque) + a mobile-specific variant. When
+      // set, the band shows the image under a dark overlay instead of a flat colour
+      // — previously both were ignored (M-04 part 2). Over an image the text/buttons
+      // follow the `dark` treatment (light text) for contrast, minus the bg colour.
+      const bg = pick(media, c.image, h.title ?? "");
+      const bgMobile = pick(media, c.imageMobile, h.title ?? "");
+      const textStyle = bg ? "dark" : style;
+      const tone = bg
+        ? "text-background"
+        : style === "light"
+          ? "bg-card text-foreground"
+          : style === "brand"
+            ? "bg-primary text-primary-foreground"
+            : "bg-foreground text-background";
       return (
-        <section className={cn("flex flex-col gap-5 rounded-[clamp(24px,3vw,36px)] p-[clamp(24px,4vw,44px)]", tone)}>
+        <section className={cn("relative flex flex-col gap-5 overflow-hidden rounded-[clamp(24px,3vw,36px)] p-[clamp(24px,4vw,44px)]", tone)}>
+          {bg && (
+            <>
+              <picture>
+                {bgMobile && <source media="(max-width: 640px)" srcSet={bgMobile.src} />}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={bg.src} alt={bg.alt} loading="lazy" decoding="async" className="absolute inset-0 -z-10 size-full object-cover" />
+              </picture>
+              <span aria-hidden className="absolute inset-0 -z-10 bg-foreground/60" />
+            </>
+          )}
           <div className="flex flex-col gap-2.5">
-            {h.eyebrow && <span className={cn("text-[12px] font-extrabold uppercase tracking-[0.16em]", style === "brand" ? "text-primary-foreground/80" : "text-[#ff8aa0]")}>{h.eyebrow}</span>}
+            {h.eyebrow && <span className={cn("text-[12px] font-extrabold uppercase tracking-[0.16em]", textStyle === "brand" ? "text-primary-foreground/80" : "text-[#ff8aa0]")}>{h.eyebrow}</span>}
             {h.title && <SectionTitle>{h.title}</SectionTitle>}
-            {h.subtitle && <p className={cn("m-0 max-w-[62ch] text-[16px] leading-[1.6]", style === "brand" ? "text-primary-foreground/85" : "text-background/75")}>{h.subtitle}</p>}
+            {h.subtitle && <p className={cn("m-0 max-w-[62ch] text-[16px] leading-[1.6]", textStyle === "brand" ? "text-primary-foreground/85" : "text-background/75")}>{h.subtitle}</p>}
           </div>
           {(h.ctaLabel || c.secondaryCtaLabel) && (
             <div className="flex flex-wrap gap-2.5">
@@ -279,7 +301,7 @@ function renderBlock(block: PageBlock, ctx: Ctx): ReactNode {
                   href={h.ctaHref}
                   className={cn(
                     "inline-flex h-14 w-max max-w-full items-center gap-2.5 rounded-full px-6 text-[15px] font-bold transition-[filter,background-color]",
-                    style === "brand" ? "bg-card text-foreground hover:bg-background" : "bg-primary text-primary-foreground hover:brightness-95",
+                    textStyle === "brand" ? "bg-card text-foreground hover:bg-background" : "bg-primary text-primary-foreground hover:brightness-95",
                   )}
                 >
                   {h.ctaLabel}
