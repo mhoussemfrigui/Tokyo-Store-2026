@@ -73,11 +73,15 @@ export default async function HomePage() {
   // is the operator's and still wins over the default sections (an empty home, not a
   // silent revert). Fail CLOSED to the default home so a settings read error never 500s.
   const configured = await hasStoredHomeBlocks().catch(() => false);
+  // Resolve the saved layout up front. resolveHomeBlocks ALWAYS returns a (possibly
+  // empty) object — `null` means it THREW (a transient catalogue/media query error).
+  // A valid layout (incl. a deliberately-emptied `[]`) renders the composed home; a
+  // resolve FAILURE degrades to the default sections below, never a blank homepage.
+  const resolved = configured
+    ? await getHomeBlocks().then(resolveHomeBlocks).catch(() => null)
+    : null;
 
-  if (configured) {
-    const resolved = await getHomeBlocks()
-      .then(resolveHomeBlocks)
-      .catch(() => null);
+  if (configured && resolved) {
     return (
       <>
         <JsonLd data={GRAPH} />
@@ -89,8 +93,9 @@ export default async function HomePage() {
     );
   }
 
-  // ── Default home — no composer layout saved. The fixed Tokyo sections (pixel-identical
-  //    to before H-02). The hero is still DB-backed (CMS Bannières → home_hero). ──
+  // ── Default home — no composer layout saved, OR the saved layout failed to resolve.
+  //    The fixed Tokyo sections (pixel-identical to before H-02). The hero is still
+  //    DB-backed (CMS Bannières → home_hero). ──
   const [heroSlides, pickups] = await Promise.all([
     getHeroSlides(),
     listEnabledPickups("in_store"),

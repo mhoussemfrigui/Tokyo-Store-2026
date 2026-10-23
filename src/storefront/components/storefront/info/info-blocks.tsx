@@ -10,6 +10,7 @@ import { DEFAULT_CONTACT_CHANNELS, mapUrlsFor, telHref, whatsappHref } from "@/l
 import type { ResolvedPage } from "@/lib/pages/page-blocks-data";
 import { cn } from "@/storefront/lib/utils";
 import { fmtPrice } from "@/storefront/lib/productMeta";
+import { imageUrl } from "@/types/catalog";
 import { sanitizeRichHtml } from "@/lib/sanitize/rich-html";
 
 import {
@@ -562,7 +563,7 @@ function renderBlock(block: PageBlock, ctx: Ctx): ReactNode {
           <SectionHead header={h} />
           <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr))]">
             {prods.map((p) => {
-              const imgSrc = typeof p.image === "string" ? p.image : p.image.src;
+              const imgSrc = imageUrl(p.image);
               return (
                 <Link
                   key={p.slug}

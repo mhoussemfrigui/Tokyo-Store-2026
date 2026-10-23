@@ -21,15 +21,14 @@ import {
 import { getProductDetailBySlug } from "@/storefront/lib/api/product-detail";
 import { getStorefrontShippingConfig } from "@/lib/checkout/shipping";
 import { getSeoConfig } from "@/lib/seo/config";
-import { buildPageMetadata } from "@/lib/seo/page-metadata";
+import { buildPageMetadata, buildCmsPageMetadata } from "@/lib/seo/page-metadata";
 import { buildCollectionGraph, buildProductGraph, buildProductVideoLd, mergeGraphs } from "@/lib/seo/jsonld";
 import { canEmitAggregateRating, selectStructuredReviews } from "@/lib/seo/review-jsonld";
 import { resolveOfferValidity } from "@/lib/seo/offer-validity";
 import { getAllSettingsServerOnly, getMaisonExploreNav } from "@/lib/api/cms";
 import { getSiteContacts, footerEntries } from "@/lib/cms/contact-list";
 import { pageService } from "@/modules/cms/page/service";
-import { resolveMediaSocialUrl, resolveMediaUrl } from "@/modules/media";
-import { mediaService } from "@/modules/media/service";
+import { mediaQueries } from "@/modules/media";
 import {
   getCollectionPageConfig,
   isCollectionSlug,
@@ -93,11 +92,7 @@ type Params = { params: Promise<{ slug: string }> };
 
 type CmsPageRow = {
   title: string;
-  meta_title: string | null;
   meta_description: string | null;
-  noindex: boolean;
-  og_image_media_id: string | null;
-  canonical_url: string | null;
 };
 type Resolved =
   | { kind: "collection"; slug: CollectionSlug; config: CollectionPageConfig }
@@ -159,14 +154,7 @@ async function resolveSlug(slug: string): Promise<Resolved | null> {
     return {
       kind: "page",
       slug,
-      page: {
-        title: cmsPage.title,
-        meta_title: cmsPage.meta_title,
-        meta_description: cmsPage.meta_description,
-        noindex: cmsPage.noindex,
-        og_image_media_id: cmsPage.og_image_media_id,
-        canonical_url: cmsPage.canonical_url,
-      },
+      page: { title: cmsPage.title, meta_description: cmsPage.meta_description },
     };
   }
 
@@ -190,25 +178,15 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   if (!resolved) return { title: "Page introuvable" };
 
   if (resolved.kind === "page") {
-    const p = resolved.page;
-    const title = p.meta_title?.trim() || p.title;
-    // Admin SEO tab overrides that used to be dead on the page branch: the OG
-    // image (médiathèque id → social-card URL) and the canonical override. Built
-    // through buildPageMetadata (same path as the product branch) so the title
-    // template + OG/twitter block are applied consistently, then the canonical
-    // override (blank → own URL) wins over the default /slug.
-    const ogMedia = p.og_image_media_id
-      ? await mediaService.findById(p.og_image_media_id).catch(() => null)
-      : null;
-    const base = await buildPageMetadata({
-      title,
-      description: p.meta_description ?? undefined,
-      path: `/${resolved.slug}`,
-      index: p.noindex ? false : undefined,
-      image: ogMedia ? resolveMediaSocialUrl(ogMedia) : null,
+    // Full CMS-page SEO (meta title/description, médiathèque OG image, canonical
+    // override, noindex) via the shared helper that EVERY CMS-page route uses —
+    // it re-reads the page row, primes the CDN base before resolving the OG URL,
+    // and applies the soft-404 noindex. (Previously this branch hand-rolled the
+    // resolution without priming — M-07 cleanup.)
+    return buildCmsPageMetadata(resolved.slug, {
+      title: resolved.page.title,
+      description: resolved.page.meta_description ?? "",
     });
-    const canonical = p.canonical_url?.trim();
-    return canonical ? { ...base, alternates: { ...base.alternates, canonical } } : base;
   }
 
   if (resolved.kind === "collection") {
@@ -338,10 +316,7 @@ export default async function SlugPage({ params }: Params) {
     const phone = footerEntries(contacts.phones)[0]?.value ?? settings["site.contact_phone"] ?? null;
     const catDesc = config.subtitle.trim() || copy.catDesc;
     // Vitrines hero image (médiathèque id → content URL) — previously a dead control.
-    const heroMedia = config.heroMediaId
-      ? await mediaService.findById(config.heroMediaId).catch(() => null)
-      : null;
-    const heroImage = heroMedia ? resolveMediaUrl(heroMedia) : null;
+    const heroImage = await mediaQueries.resolveUrlById(config.heroMediaId).catch(() => null);
 
     // Structured data: CollectionPage + ItemList + Breadcrumb (+ FAQPage) through
     // the tested SEO builders — the admin config now owns the collection graph

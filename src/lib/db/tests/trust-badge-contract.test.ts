@@ -54,19 +54,20 @@ function main() {
   const empty = getTrustBadgeAppearance({});
   check("missing settings → documented defaults", JSON.stringify(empty) === JSON.stringify(TRUST_BADGE_APPEARANCE_DEFAULTS));
   const valid = getTrustBadgeAppearance({
-    [TRUST_BADGE_SETTING_KEYS.style]: "grid",
-    [TRUST_BADGE_SETTING_KEYS.iconStyle]: "square",
+    // Non-default values (defaults are grid/square) so this proves PARSING, not the default.
+    [TRUST_BADGE_SETTING_KEYS.style]: "inline",
+    [TRUST_BADGE_SETTING_KEYS.iconStyle]: "plain",
     [TRUST_BADGE_SETTING_KEYS.showOnProduct]: "false",
     [TRUST_BADGE_SETTING_KEYS.showOnCart]: "false",
     [TRUST_BADGE_SETTING_KEYS.showOnCheckout]: "true",
   });
-  check("valid values parse", valid.style === "grid" && valid.iconStyle === "square" && !valid.showOnProduct && !valid.showOnCart && valid.showOnCheckout);
+  check("valid values parse", valid.style === "inline" && valid.iconStyle === "plain" && !valid.showOnProduct && !valid.showOnCart && valid.showOnCheckout);
   const bad = getTrustBadgeAppearance({
     [TRUST_BADGE_SETTING_KEYS.style]: "fancy",
     [TRUST_BADGE_SETTING_KEYS.iconStyle]: "neon",
     [TRUST_BADGE_SETTING_KEYS.showOnProduct]: "maybe",
   });
-  check("unknown enum / bool values fall back to defaults", bad.style === "list" && bad.iconStyle === "circle" && bad.showOnProduct === true);
+  check("unknown enum / bool values fall back to defaults", bad.style === "grid" && bad.iconStyle === "square" && bad.showOnProduct === true);
 
   console.log("isSurfaceEnabled:");
   check(

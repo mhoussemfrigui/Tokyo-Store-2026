@@ -353,20 +353,26 @@ export function CheckoutView({
   const err = tried ? errors : {};
 
   const aside = (
-    <SummaryAside
-      items={items}
-      totals={totals}
-      mode={mode}
-      showItems
-      shipping={shipping}
-      ctaLabel={ctaLabel}
-      ctaIcon={step === 1 ? Lock : ArrowRight}
-      disabled={false}
-      sending={sending}
-      onNext={next}
-      error={formError || (Object.keys(err).length ? (err.cgv && Object.keys(err).length === 1 ? "Veuillez accepter les conditions générales de vente." : "Vérifiez les champs indiqués en rouge.") : null)}
-      showCta={!narrow}
-    />
+    <>
+      <SummaryAside
+        items={items}
+        totals={totals}
+        mode={mode}
+        showItems
+        shipping={shipping}
+        ctaLabel={ctaLabel}
+        ctaIcon={step === 1 ? Lock : ArrowRight}
+        disabled={false}
+        sending={sending}
+        onNext={next}
+        error={formError || (Object.keys(err).length ? (err.cgv && Object.keys(err).length === 1 ? "Veuillez accepter les conditions générales de vente." : "Vérifiez les champs indiqués en rouge.") : null)}
+        showCta={!narrow}
+      />
+      {/* Checkout-only reassurance strip (« Afficher au paiement », off by default).
+          Lives HERE, not in SummaryAside, so it never leaks onto /panier (which
+          reuses SummaryAside). */}
+      <TrustBand surface="checkout" />
+    </>
   );
 
   return (
@@ -1251,9 +1257,6 @@ export function SummaryAside({ items, totals, mode, showItems, shipping, ctaLabe
       <span className="flex items-center justify-center gap-1.5 text-[12px]" style={{ color: MUTED }}>
         <Lock size={13} /> Paiement sécurisé · Données chiffrées
       </span>
-      {/* Admin-managed reassurance strip — shows when « Badges de confiance →
-          Afficher au paiement » is on (off by default). */}
-      <TrustBand surface="checkout" />
     </div>
   );
 }

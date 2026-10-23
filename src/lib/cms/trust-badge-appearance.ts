@@ -30,9 +30,13 @@ export type TrustBadgeAppearance = {
   showOnCheckout: boolean;
 };
 
+// Defaults REPRODUCE the store's prior hardcoded look: the dark grid "service
+// band" with crimson square icon chips (the old inline PDP band). An operator can
+// switch to `list` / `inline` + `circle` / `plain`. (Product + cart default ON —
+// cart replaces the former hardcoded strip; checkout is opt-in.)
 export const TRUST_BADGE_APPEARANCE_DEFAULTS: TrustBadgeAppearance = {
-  style: "list",
-  iconStyle: "circle",
+  style: "grid",
+  iconStyle: "square",
   showOnProduct: true,
   showOnCart: true,
   showOnCheckout: false,
