@@ -5,7 +5,7 @@
  * delivery/returns copy) are unit-testable in isolation.
  *
  * Shared by every surface the strip renders on (product buy-box, cart, checkout
- * — see `TrustStrip`), each supplying its own `BuyBoxState`. Isomorphic +
+ * — see `TrustBand`), each supplying its own `BuyBoxState`. Isomorphic +
  * dependency-free: the renderer maps the returned icon names to components via
  * the shared trust-icon map.
  *

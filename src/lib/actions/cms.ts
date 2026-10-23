@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { workflows } from "@/workflows";
-import { requirePermission } from "@/lib/auth/session";
+import { requirePermission, requirePermissionAny } from "@/lib/auth/session";
 import { bannerService } from "@/modules/cms/banner/service";
 import { type ActionState } from "@/lib/actions/types";
 import { parseFaqItemsJson } from "@/lib/cms/faq-items";
@@ -214,6 +214,22 @@ export async function upsertBrandFaqsAction(
 // legacy header_strip/category_grid→the banners CRUD resource). update & delete
 // resolve the placement from the DB row, never client input (ISSUE-18). Gates are
 // inlined with literal keys so they stay statically analysable (internal-api catalog).
+//
+// update/delete must READ the banner (to learn its real placement) before the
+// precise per-surface gate, so they open with a BASELINE any-of gate first — the
+// caller must hold at least one banner-editing right before any DB read (so a
+// no-permission caller never reaches `findById`). The exact surface check still
+// runs after the placement is resolved.
+const BANNER_EDIT_GRANTS = [
+  { module: "home", action: "update" },
+  { module: "navigation", action: "update" },
+  { module: "banners", action: "update" },
+] as const;
+const BANNER_DELETE_GRANTS = [
+  { module: "home", action: "update" },
+  { module: "navigation", action: "update" },
+  { module: "banners", action: "delete" },
+] as const;
 
 /** Create a banner on a surface the caller is allowed to edit. */
 export async function createBannerAction(
@@ -276,6 +292,9 @@ export async function updateBannerAction(
 ): Promise<ActionState> {
   const id = optional(formData, "id");
   if (!id) return { ok: false, error: "validation", message: "ID requis." };
+  // Baseline gate BEFORE any DB read: the caller must hold at least one
+  // banner-editing right (the precise per-surface check runs below).
+  await requirePermissionAny(BANNER_EDIT_GRANTS);
   // SECURITY (ISSUE-18): resolve the banner's REAL placement from the DB — NEVER
   // trust the client-posted `placement` for the RBAC gate, or a caller could edit a
   // surface they can't by posting a placement they can. Gate on the owning surface.
@@ -349,6 +368,8 @@ export async function updateBannerAction(
 }
 
 export async function deleteBannerAction(id: string): Promise<ActionState> {
+  // Baseline gate BEFORE any DB read (the precise per-surface check runs below).
+  await requirePermissionAny(BANNER_DELETE_GRANTS);
   // Resolve the placement server-side (never trust a client-passed placement) so
   // the delete gates on the surface that owns it — the hero carousel on `home`,
   // the footer banner on `navigation` (both VIEW_EDIT → `:update`), legacy on `banners`.
