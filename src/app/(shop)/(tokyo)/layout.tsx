@@ -19,6 +19,7 @@ import { getTokyoHeaderNav } from "@/lib/api/tokyo-header-nav";
 import { MobileBottomNav } from "@/storefront/components/storefront/mobile-bottom-nav";
 import { TrustCopyProvider } from "@/components/storefront/trust-copy-provider";
 import { ShippingConfigProvider } from "@/storefront/lib/shipping-config";
+import { TaxModeProvider, type TaxDisplayMode } from "@/storefront/lib/tax-config";
 import { CareConfigProvider } from "@/storefront/lib/care-config";
 import { SiteContactsProvider, DEFAULT_CONTACTS } from "@/storefront/lib/site-contacts";
 
@@ -81,6 +82,10 @@ export default async function TokyoShellLayout({ children }: { children: ReactNo
   const darkMode = theme?.darkMode ?? "off";
   const themeInitJs = buildDarkModeInitJs(darkMode);
   const contacts = getSiteContacts(settings);
+  // TVA display mode (Système → TVA) — so the storefront only shows "TVA incluse"
+  // when the store actually runs tax-inclusive, never in the default disabled mode.
+  const rawTaxMode = settings["tax.mode"];
+  const taxMode: TaxDisplayMode = rawTaxMode === "ttc" || rawTaxMode === "ht" ? rawTaxMode : "disabled";
   const footerData: FooterData = {
     brandName: settings["site.name"],
     tagline: settings["site.tagline"],
@@ -103,6 +108,7 @@ export default async function TokyoShellLayout({ children }: { children: ReactNo
   };
   return (
     <ShippingConfigProvider value={shipping}>
+     <TaxModeProvider value={taxMode}>
      <CareConfigProvider
        value={{
          chargePerUnit: careConfig.chargePerUnit,
@@ -148,6 +154,7 @@ export default async function TokyoShellLayout({ children }: { children: ReactNo
         </div>
       </SiteContactsProvider>
      </CareConfigProvider>
+     </TaxModeProvider>
     </ShippingConfigProvider>
   );
 }

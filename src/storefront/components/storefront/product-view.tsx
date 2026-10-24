@@ -30,6 +30,7 @@ import { submitReviewAction } from "@/lib/actions/reviews";
 import type { ActionState } from "@/lib/actions/types";
 import { SelectField } from "@/components/ui/select-field";
 import { addToCart, planById, protectionPlans, useShippingConfig } from "@/storefront/lib/cart";
+import { useTaxMode, taxCaption } from "@/storefront/lib/tax-config";
 import { categoryTrail, taxonomyLabel } from "@/storefront/lib/categoryNav";
 import { toggleFavorite, useIsFavorite } from "@/storefront/lib/favorites";
 import {
@@ -282,6 +283,9 @@ export function ProductView({
 
   /* Global home-delivery rate — shown on the carrier card in « Retrait & livraison ». */
   const shipping = useShippingConfig();
+  /* Honest TVA caption — only when the store actually runs tax-inclusive/HT, never
+     in the default disabled mode (no VAT ⇒ no "TVA incluse" claim). */
+  const taxNote = taxCaption(useTaxMode());
 
   /* Wishlist + add-to-cart feedback + quick-buy + toast + sticky bar. */
   const fav = useIsFavorite(product.slug);
@@ -704,7 +708,7 @@ export function ProductView({
                     TND
                   </span>
                 </div>
-                <span className="text-[11.5px] font-medium text-[#9a938a]">TVA incluse</span>
+                {taxNote && <span className="text-[11.5px] font-medium text-[#9a938a]">{taxNote}</span>}
               </div>
 
               {/* ── Price — DESKTOP (hidden lg:flex): byte-for-byte the original
@@ -719,7 +723,7 @@ export function ProductView({
                 {strike ? (
                   <span className="ml-1 text-[13px] text-[#9a938a] line-through lg:ml-1.5 lg:text-[15px]">{fmtPrice(strike.strike)} TND</span>
                 ) : null}
-                <span className="ml-1 text-[12px] text-[#5b5d62] lg:ml-1.5 lg:text-[13px]">TVA incluse</span>
+                {taxNote && <span className="ml-1 text-[12px] text-[#5b5d62] lg:ml-1.5 lg:text-[13px]">{taxNote}</span>}
               </div>
             </div>
             {/* ── end title+price pill ── */}

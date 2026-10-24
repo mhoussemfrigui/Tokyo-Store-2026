@@ -44,6 +44,7 @@ import {
   type CartItem,
 } from "@/storefront/lib/cart";
 import { useCareConfig } from "@/storefront/lib/care-config";
+import { useTaxMode, taxCaption } from "@/storefront/lib/tax-config";
 import { toggleFavorite } from "@/storefront/lib/favorites";
 import { placeOrderFromCartAction } from "@/lib/actions/order";
 import { createAddressAction, editAddressAction } from "@/lib/actions/customer";
@@ -1281,6 +1282,7 @@ function PaymentStep({ options, pay, setPay, note, setNote, cgv, setCgv, err, ha
 /* ═══════════════════ SUMMARY ASIDE ═══════════════════ */
 
 export function SummaryAside({ items, totals, mode, showItems, shipping, ctaLabel, ctaIcon: CtaIcon, disabled, sending, onNext, error, showCta }: { items: CartItem[]; totals: ReturnType<typeof cartTotals>; mode: "home" | "store"; showItems: boolean; shipping: ReturnType<typeof useShippingConfig>; ctaLabel: string; ctaIcon: typeof ArrowRight; disabled: boolean; sending: boolean; onNext: () => void; error: string | null; showCta: boolean }) {
+  const taxNote = taxCaption(useTaxMode());
   const freeBase = totals.products;
   const left = (shipping.freeFrom || 0) - freeBase;
   const showFreeBar = mode === "home" && items.length > 0 && shipping.freeFrom > 0;
@@ -1332,7 +1334,7 @@ export function SummaryAside({ items, totals, mode, showItems, shipping, ctaLabe
         <span className="text-[16px] font-extrabold">Total</span>
         <span className="flex flex-col items-end">
           <span className="text-[30px] font-black leading-none tracking-[-.03em]" style={{ color: CRIMSON }}>{fmtPrice(totals.total)} <span className="text-[14px]">TND</span></span>
-          <span className="mt-1 text-[12px]" style={{ color: MUTED }}>TVA incluse</span>
+          {taxNote && <span className="mt-1 text-[12px]" style={{ color: MUTED }}>{taxNote}</span>}
         </span>
       </div>
       {showCta && (
