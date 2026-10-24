@@ -112,6 +112,45 @@ const contactSchema = z.object({
   email: z.string().trim().email("E-mail invalide").max(120).or(z.literal("")),
 });
 
+/** The payable methods the admin enabled (Système → Paiement), resolved the same
+ *  way the express flow reads them. The server action re-gates authoritatively. */
+type CheckoutPaymentConfig = {
+  codEnabled: boolean;
+  codLabel: string;
+  codDescription: string;
+  clictopayEnabled: boolean;
+  clictopayLabel: string;
+  flouciEnabled: boolean;
+  flouciLabel: string;
+};
+type PayMethod = "cod" | "clictopay" | "flouci";
+type PayOption = { k: PayMethod; title: string; sub: string; online: boolean };
+
+/** Build the radio list from the admin config. COD-only fallback when the config
+ *  is unavailable (fresh DB / read error) — the server resolver makes the final
+ *  call, so the UI never shows a gateway the store can't actually charge. */
+function paymentOptions(p: CheckoutPaymentConfig | null): PayOption[] {
+  const list: PayOption[] = [];
+  if (!p || p.codEnabled) {
+    list.push({
+      k: "cod",
+      title: p?.codLabel || "Paiement à la livraison",
+      sub: p?.codDescription || "En espèces ou par carte au livreur",
+      online: false,
+    });
+  }
+  if (p?.clictopayEnabled) {
+    list.push({ k: "clictopay", title: p.clictopayLabel || "ClicToPay", sub: "Paiement sécurisé en ligne", online: true });
+  }
+  if (p?.flouciEnabled) {
+    list.push({ k: "flouci", title: p.flouciLabel || "Flouci", sub: "Paiement sécurisé en ligne (Flouci)", online: true });
+  }
+  if (list.length === 0) {
+    list.push({ k: "cod", title: "Paiement à la livraison", sub: "En espèces ou par carte au livreur", online: false });
+  }
+  return list;
+}
+
 type Done = {
   orderId: string | null;
   orderNumber: string | null;
@@ -120,7 +159,8 @@ type Done = {
   email: string;
   mode: "home" | "store";
   where: string;
-  pay: "cod" | "card";
+  payOnline: boolean;
+  payLabel: string;
   items: CartItem[];
   totals: ReturnType<typeof cartTotals>;
 };
@@ -130,11 +170,13 @@ export function CheckoutView({
   viewer = null,
   addresses = [],
   hasProfile = false,
+  payment = null,
 }: {
   pickups?: CheckoutPickup[];
   viewer?: Viewer | null;
   addresses?: CheckoutAddress[];
   hasProfile?: boolean;
+  payment?: CheckoutPaymentConfig | null;
 }) {
   const hydrated = useHydrated();
   const { items, ready } = useCartItems();
@@ -165,7 +207,10 @@ export function CheckoutView({
   const [addrId, setAddrId] = useState<string>(
     (addresses.find((a) => a.isDefault) ?? addresses[0])?.id ?? "new",
   );
-  const [pay, setPay] = useState<"cod" | "card">("cod");
+  const payOptions = useMemo(() => paymentOptions(payment), [payment]);
+  const [pay, setPay] = useState<PayMethod>(() => payOptions[0]?.k ?? "cod");
+  const selectedPay = payOptions.find((o) => o.k === pay) ?? payOptions[0];
+  const payOnline = selectedPay?.online ?? false;
   const [cgv, setCgv] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [tried, setTried] = useState(false);
@@ -265,7 +310,7 @@ export function CheckoutView({
             : homeStreet || "Adresse de livraison",
         city: mode === "store" ? selectedPickup?.city || "Tunis" : homeRegion,
         region: mode === "store" ? selectedPickup?.city || "Tunis" : homeRegion,
-        paymentMethod: pay === "card" ? "flouci" : "cod",
+        paymentMethod: pay,
         deliveryMethod: mode === "store" ? "in_store" : "home_delivery",
         pickupLocationId: mode === "store" ? selectedPickup?.id : undefined,
         selectedAddressId: usingSavedAddr ? selectedAddr!.id : undefined,
@@ -295,7 +340,8 @@ export function CheckoutView({
         email: values.email.trim(),
         mode,
         where,
-        pay,
+        payOnline,
+        payLabel: payOnline ? selectedPay?.title ?? "Paiement en ligne" : "À la livraison",
         items,
         totals,
       });
@@ -355,7 +401,7 @@ export function CheckoutView({
     );
   }
 
-  const ctaLabel = ["Continuer vers le paiement", pay === "card" ? `Payer ${fmtPrice(totals.total)} TND` : "Confirmer la commande"][step];
+  const ctaLabel = ["Continuer vers le paiement", payOnline ? `Payer ${fmtPrice(totals.total)} TND` : "Confirmer la commande"][step];
   const ctaShort = ["Continuer", "Confirmer"][step];
   const err = tried ? errors : {};
 
@@ -488,6 +534,7 @@ export function CheckoutView({
             )}
             {step === 1 && (
               <PaymentStep
+                options={payOptions}
                 pay={pay}
                 setPay={setPay}
                 note={values.note}
@@ -1175,35 +1222,32 @@ function AddressFormCard({
 
 /* ═══════════════════ STEP 2 — PAYMENT ═══════════════════ */
 
-function PaymentStep({ pay, setPay, note, setNote, cgv, setCgv, err, hasCare }: { pay: "cod" | "card"; setPay: (p: "cod" | "card") => void; note: string; setNote: (v: string) => void; cgv: boolean; setCgv: (v: boolean) => void; err: Record<string, boolean>; hasCare: boolean }) {
-  const PAYS = [
-    { k: "cod" as const, Icon: Banknote, title: "Paiement à la livraison", sub: "En espèces ou par carte au livreur" },
-    { k: "card" as const, Icon: CreditCard, title: "Carte bancaire", sub: "Paiement sécurisé en ligne (Flouci)" },
-  ];
+function PaymentStep({ options, pay, setPay, note, setNote, cgv, setCgv, err, hasCare }: { options: PayOption[]; pay: PayMethod; setPay: (p: PayMethod) => void; note: string; setNote: (v: string) => void; cgv: boolean; setCgv: (v: boolean) => void; err: Record<string, boolean>; hasCare: boolean }) {
   return (
     <div className="flex flex-col gap-4 rounded-[28px] bg-white p-[clamp(18px,2.4vw,28px)]">
       <h2 className="m-0 text-[clamp(22px,2.2vw,30px)] font-extrabold tracking-[-.03em]">Paiement</h2>
       <div className="flex flex-col gap-2.5">
-        {PAYS.map((p) => {
+        {options.map((p) => {
           const on = pay === p.k;
+          const Icon = p.online ? CreditCard : Banknote;
           return (
             <div key={p.k} className="overflow-hidden rounded-[22px] border-[1.5px] transition-colors" style={{ borderColor: on ? INK : "#ece6df", background: on ? "#fbf9f7" : "#fff" }}>
               <button type="button" role="radio" aria-checked={on} onClick={() => setPay(p.k)} className="flex w-full items-center gap-3.5 border-none bg-transparent p-[18px] text-left">
                 <span className="flex h-[22px] w-[22px] flex-[0_0_22px] items-center justify-center rounded-full border-2" style={{ borderColor: on ? CRIMSON : "#cfc7be" }}>
                   <span className="h-2.5 w-2.5 rounded-full transition-transform" style={{ background: CRIMSON, transform: on ? "scale(1)" : "scale(0)" }} />
                 </span>
-                <span className="flex h-11 w-11 flex-[0_0_44px] items-center justify-center rounded-[14px] border border-[#ece6df] bg-white"><p.Icon size={20} /></span>
+                <span className="flex h-11 w-11 flex-[0_0_44px] items-center justify-center rounded-[14px] border border-[#ece6df] bg-white"><Icon size={20} /></span>
                 <span className="flex flex-1 flex-col gap-0.5">
                   <span className="text-[15px] font-extrabold">{p.title}</span>
                   <span className="text-[13px]" style={{ color: MUTED }}>{p.sub}</span>
                 </span>
               </button>
-              {p.k === "card" && (
+              {p.online && (
                 <div className="grid transition-[grid-template-rows] duration-300 ease-soft" style={{ gridTemplateRows: on ? "1fr" : "0fr" }}>
                   <div className="overflow-hidden">
                     <p className="m-0 flex items-start gap-2 px-[18px] pb-[18px] text-[13px] leading-relaxed" style={{ color: "#3d4046" }}>
                       <Lock size={15} className="mt-0.5 flex-[0_0_15px]" style={{ color: CRIMSON }} />
-                      Vous serez redirigé vers le paiement sécurisé Flouci pour régler par carte bancaire. Aucune donnée de carte n&apos;est saisie sur ce site.
+                      Vous serez redirigé vers le paiement sécurisé {p.title} pour régler par carte bancaire. Aucune donnée de carte n&apos;est saisie sur ce site.
                     </p>
                   </div>
                 </div>
@@ -1318,7 +1362,7 @@ function Confirmation({ done }: { done: Done }) {
     { title: "Commande confirmée", desc: "Confirmation envoyée par e-mail et SMS.", Icon: Check, done: true },
     { title: "Préparation", desc: "Nos techniciens vérifient vos articles avant l'expédition.", Icon: ShoppingBag, done: false },
     done.mode === "home"
-      ? { title: "Livraison", desc: `Le livreur vous appelle avant de passer.${done.pay === "cod" ? " Paiement à la réception." : ""}`, Icon: Truck, done: false }
+      ? { title: "Livraison", desc: `Le livreur vous appelle avant de passer.${done.payOnline ? "" : " Paiement à la réception."}`, Icon: Truck, done: false }
       : { title: "Retrait", desc: "Présentez votre numéro de commande en boutique.", Icon: Store, done: false },
   ];
 
@@ -1380,7 +1424,7 @@ function Confirmation({ done }: { done: Done }) {
           </div>
           <div className="mt-auto flex items-center justify-between gap-3 rounded-[20px] p-4" style={{ background: "rgba(255,255,255,.07)" }}>
             <span className="flex flex-col gap-0.5">
-              <span className="text-[12px]" style={{ color: "#b9bdc4" }}>{done.pay === "card" ? "Carte bancaire" : "À la livraison"}</span>
+              <span className="text-[12px]" style={{ color: "#b9bdc4" }}>{done.payLabel}</span>
               <span className="text-[22px] font-black tracking-[-.02em]">{fmtPrice(done.totals.total)} <span className="text-[12px]">TND</span></span>
             </span>
             <a href={telHref(sitePhone)} className="flex h-[42px] items-center gap-2 rounded-full bg-white px-3.5 text-[13px] font-bold text-[#0e1218]"><Phone size={14} /> {sitePhone}</a>

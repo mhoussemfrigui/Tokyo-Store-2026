@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { CheckoutView } from "@/storefront/components/storefront/checkout-view";
 import { deliveryQueries } from "@/modules/delivery/queries";
+import { getQuickBuyConfig } from "@/lib/checkout/quick-buy-config";
 import { getCurrentUser } from "@/lib/auth/session";
 import { customerUserLink } from "@/associations/customer-user.service";
 import { customerService } from "@/modules/customer/service";
@@ -15,10 +16,25 @@ export const metadata: Metadata = {
 export default async function CheckoutPage() {
   // Real in-store pickup points (Commandes → Livraison) + the signed-in viewer
   // (identity card + prefill + address book). Each read is graceful.
-  const [pickupRows, user] = await Promise.all([
+  const [pickupRows, user, quickConfig] = await Promise.all([
     deliveryQueries.listEnabledPickups("in_store").catch(() => []),
     getCurrentUser().catch(() => null),
+    // Same admin payment config the express flow uses — so the 3-step checkout
+    // offers exactly the enabled methods (COD / ClicToPay / Flouci) instead of a
+    // hardcoded COD+Flouci pair. The server action re-gates authoritatively.
+    getQuickBuyConfig().catch(() => null),
   ]);
+  const payment = quickConfig
+    ? {
+        codEnabled: quickConfig.payment.codEnabled,
+        codLabel: quickConfig.payment.codLabel,
+        codDescription: quickConfig.payment.codDescription,
+        clictopayEnabled: quickConfig.payment.clictopayEnabled,
+        clictopayLabel: quickConfig.payment.clictopayLabel,
+        flouciEnabled: quickConfig.payment.flouciEnabled,
+        flouciLabel: quickConfig.payment.flouciLabel,
+      }
+    : null;
   const pickups = pickupRows.map((p) => ({
     id: p.id,
     name: p.name,
@@ -68,6 +84,7 @@ export default async function CheckoutPage() {
       viewer={viewer}
       addresses={addresses}
       hasProfile={!!profile}
+      payment={payment}
     />
   );
 }
