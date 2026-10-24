@@ -27,15 +27,15 @@ import { CatalogProductCard } from "@/storefront/components/storefront/product-c
 import { RailArrow } from "@/storefront/components/storefront/rail-arrow";
 import { btn, chip, rhythm } from "@/storefront/components/storefront/ui-classes";
 import { addToCart } from "@/storefront/lib/cart";
-import type { Product } from "@/storefront/lib/catalog";
+import type { Product } from "@/storefront/types/catalog";
 import {
-  favoriteProducts,
   removeFavorite,
   toggleFavorite,
   useFavorites,
   useFavoritesReady,
   useIsFavorite,
 } from "@/storefront/lib/favorites";
+import { useLiveProductsBySlugs } from "@/storefront/lib/use-live-products";
 import { useHydrated } from "@/storefront/lib/hydration";
 import {
   STOCK_LABEL,
@@ -84,9 +84,12 @@ const SORTERS: Record<Sort, ((a: Product, b: Product) => number) | null> = {
 
 export function FavoritesView({ recommendations = [] }: { recommendations?: Product[] }) {
   const hydrated = useHydrated();
-  const ready = useFavoritesReady();
+  const favReady = useFavoritesReady();
   const slugs = useFavorites();
-  const items = favoriteProducts(slugs);
+  // Resolve the favourited products LIVE from the backend (order = store order,
+  // newest-first), replacing the retired bundled snapshot.
+  const { products: items, ready: itemsReady } = useLiveProductsBySlugs(slugs);
+  const ready = favReady && itemsReady;
   const n = items.length;
 
   const [filter, setFilter] = useState<Filter>("all");

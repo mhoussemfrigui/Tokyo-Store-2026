@@ -3,7 +3,6 @@
 import { useSyncExternalStore } from "react";
 
 import { getWishlistSlugsAction, toggleWishlistAction } from "@/lib/actions/wishlist";
-import { findProductBySlug, type Product } from "@/storefront/lib/catalog";
 
 /**
  * Favourites store — backed by the BACKEND wishlist (guest cookie or signed-in
@@ -123,9 +122,5 @@ export function clearFavorites() {
   for (const slug of [...state]) toggleFavorite(slug);
 }
 
-export function favoriteProducts(slugs: string[]): Product[] {
-  return slugs.flatMap((slug) => {
-    const p = findProductBySlug(slug);
-    return p ? [p] : [];
-  });
-}
+// (favoriteProducts removed: the /favoris view now resolves favourited products LIVE
+//  via useLiveProductsBySlugs → /api/store/products, not the bundled snapshot.)
