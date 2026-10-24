@@ -62,6 +62,13 @@ type SecretDef = {
    * and nothing is loaded/generated once `closedFlagKey` exists in app_secrets.
    */
   oneShot?: { closedFlagKey: string };
+  /**
+   * This key protects data AT REST (signs sessions / encrypts payment creds). If
+   * it is generated and persisted into app_secrets rather than supplied via env,
+   * it sits PLAINTEXT in the very DB it protects — so a single DB dump defeats it.
+   * In production we warn so the operator moves it to env (defence-in-depth).
+   */
+  sensitiveAtRest?: boolean;
 };
 
 const SECRETS: readonly SecretDef[] = [
@@ -70,12 +77,14 @@ const SECRETS: readonly SecretDef[] = [
     generate: () => randomBytes(32).toString("base64"),
     echoOnGenerate: false,
     description: "Better Auth session token signing key (32 bytes)",
+    sensitiveAtRest: true,
   },
   {
     key: "PAYMENT_ENCRYPTION_KEY",
     generate: () => randomBytes(32).toString("base64"),
     echoOnGenerate: false,
     description: "AES-256-GCM key for payment credentials at rest (32 bytes)",
+    sensitiveAtRest: true,
   },
   {
     key: "ADMIN_BOOTSTRAP_TOKEN",
@@ -168,6 +177,17 @@ async function main() {
           generated ? "generated + persisted" : "loaded from app_secrets"
         }  (${def.description})`,
       );
+
+      // Defence-in-depth: an at-rest key that lives in the DB it protects is
+      // defeated by a single DB dump. Warn in prod so the operator supplies it
+      // via env (where it is NOT persisted — see the env-wins skip above).
+      if (def.sensitiveAtRest && process.env.NODE_ENV === "production") {
+        console.error(
+          `[init-secrets]   ⚠ ${def.key} is served from app_secrets (same DB it protects). ` +
+            `For defence-in-depth set ${def.key} via env (e.g. your Coolify dashboard) so a ` +
+            `DB dump alone cannot forge sessions / decrypt payment credentials.`,
+        );
+      }
 
       if (generated && def.echoOnGenerate) {
         console.error(
