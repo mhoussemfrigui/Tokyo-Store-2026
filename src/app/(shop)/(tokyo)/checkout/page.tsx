@@ -16,8 +16,11 @@ export const metadata: Metadata = {
 export default async function CheckoutPage() {
   // Real in-store pickup points (Commandes → Livraison) + the signed-in viewer
   // (identity card + prefill + address book). Each read is graceful.
-  const [pickupRows, user, quickConfig] = await Promise.all([
+  const [inStoreRows, driveByRows, user, quickConfig] = await Promise.all([
     deliveryQueries.listEnabledPickups("in_store").catch(() => []),
+    // Drive pickups too, so BOTH pickup kinds reach the cart checkout (the express
+    // config exposes them, but the 3-step checkout only offered in-store before).
+    deliveryQueries.listEnabledPickups("drive_by_pickup").catch(() => []),
     getCurrentUser().catch(() => null),
     // Same admin payment config the express flow uses — so the 3-step checkout
     // offers exactly the enabled methods (COD / ClicToPay / Flouci) instead of a
@@ -35,12 +38,17 @@ export default async function CheckoutPage() {
         flouciLabel: quickConfig.payment.flouciLabel,
       }
     : null;
-  const pickups = pickupRows.map((p) => ({
+  const pickups = [
+    ...inStoreRows.map((p) => ({ row: p, kind: "in_store" as const })),
+    ...driveByRows.map((p) => ({ row: p, kind: "drive_by_pickup" as const })),
+  ].map(({ row: p, kind }) => ({
     id: p.id,
     name: p.name,
     address: [p.address_line, p.city].filter(Boolean).join(", ") || null,
     city: p.city,
     phone: p.phone,
+    // Pickup kind drives the submitted deliveryMethod (in_store vs drive_by_pickup).
+    kind,
     // Carry the pickup handling fee so the checkout total/tiles match the amount
     // the backend charges for this location (most pickups are free → 0).
     feeCents: p.fee_cents ?? 0,

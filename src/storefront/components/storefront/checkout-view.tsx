@@ -69,6 +69,8 @@ type CheckoutPickup = {
   address: string | null;
   city: string | null;
   phone: string | null;
+  /** Which pickup kind → the submitted deliveryMethod (in_store | drive_by_pickup). */
+  kind: "in_store" | "drive_by_pickup";
   /** Pickup handling fee in millimes (0 / null = free). The backend charges it
    *  from `pickupLocationId`; the UI must show it so "Payer X" == the charge. */
   feeCents: number | null;
@@ -311,7 +313,8 @@ export function CheckoutView({
         city: mode === "store" ? selectedPickup?.city || "Tunis" : homeRegion,
         region: mode === "store" ? selectedPickup?.city || "Tunis" : homeRegion,
         paymentMethod: pay,
-        deliveryMethod: mode === "store" ? "in_store" : "home_delivery",
+        deliveryMethod:
+          mode === "store" ? selectedPickup?.kind ?? "in_store" : "home_delivery",
         pickupLocationId: mode === "store" ? selectedPickup?.id : undefined,
         selectedAddressId: usingSavedAddr ? selectedAddr!.id : undefined,
         notes: values.note.trim() || undefined,
@@ -1026,6 +1029,9 @@ function DeliveryStep(props: {
                 <RadioTile key={p.id} on={storeId === p.id} onClick={() => setStoreId(p.id)}>
                   <strong className="text-[15px]">{p.name}</strong>
                   {p.address && <span style={{ color: "#3d4046" }}>{p.address}</span>}
+                  <span className="text-[12px] font-extrabold uppercase tracking-[.1em]" style={{ color: MUTED }}>
+                    {p.kind === "drive_by_pickup" ? "Retrait en drive" : "Retrait en boutique"}
+                  </span>
                   <span className="font-bold" style={{ color: "#15803d" }}>Prêt aujourd&apos;hui</span>
                   {p.feeCents != null && p.feeCents > 0 && (
                     <span className="font-bold" style={{ color: INK }}>Frais de retrait {fmtPrice(p.feeCents / 1000)} TND</span>
