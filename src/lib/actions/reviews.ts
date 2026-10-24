@@ -50,8 +50,10 @@ export async function submitReviewAction(
   }
 
   const slug = String(formData.get("slug") ?? "").trim();
-  const authorName =
-    ((user.name ?? "").trim() || (user.email ?? "").split("@")[0] || "Client").slice(0, 80);
+  // Never publish the email local-part as the author: a user with no display name
+  // would leak e.g. "john.doe" from their address on a public PDP. Fall back to a
+  // generic label instead (privacy).
+  const authorName = ((user.name ?? "").trim() || "Client").slice(0, 80);
 
   const res = await workflows.catalog.review.create(
     {
