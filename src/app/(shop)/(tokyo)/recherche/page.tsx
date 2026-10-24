@@ -101,8 +101,8 @@ export default async function TokyoSearchPage({
     .catch(() => null);
 
   // Hydrate product DTOs in score order (reuse the ranked ids — no second FTS
-  // query); the storefront snapshot facade preserves input order and drops ids
-  // it does not carry (SNAPSHOT-WALL: re-run tokyo-export-catalog after changes).
+  // query); resolved LIVE from the backend (catalogSource → Postgres), which
+  // preserves input order and drops any id no longer published.
   const ids = result?.products.map((p) => p.id) ?? [];
   const products = ids.length > 0 ? await listProductsByIds(ids).catch(() => []) : [];
 

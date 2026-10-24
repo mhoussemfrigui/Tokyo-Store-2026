@@ -71,7 +71,8 @@ const categoryChain = cache(async () => {
 
 type Chain = Awaited<ReturnType<typeof categoryChain>>;
 
-/** Backend product → storefront card DTO. Mirrors `scripts/tokyo-export-catalog.ts`. */
+/** Backend product → storefront card DTO (the single mapping the storefront card
+ *  consumers depend on; formerly duplicated in the offline export script). */
 function mapCard(p: BackendProduct, chain: Chain): Product {
   // File each product at its DEEPEST assigned category (leaf), as the export did.
   const leaf = p.subcategory ?? p.category;

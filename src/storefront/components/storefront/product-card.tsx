@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Star, Check, Heart } from "lucide-react";
 import Link from "next/link";
-import type { Product } from "@/storefront/lib/catalog";
+import type { Product } from "@/storefront/types/catalog";
 import { STOCK_LABEL, productRating, productStrike, fmtPrice, stockState } from "@/storefront/lib/productMeta";
 import { addToCart } from "@/storefront/lib/cart";
 import { toggleFavorite, useIsFavorite } from "@/storefront/lib/favorites";

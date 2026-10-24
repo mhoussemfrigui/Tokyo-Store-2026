@@ -5,9 +5,11 @@ import type { Category, Product } from "@/storefront/types/catalog";
  * products & categories goes through this interface, so the UI is decoupled from
  * *where* the data comes from.
  *
- * Today the only implementation is `staticSource` (bundled JSON). When the
- * Tokyo Store backend is ready, implement `httpSource` against its API and flip
- * `NEXT_PUBLIC_DATA_SOURCE=http` — no component or page changes required.
+ * The implementation is `liveSource` (see ./live-source) — it reads the backend
+ * DB directly (Postgres via `@/lib/api/products`), so every surface reflects
+ * admin edits with no re-export. The former bundled-JSON snapshot source has been
+ * retired; this seam stays so an alternative transport could be swapped in
+ * without touching components or pages.
  */
 export interface CatalogSource {
   listAllProducts(): Promise<Product[]>;

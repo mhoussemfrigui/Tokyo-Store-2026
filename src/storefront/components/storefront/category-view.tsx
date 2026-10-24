@@ -39,7 +39,7 @@ import { CategoryEditorial } from "@/storefront/components/storefront/listing/ca
 import { ListingRegion } from "@/storefront/components/storefront/listing/listing-region";
 import { ServiceBand } from "@/storefront/components/storefront/listing/service-band";
 import { useProductListing } from "@/storefront/components/storefront/listing/use-listing";
-import type { Product } from "@/storefront/lib/catalog";
+import type { Product } from "@/storefront/types/catalog";
 import {
   categoryTrail,
   getNavContext,

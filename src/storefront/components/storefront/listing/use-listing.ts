@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 
-import type { Product } from "@/storefront/lib/catalog";
+import type { Product } from "@/storefront/types/catalog";
 import { smoothBehavior } from "@/storefront/lib/motion";
 
 /**

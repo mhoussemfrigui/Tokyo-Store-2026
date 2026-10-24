@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 
 import { ServiceBand } from "@/storefront/components/storefront/listing/service-band";
-import type { Product } from "@/storefront/lib/catalog";
+import type { Product } from "@/storefront/types/catalog";
 import {
   collectionCopy,
   type CollectionSortKey,

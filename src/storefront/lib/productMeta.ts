@@ -1,4 +1,4 @@
-import { products, type Product } from "@/storefront/lib/catalog";
+import type { Product } from "@/storefront/types/catalog";
 
 /**
  * REAL backend rating. `products.rating` is the denormalized average of APPROVED
@@ -64,29 +64,6 @@ export function productStrike(
   const pct = Math.round((1 - product.price / strike) * 100);
   if (pct < 1) return null;
   return { strike, pct };
-}
-
-const byId = new Map(products.map((p) => [p.id, p]));
-
-export function findProduct(id: string): Product | undefined {
-  return byId.get(id);
-}
-
-export function relatedProducts(product: Product, limit = 8): Product[] {
-  const same = products.filter((p) => p.category === product.category && p.id !== product.id);
-  if (same.length >= limit) return same.slice(0, limit);
-  const type = product.product_type.split("/")[0]?.trim().toLowerCase() ?? "";
-  const extra = products.filter(
-    (p) => p.id !== product.id && !same.includes(p) && p.product_type.toLowerCase().startsWith(type),
-  );
-  return [...same, ...extra].slice(0, limit);
-}
-
-export function alsoViewed(product: Product, limit = 8): Product[] {
-  const n = [...product.id].reduce((a, c) => a + c.charCodeAt(0), 0);
-  const pool = products.filter((p) => p.id !== product.id && isOrderable(p));
-  const start = n % Math.max(1, pool.length - limit);
-  return pool.slice(start, start + limit);
 }
 
 /**

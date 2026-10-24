@@ -49,10 +49,10 @@ import { placeOrderFromCartAction } from "@/lib/actions/order";
 import { createAddressAction, editAddressAction } from "@/lib/actions/customer";
 import type { ActionState } from "@/lib/actions/types";
 import { useSiteContacts, telHref } from "@/storefront/lib/site-contacts";
-import { products } from "@/storefront/lib/catalog";
+import { useLiveProductsByCategory } from "@/storefront/lib/use-live-products";
 import { useHydrated } from "@/storefront/lib/hydration";
 import { smoothBehavior } from "@/storefront/lib/motion";
-import { fmtPrice, alsoViewed, conditionLabel, isOrderable } from "@/storefront/lib/productMeta";
+import { fmtPrice, conditionLabel, isOrderable } from "@/storefront/lib/productMeta";
 import type { Product } from "@/storefront/types/catalog";
 import { TrustBand } from "./trust-band";
 
@@ -533,13 +533,25 @@ export function CheckoutView({
 
 /* ═══════════════════ STEP 0 — CART ═══════════════════ */
 
-export function CartStep({ items, small, onNotify }: { items: CartItem[]; small: boolean; onNotify: (t: string) => void }) {
-  const complements = useMemo(() => {
-    const seed = items[0]?.product;
+/**
+ * LIVE cart complements — real products from the first cart item's category
+ * (fetched from /api/store/products → Postgres, rolled up to descendants), minus
+ * whatever is already in the cart. Replaces the former snapshot-backed pool, so
+ * the "Complétez votre commande" / "Vous aimerez aussi" rails are backend-truth.
+ * Returns [] until the fetch lands or when the cart is empty.
+ */
+function useCartComplementPool(items: CartItem[]): Product[] {
+  const seedCategory = items[0]?.product.category ?? null;
+  const { products: pool } = useLiveProductsByCategory(seedCategory);
+  return useMemo(() => {
     const inCart = new Set(items.map((i) => i.product.slug));
-    const pool = seed ? alsoViewed(seed, 10) : products.slice(0, 10);
-    return pool.filter((p) => !inCart.has(p.slug) && p.price < 500).slice(0, 4);
-  }, [items]);
+    return pool.filter((p) => !inCart.has(p.slug));
+  }, [pool, items]);
+}
+
+export function CartStep({ items, small, onNotify }: { items: CartItem[]; small: boolean; onNotify: (t: string) => void }) {
+  const pool = useCartComplementPool(items);
+  const complements = useMemo(() => pool.filter((p) => p.price < 500).slice(0, 4), [pool]);
 
   return (
     <>
@@ -1417,12 +1429,10 @@ function Confirmation({ done }: { done: Done }) {
 
 export function RecoRail({ items, onNotify }: { items: CartItem[]; onNotify: (t: string) => void }) {
   const rail = useRef<HTMLDivElement | null>(null);
-  const recos = useMemo(() => {
-    const seed = items[0]?.product;
-    const inCart = new Set(items.map((i) => i.product.slug));
-    const pool = seed ? alsoViewed(seed, 14) : products.slice(0, 14);
-    return pool.filter((p) => !inCart.has(p.slug)).slice(4, 14);
-  }, [items]);
+  // Live pool from the seed's category; skip the first few (shown as CartStep
+  // complements) so the two rails don't repeat the same products.
+  const pool = useCartComplementPool(items);
+  const recos = useMemo(() => pool.slice(4, 14), [pool]);
   if (recos.length === 0) return null;
   const scroll = (d: number) => rail.current?.scrollBy({ left: d * rail.current.clientWidth * 0.8, behavior: "smooth" });
   return (

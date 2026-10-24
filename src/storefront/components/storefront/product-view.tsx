@@ -29,7 +29,6 @@ import { QuickBuyForm, type QuickBuyPrefill } from "@/storefront/components/stor
 import { submitReviewAction } from "@/lib/actions/reviews";
 import type { ActionState } from "@/lib/actions/types";
 import { SelectField } from "@/components/ui/select-field";
-import { getCategoryLabel } from "@/storefront/lib/catalog";
 import { addToCart, planById, protectionPlans, useShippingConfig } from "@/storefront/lib/cart";
 import { categoryTrail, taxonomyLabel } from "@/storefront/lib/categoryNav";
 import { toggleFavorite, useIsFavorite } from "@/storefront/lib/favorites";
@@ -57,6 +56,16 @@ const CRIMSON = "var(--primary)";
 const PAPER = "#f6f2ed";
 
 /* ───────────────────────────────────────────────── helpers */
+
+/** Last-resort slug → human label, used only when the live taxonomy
+ *  (`taxonomyLabel`) carries no name for a category slug. "iphones-neufs" →
+ *  "Iphones Neufs". Pure; no catalogue dependency. */
+function prettySlug(slug: string): string {
+  return slug
+    .split("-")
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(" ");
+}
 
 /** Flatten a characteristic to a single display string (all attribute kinds). */
 function specValue(s: ProductSpec): string {
@@ -332,7 +341,7 @@ export function ProductView({
   const trail = [
     ...categoryTrail(product.category),
     ...(product.category
-      ? [{ slug: product.category, label: taxonomyLabel(product.category) ?? getCategoryLabel(product.category) }]
+      ? [{ slug: product.category, label: taxonomyLabel(product.category) ?? prettySlug(product.category) }]
       : []),
   ].filter((c) => c.slug && c.label);
   const cond = conditionLabel(product.condition);
@@ -394,7 +403,7 @@ export function ProductView({
                         : "flex-[0_1_auto] px-0.5 py-1 text-[#5b5d62] hover:text-primary"
                     }
                   >
-                    {taxonomyLabel(c.slug) ?? c.label ?? getCategoryLabel(c.slug)}
+                    {taxonomyLabel(c.slug) ?? c.label ?? prettySlug(c.slug)}
                   </Link>
                 </span>
               );
@@ -574,7 +583,7 @@ export function ProductView({
                           : "min-w-0 flex-[0_1_auto] overflow-hidden text-ellipsis px-0.5 py-1 text-[#5b5d62] hover:text-primary"
                       }
                     >
-                      {taxonomyLabel(c.slug) ?? c.label ?? getCategoryLabel(c.slug)}
+                      {taxonomyLabel(c.slug) ?? c.label ?? prettySlug(c.slug)}
                     </Link>
                   </span>
                 );

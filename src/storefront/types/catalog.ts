@@ -186,16 +186,6 @@ export type ProductVariantCombo = {
   price?: number;
 };
 
-/** A Tokyo Care plan's presentational details (care-plans.json), keyed by `id`. */
-export type CarePlanInfo = {
-  id: string;
-  name: string;
-  durationMonths: number;
-  perks: string[];
-  icon: string | null;
-  description: string | null;
-};
-
 export type Category = {
   slug: string;
   label: string;

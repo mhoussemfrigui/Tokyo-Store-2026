@@ -25,7 +25,7 @@ import {
   type ListingSort,
   type ListingState,
 } from "@/storefront/components/storefront/listing/use-listing";
-import type { Product } from "@/storefront/lib/catalog";
+import type { Product } from "@/storefront/types/catalog";
 import { cn } from "@/storefront/lib/utils";
 
 const SORT_ICON: Record<ListingSort, typeof ArrowUpDown> = {
