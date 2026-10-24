@@ -55,49 +55,50 @@ export async function convertPreorderInTx(
     if (h.qty <= 0) continue;
     if (h.variantId) {
       // Per-variant stock (a hold only carries a variantId for non-shared stock).
-      const r = await tx
+      // Lock the row, then FLOOR the decrement at 0: a preorder reserves units
+      // WITHOUT a stock check (you take orders for stock not yet on hand), so at
+      // release the landed stock can be less than the total reserved. Decrementing
+      // blindly (`stock_qty - qty`) would drive on-hand NEGATIVE and corrupt every
+      // downstream read (cards, feeds, in_stock). Record the units ACTUALLY removed.
+      const [cur] = await tx
+        .select({ stockQty: product_variants.stock_qty })
+        .from(product_variants)
+        .where(and(eq(product_variants.id, h.variantId), isNull(product_variants.deleted_at)))
+        .for("update")
+        .limit(1);
+      if (!cur || cur.stockQty == null) continue; // untracked or gone → nothing to decrement
+      const applied = Math.min(cur.stockQty, h.qty);
+      if (applied <= 0) continue;
+      const newQty = cur.stockQty - applied;
+      await tx
         .update(product_variants)
-        .set({
-          stock_qty: sql`${product_variants.stock_qty} - ${h.qty}`,
-          in_stock: sql`(${product_variants.stock_qty} - ${h.qty}) > 0`,
-        })
-        .where(
-          and(
-            eq(product_variants.id, h.variantId),
-            sql`${product_variants.stock_qty} IS NOT NULL`,
-            isNull(product_variants.deleted_at),
-          ),
-        )
-        .returning({ stockQty: product_variants.stock_qty });
-      if (r.length > 0) {
-        touched.add(h.productId);
-        await stockMovementService.record(
-          { productId: h.productId, variantId: h.variantId, delta: -h.qty, resultingQty: r[0].stockQty, reason: "order", orderId, actorUserId },
-          tx,
-        );
-      }
+        .set({ stock_qty: newQty, in_stock: newQty > 0 })
+        .where(eq(product_variants.id, h.variantId));
+      touched.add(h.productId);
+      await stockMovementService.record(
+        { productId: h.productId, variantId: h.variantId, delta: -applied, resultingQty: newQty, reason: "order", orderId, actorUserId },
+        tx,
+      );
     } else {
-      const r = await tx
+      const [cur] = await tx
+        .select({ stockQty: products.stock_qty })
+        .from(products)
+        .where(and(eq(products.id, h.productId), isNull(products.deleted_at)))
+        .for("update")
+        .limit(1);
+      if (!cur || cur.stockQty == null) continue; // untracked or gone → nothing to decrement
+      const applied = Math.min(cur.stockQty, h.qty);
+      if (applied <= 0) continue;
+      const newQty = cur.stockQty - applied;
+      await tx
         .update(products)
-        .set({
-          stock_qty: sql`${products.stock_qty} - ${h.qty}`,
-          in_stock: sql`(${products.stock_qty} - ${h.qty}) > 0`,
-        })
-        .where(
-          and(
-            eq(products.id, h.productId),
-            sql`${products.stock_qty} IS NOT NULL`,
-            isNull(products.deleted_at),
-          ),
-        )
-        .returning({ stockQty: products.stock_qty });
-      if (r.length > 0) {
-        touched.add(h.productId);
-        await stockMovementService.record(
-          { productId: h.productId, delta: -h.qty, resultingQty: r[0].stockQty, reason: "order", orderId, actorUserId },
-          tx,
-        );
-      }
+        .set({ stock_qty: newQty, in_stock: newQty > 0 })
+        .where(eq(products.id, h.productId));
+      touched.add(h.productId);
+      await stockMovementService.record(
+        { productId: h.productId, delta: -applied, resultingQty: newQty, reason: "order", orderId, actorUserId },
+        tx,
+      );
     }
   }
 

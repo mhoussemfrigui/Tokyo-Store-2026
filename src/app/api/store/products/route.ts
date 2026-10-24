@@ -46,6 +46,18 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const slugsParam = (url.searchParams.get("slugs") ?? "").trim();
   const category = (url.searchParams.get("category") ?? "").trim();
+  // Optional per-category cap for CLIENT shelves/rails that render a handful of
+  // cards (home universe tabs, accessory rail). Without it a root universe like
+  // "univers-apple" rolls up to ~900 products (~0.8 MB) just to show ~12 — a
+  // regression the snapshot's synchronous filter never had. Clamped 1..200; a
+  // bare `?category=` with no limit still returns the full tree (the category
+  // PAGE needs every product for faceted filtering, but it reads the source
+  // server-side, not through this route).
+  const limitParam = url.searchParams.get("limit");
+  const parsedLimit = limitParam != null ? Number.parseInt(limitParam, 10) : NaN;
+  const categoryLimit = Number.isFinite(parsedLimit)
+    ? Math.max(1, Math.min(parsedLimit, 200))
+    : undefined;
 
   try {
     let products: Product[] = [];
@@ -67,7 +79,7 @@ export async function GET(request: Request) {
         .filter(Boolean)
         .slice(0, 40);
       const lists = await Promise.all(
-        slugs.map((s) => catalogSource.listProductsByCategory(s).catch(() => [] as Product[])),
+        slugs.map((s) => catalogSource.listProductsByCategory(s, categoryLimit).catch(() => [] as Product[])),
       );
       const seen = new Set<string>();
       for (const list of lists) {
@@ -77,6 +89,11 @@ export async function GET(request: Request) {
             products.push(p);
           }
         }
+      }
+      // Cap the de-duped union too, so several small categories can't sum past
+      // the shelf's need (the per-category limit bounds each list individually).
+      if (categoryLimit && products.length > categoryLimit) {
+        products = products.slice(0, categoryLimit);
       }
     }
     return NextResponse.json({ products }, { headers: CACHE_HEADERS });

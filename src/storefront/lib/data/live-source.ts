@@ -21,6 +21,7 @@ import { categoryService } from "@/modules/catalog/category/service";
 import { productCategoryLinks } from "@/associations/catalog.service";
 import { resolveCareConfig } from "@/lib/care/config";
 import { resolveOfferedCareForLines } from "@/lib/care/resolve-server";
+import { withLivePromoPricing } from "@/lib/promotions/live-product-price";
 import { minorToDinars } from "@/lib/price";
 import { imageUrl, type Product as BackendProduct } from "@/types/catalog";
 import type { Category, Product } from "@/storefront/types/catalog";
@@ -163,14 +164,26 @@ export const liveSource: CatalogSource = {
     return mapCards(out);
   },
   async getProductBySlug(slug): Promise<Product | null> {
-    return mapSingle(await backendGetProductBySlug(slug));
+    const p = await backendGetProductBySlug(slug);
+    if (!p) return null;
+    // Apply live AUTO-promotions so the PDP buy-box + cart/favorites resolution show
+    // the SAME effective price the category cards, search and the checkout charge use.
+    // Backend `getProductBySlug` returns the BASE DTO (no promo) by design; every LIST
+    // reader (`listProductsByIds`/`ByCategory`/…) already enriches, so ONLY this by-slug
+    // path missed it — which is why the cart total disagreed with the PDP it came from.
+    // (Pricing Care off the now-promo `p.price` in mapSingle also matches place-order.)
+    const priced =
+      p.id != null
+        ? await withLivePromoPricing(p, { id: p.id, price_cents: p.priceCents }).catch(() => p)
+        : p;
+    return mapSingle(priced);
   },
   async getProductById(id): Promise<Product | null> {
     const [p] = await backendListByIds([id]);
     return mapSingle(p ?? null);
   },
-  async listProductsByCategory(categorySlug): Promise<Product[]> {
-    return mapCards(await backendListByCategory(categorySlug));
+  async listProductsByCategory(categorySlug, limit): Promise<Product[]> {
+    return mapCards(await backendListByCategory(categorySlug, limit));
   },
   async listProductsByIds(ids): Promise<Product[]> {
     return mapCards(await backendListByIds(ids));

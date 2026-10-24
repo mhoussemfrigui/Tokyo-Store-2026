@@ -76,6 +76,10 @@ export function CategoryTabs() {
             title="Découvrez notre sélection"
             tabs={tabs}
             viewAllHref="/notre-selection"
+            /* Each universe tab shows ~12 cards after de-dupe/interleave; fetch a
+               bounded pool (not the whole ~900-product tree) so the home load
+               isn't ~2 MB of JSON. 48 leaves headroom for de-dupe to fill 2 rows. */
+            poolLimit={48}
           />
         )}
       </div>

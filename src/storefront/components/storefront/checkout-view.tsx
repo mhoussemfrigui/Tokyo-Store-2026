@@ -69,6 +69,9 @@ type CheckoutPickup = {
   address: string | null;
   city: string | null;
   phone: string | null;
+  /** Pickup handling fee in millimes (0 / null = free). The backend charges it
+   *  from `pickupLocationId`; the UI must show it so "Payer X" == the charge. */
+  feeCents: number | null;
 };
 type CheckoutAddress = {
   id: string;
@@ -185,7 +188,13 @@ export function CheckoutView({
   const selectedAddr = addressList.find((a) => a.id === addrId) ?? null;
   const usingSavedAddr = mode === "home" && addrId !== "new" && !!selectedAddr;
 
-  const totals = cartTotals(items, mode === "store" ? "pickup" : "delivery", shipping, careCfg);
+  const totals = cartTotals(
+    items,
+    mode === "store" ? "pickup" : "delivery",
+    shipping,
+    careCfg,
+    mode === "store" ? selectedPickup?.feeCents ?? 0 : 0,
+  );
 
   const goStep = (n: number) => {
     setStep(n);
@@ -834,7 +843,22 @@ function DeliveryStep(props: {
         <h2 className="m-0 text-[clamp(22px,2.2vw,30px)] font-extrabold tracking-[-.03em]">Mode de réception</h2>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] gap-2.5">
           <ModeTile Icon={Truck} title="Livraison à domicile" sub="24 à 72h partout en Tunisie" price={feeLabel} on={mode === "home"} onClick={() => setMode("home")} />
-          {canPickup && <ModeTile Icon={Store} title="Retrait en boutique" sub="Gratuit · prêt en magasin" price="Gratuit" on={mode === "store"} onClick={() => setMode("store")} />}
+          {canPickup &&
+            (() => {
+              // Fee of the chosen boutique (most pickups are free). Shown here and
+              // folded into the total so "Payer X" matches the backend charge.
+              const fee = (pickups.find((p) => p.id === storeId) ?? pickups[0])?.feeCents ?? 0;
+              return (
+                <ModeTile
+                  Icon={Store}
+                  title="Retrait en boutique"
+                  sub={fee > 0 ? "Prêt en magasin" : "Gratuit · prêt en magasin"}
+                  price={fee > 0 ? `${fmtPrice(fee / 1000)} TND` : "Gratuit"}
+                  on={mode === "store"}
+                  onClick={() => setMode("store")}
+                />
+              );
+            })()}
         </div>
 
         {mode === "home" && (
@@ -956,6 +980,9 @@ function DeliveryStep(props: {
                   <strong className="text-[15px]">{p.name}</strong>
                   {p.address && <span style={{ color: "#3d4046" }}>{p.address}</span>}
                   <span className="font-bold" style={{ color: "#15803d" }}>Prêt aujourd&apos;hui</span>
+                  {p.feeCents != null && p.feeCents > 0 && (
+                    <span className="font-bold" style={{ color: INK }}>Frais de retrait {fmtPrice(p.feeCents / 1000)} TND</span>
+                  )}
                 </RadioTile>
               ))}
             </div>

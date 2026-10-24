@@ -15,7 +15,7 @@ export interface CatalogSource {
   listAllProducts(): Promise<Product[]>;
   getProductBySlug(slug: string): Promise<Product | null>;
   getProductById(id: string): Promise<Product | null>;
-  listProductsByCategory(categorySlug: string): Promise<Product[]>;
+  listProductsByCategory(categorySlug: string, limit?: number): Promise<Product[]>;
   listProductsByIds(ids: string[]): Promise<Product[]>;
   listRelatedProducts(slug: string, limit?: number): Promise<Product[]>;
   listAlsoViewed(slug: string, limit?: number): Promise<Product[]>;

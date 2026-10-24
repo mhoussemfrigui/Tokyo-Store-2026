@@ -292,6 +292,10 @@ export function cartTotals(
   mode: "delivery" | "pickup" = "delivery",
   cfg: ShippingConfig = DEFAULT_SHIPPING,
   careCfg: CareDisplayConfig = DEFAULT_CARE,
+  /** Selected in-store pickup handling fee in millimes (pickup mode only; the
+   *  backend charges it from the pickup id, so the displayed total must include
+   *  it). 0 for the usual free pickup. */
+  pickupFeeCents = 0,
 ) {
   const products = items.reduce((s, i) => s + i.product.price * i.line.qty, 0);
   // Tokyo Care is now a REAL charge: the backend order records + bills it, so it
@@ -303,7 +307,14 @@ export function cartTotals(
   // place-order's freeShipBaseCents). freeFrom === 0 ⇒ "no free-shipping offer".
   const freeShipBase = products + (careCfg.countsTowardFreeShipping ? protection : 0);
   const qualifiesFree = cfg.freeFrom > 0 && freeShipBase >= cfg.freeFrom;
-  const shipping = mode === "pickup" || products === 0 || qualifiesFree ? 0 : cfg.fee;
+  const shipping =
+    mode === "pickup"
+      ? pickupFeeCents > 0
+        ? pickupFeeCents / 1000
+        : 0
+      : products === 0 || qualifiesFree
+        ? 0
+        : cfg.fee;
   const count = items.reduce((s, i) => s + i.line.qty, 0);
   // subtotal = goods only; `total` now INCLUDES the care charge.
   return { products, protection, subtotal: products, shipping, total: products + protection + shipping, count };

@@ -249,11 +249,23 @@ export function ProductView({
   /* Price / availability — variant overrides product when a combo is resolved. */
   const price = currentCombo?.price ?? product.price;
   const strike = productStrike({ price, oldPrice: product.oldPrice });
-  const stock = currentCombo ? (currentCombo.inStock ? "in_stock" : "out_of_stock") : stockState(product);
-  const orderable = currentCombo ? currentCombo.inStock : isOrderable(product);
   // Précommande: "backorder" is Tokyo's active-preorder state — orderable, but the
   // CTA + a release note signal that it ships later (units are reserved, not sold now).
+  // It is a PRODUCT-level policy (the backend reserves at product level whatever
+  // variant is chosen), so a resolved combo must NOT collapse it to plain in/out —
+  // otherwise selecting a variant silently dropped the "Précommander" CTA + release
+  // note while checkout still reserved the line.
+  const productStock = stockState(product);
+  const stock =
+    productStock === "backorder"
+      ? "backorder"
+      : currentCombo
+        ? currentCombo.inStock
+          ? "in_stock"
+          : "out_of_stock"
+        : productStock;
   const preorder = stock === "backorder";
+  const orderable = preorder ? true : currentCombo ? currentCombo.inStock : isOrderable(product);
   const preorderReleaseLabel = product.preorderReleasesAt
     ? new Date(product.preorderReleasesAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })
     : null;

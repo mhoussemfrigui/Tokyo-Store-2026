@@ -55,7 +55,7 @@ import { bus } from "@/events/bus";
 import { emitProductStockCacheBust } from "@/lib/catalog/product-cache-bust";
 import { getSharedStockDefault, isSharedStock } from "@/lib/inventory/variant-stock";
 import { resolveLowStockConfig, classifyStockCrossing } from "@/lib/inventory/low-stock";
-import { isActivePreorder } from "@/lib/inventory/preorder";
+import { availableStock, isActivePreorder } from "@/lib/inventory/preorder";
 import { stockReservationService } from "@/modules/stock-reservation/service";
 import { stockMovementService } from "@/modules/stock-movement";
 import { fail, ok, workflow } from "../shared";
@@ -499,7 +499,14 @@ export const placeOrderWorkflow = workflow<
           throw new PlaceOrderError("product_unavailable", `${product.name}${label} n'est plus disponible.`);
         }
         const qtyTarget = shared ? product : (variant ?? product);
-        if (qtyTarget.stock_qty !== null && item.quantity > qtyTarget.stock_qty) {
+        // Sellable = stock minus units already promised to OPEN pré-commandes
+        // (`reserved_qty`). Gating on raw `stock_qty` let a regular buyer purchase
+        // units held for a preorder, so conversion then had no stock to decrement
+        // (the oversell this reserve/convert ledger exists to prevent). `null` =
+        // untracked (always sellable); for a normal product reserved_qty is 0, so
+        // this is identical to the old check.
+        const sellable = availableStock(qtyTarget.stock_qty, qtyTarget.reserved_qty);
+        if (sellable !== null && item.quantity > sellable) {
           throw new PlaceOrderError("out_of_stock", `${product.name}${label} n'est plus disponible.`);
         }
       }

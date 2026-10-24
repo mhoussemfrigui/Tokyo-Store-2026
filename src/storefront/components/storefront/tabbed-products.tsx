@@ -173,8 +173,17 @@ function edgeMask(start: boolean, end: boolean) {
  * stays false until the first fetch lands — so the shelf can show a skeleton meanwhile.
  * Replaces the former synchronous products.json filter.
  */
-function useLiveShelf(tabs: ProductTab[]): { shown: { tab: ProductTab; items: Product[] }[]; ready: boolean } {
+function useLiveShelf(
+  tabs: ProductTab[],
+  poolLimit?: number,
+): { shown: { tab: ProductTab; items: Product[] }[]; ready: boolean } {
   const key = tabs.map((t) => t.source.categories.join(",")).join("|");
+  // Only append the cap when a tab draws its pool straight through (no client
+  // transform): a generation/model filter needs the WHOLE category to find all
+  // its members, so a capped pool would silently drop cards. The home universe
+  // shelf has no transform, so it caps safely (its roots are the big ones).
+  const capSuffix =
+    poolLimit && tabs.every((t) => !t.transform) ? `&limit=${poolLimit}` : "";
   const [pools, setPools] = useState<Map<string, Product[]>>(new Map());
   const [ready, setReady] = useState(false);
 
@@ -191,7 +200,7 @@ function useLiveShelf(tabs: ProductTab[]): { shown: { tab: ProductTab; items: Pr
     Promise.all(
       distinct.map(async (k): Promise<readonly [string, Product[]]> => {
         try {
-          const res = await fetch(`/api/store/products?category=${encodeURIComponent(k)}`, { signal: ctrl.signal });
+          const res = await fetch(`/api/store/products?category=${encodeURIComponent(k)}${capSuffix}`, { signal: ctrl.signal });
           const data = res.ok ? ((await res.json()) as { products?: Product[] }) : { products: [] };
           return [k, data.products ?? []] as const;
         } catch {
@@ -208,7 +217,7 @@ function useLiveShelf(tabs: ProductTab[]): { shown: { tab: ProductTab; items: Pr
       cancelled = true;
       ctrl.abort();
     };
-  }, [key]);
+  }, [key, capSuffix]);
 
   const shown = useMemo(() => {
     if (!ready) return tabs.map((tab) => ({ tab, items: [] as Product[] }));
@@ -237,6 +246,7 @@ export function TabbedProducts({
   tabs,
   viewAllHref,
   limit = 12,
+  poolLimit,
 }: {
   eyebrow: ReactNode;
   title: string;
@@ -248,10 +258,16 @@ export function TabbedProducts({
    * (two at most) as the shelf's shortest tab fills.
    */
   limit?: number;
+  /**
+   * Cap on how many products each (transform-free) tab FETCHES from the backend
+   * — a shelf shows ~12 cards, so a root universe needn't ship ~900. Omit to
+   * pull the full category tree (needed by transform tabs).
+   */
+  poolLimit?: number;
 }) {
   const uid = useId();
   // Tabs resolve LIVE from the backend (fetched per source, then buildShelf).
-  const { shown, ready } = useLiveShelf(tabs);
+  const { shown, ready } = useLiveShelf(tabs, poolLimit);
   const [active, setActive] = useState(0);
 
   /* `shown` always holds at least the first tab; clamp active so a later load that

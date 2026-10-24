@@ -25,6 +25,9 @@ export default async function CheckoutPage() {
     address: [p.address_line, p.city].filter(Boolean).join(", ") || null,
     city: p.city,
     phone: p.phone,
+    // Carry the pickup handling fee so the checkout total/tiles match the amount
+    // the backend charges for this location (most pickups are free → 0).
+    feeCents: p.fee_cents ?? 0,
   }));
 
   // Signed-in customer profile → phone prefill + saved shipping addresses.
