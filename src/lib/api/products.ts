@@ -933,7 +933,7 @@ export async function listShowcaseProducts(config: CollectionPageConfig): Promis
  * filter) instead of enriching the whole tree then slicing.
  */
 export async function listProductsForSource(
-  source: import("@/lib/pages/home-blocks").ProductSource,
+  source: import("@/lib/pages/block-model").ProductSource,
   count: number,
 ): Promise<Product[]> {
   const n = Math.max(1, Math.min(Math.round(count) || 8, 48));

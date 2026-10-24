@@ -429,10 +429,6 @@ function main() {
    * check below fails while an entry covers nothing.
    */
   const UNWIRED_SETTING_KEYS: { match: string; why: string }[] = [
-    { match: "cart.coupon.", why: "cart page copy (src/lib/cart/cart-page-copy.ts)" },
-    { match: "cart.empty.", why: "cart page copy" },
-    { match: "cart.summary.", why: "cart page copy" },
-    { match: "checkout.form.", why: "checkout form copy (src/lib/checkout/form-copy.ts)" },
     { match: "checkout.payment.cod_description", why: "COD radio caption (quick-buy-config.ts: code default)" },
     { match: "checkout.payment.clictopay_label", why: "gateway radio title — code default" },
     { match: "checkout.payment.clictopay_description", why: "gateway radio caption — code default" },

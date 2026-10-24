@@ -5,8 +5,6 @@ import { revalidatePath } from "next/cache";
 import { workflows } from "@/workflows";
 import { requirePermission } from "@/lib/auth/session";
 import { type ActionState } from "@/lib/actions/types";
-import { parseHomeBlocks, serializeHomeBlocks } from "@/lib/pages/home-blocks";
-import { parseJsonArrayField } from "@/lib/pages/boutique-landing-parse";
 import { LISTING_SETTINGS } from "@/lib/pages/listing-settings-keys";
 
 /**
@@ -40,45 +38,4 @@ export async function saveHomeSettingsAction(
   revalidatePath("/admin/cms/home");
   revalidatePath("/", "layout");
   return { ok: true, message: "Réglages des pages de liste enregistrés." };
-}
-
-/**
- * Persist the HOME BLOCK COMPOSER layout — the ordered block-instance array the admin
- * composer posts as a JSON blob in `blocks`. Re-validated + cleaned server-side through
- * parseHomeBlocks (unknown types dropped, every config field coerced through the
- * médiathèque/safe-href/enum guards, stable ids, 40-block cap) before it is stored under
- * `home.blocks`, so a crafted payload can never persist bad data. Once this row exists the
- * storefront home renders THESE blocks (src/app/(shop)/(tokyo)/page.tsx branches on
- * hasStoredHomeBlocks → HomeBlocksRenderer), REPLACING the fixed default Tokyo sections;
- * until then the home shows those default sections. A deliberately-emptied layout ("[]")
- * is still the operator's and wins (an empty home, not a revert to the defaults).
- */
-export async function saveHomeBlocksAction(
-  _prev: ActionState | null,
-  formData: FormData,
-): Promise<ActionState> {
-  const session = await requirePermission("home", "update");
-  // Reject a PRESENT-but-unparseable payload (truncated POST / tampered request) instead of
-  // silently storing []: getHomeBlocks treats a stored [] as a deliberately-empty home that
-  // wins over the legacy synthesis, so a garbled save would blank the homepage while
-  // reporting success. A genuinely-empty layout still posts "[]" (a valid array) and passes.
-  const rawBlocks = formData.get("blocks");
-  if (parseJsonArrayField(rawBlocks).malformed) {
-    return { ok: false, error: "validation", message: "Données de mise en page invalides. Rechargez la page puis réessayez." };
-  }
-  const blocks = parseHomeBlocks(String(rawBlocks ?? ""));
-  const res = await workflows.cms.upsertSetting(
-    {
-      key: "home.blocks",
-      value: serializeHomeBlocks(blocks),
-      type: "text" as never,
-      groupKey: "home",
-      label: "Accueil — composition des blocs",
-    },
-    { actorUserId: session.user.id },
-  );
-  if (!res.ok) return { ok: false, error: res.error, message: res.message };
-  revalidatePath("/admin/cms/home");
-  revalidatePath("/", "layout");
-  return { ok: true, message: `Page d'accueil enregistrée (${blocks.length} blocs).` };
 }

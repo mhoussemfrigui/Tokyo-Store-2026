@@ -8,7 +8,7 @@
  * label against the RBAC registry). Regenerate after adding a server action or
  * changing a guard: `node scripts/gen-internal-api-catalog.mjs`.
  *
- * Total actions: 296.
+ * Total actions: 295.
  */
 
 export type InternalActionKind = "write" | "read" | "settings" | "destructive" | "auth";
@@ -549,7 +549,6 @@ export const INTERNAL_API_CATALOG: InternalApiGroup[] = [
         permission: "home:update",
         actions: [
           { name: "saveHomeSettingsAction", kind: "settings", permission: "home:update", summary: "Persist the LISTING-PAGE settings (the compact panel under the home composer): the product-grid pagination mode + the « Besoin d'un conseil » help CTA that render on every category / brand listing …" },
-          { name: "saveHomeBlocksAction", kind: "write", permission: "home:update", summary: "Persist the HOME BLOCK COMPOSER layout — the ordered block-instance array the admin composer posts as a JSON blob in `blocks`." },
         ],
       },
       {

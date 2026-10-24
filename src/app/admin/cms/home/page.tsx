@@ -1,50 +1,34 @@
 import type { Metadata } from "next";
 
 import { requirePermission } from "@/lib/auth/session";
-import { getHomeBlocks, hasStoredHomeBlocks } from "@/lib/pages/home-blocks-data";
-import { listCategories } from "@/lib/api/categories";
-import { listNavBrands } from "@/lib/api/brands";
 import { getSettingsMap } from "@/modules/cms/setting/queries";
 import { pickSettings } from "@/lib/settings/pick-settings";
 import { bannerService } from "@/modules/cms/banner/service";
 import { bannerRowToFormInitial } from "@/lib/cms/banner-form-data";
 import { mediaQueries } from "@/modules/media";
 import { HeroSlidesEditor } from "./hero-slides-editor";
-import { HomeComposer } from "./home-composer";
 import { ListingSettingsPanel } from "./listing-settings-panel";
 
 export const metadata: Metadata = { title: "Page d'accueil" };
 export const dynamic = "force-dynamic";
 
 /**
- * « Page d'accueil » admin — the instance-based BLOCK COMPOSER. Loads the stored block
- * layout (or the synthesised legacy one when the composer has never been saved) plus the
- * live catalogue choices (categories / brands / collections) that feed the block pickers,
- * and hands them to the client composer. Once a layout is SAVED the storefront home renders
- * these blocks (page.tsx branches on hasStoredHomeBlocks → getHomeBlocks + resolveHomeBlocks),
- * replacing the fixed default Tokyo sections; until then the storefront shows those defaults
- * and the composer is seeded with the legacy `home.*` layout as an editable starting point.
- * A failed read reaches the admin error boundary (retry) rather than rendering an empty
- * composer whose save would wipe the layout.
+ * « Page d'accueil » admin — the storefront home is a FIXED bespoke Tokyo layout (there is
+ * no block-composer alternative), so this page edits the two things the home reads live:
+ * the HERO carousel (the `home_hero` banners) and the listing-page settings. A failed
+ * settings read reaches the admin error boundary (retry) rather than rendering blank values
+ * a save would then persist.
  */
 export default async function AdminHomePage() {
   await requirePermission("home", "view");
 
-  // getSettingsMap is read STRICTLY (no fail-soft to {}): a failed settings read reaches
-  // the admin error boundary (retry) instead of rendering the listing panel with blank
-  // values that a save would then persist as empty. Only the home./storefront. prefixes
-  // are handed to the client panel (pickSettings), not the whole settings map.
-  const [blocks, usingStored, categories, brands, settings, allBanners] = await Promise.all([
-    getHomeBlocks(),
-    hasStoredHomeBlocks(),
-    listCategories().catch(() => []),
-    listNavBrands().catch(() => []),
+  const [settings, allBanners] = await Promise.all([
     getSettingsMap(),
     bannerService.listAll().catch(() => []),
   ]);
 
-  // Hero carousel slides = the `home_hero` banners, in carousel order. Their
-  // desktop images resolve to thumbnails for the row previews.
+  // Hero carousel slides = the `home_hero` banners, in carousel order; their desktop
+  // images resolve to thumbnails for the row previews.
   const heroRows = allBanners
     .filter((b) => b.placement === "home_hero")
     .sort((a, b) => a.display_order - b.display_order);
@@ -63,13 +47,6 @@ export default async function AdminHomePage() {
       <div className="rounded-[28px] border border-border bg-card p-4 sm:p-6">
         <HeroSlidesEditor slides={heroSlides} thumbs={heroThumbs} />
       </div>
-      <HomeComposer
-        initialBlocks={blocks}
-        usingLegacy={!usingStored}
-        description="Composez la page d'accueil : ajoutez, réorganisez et configurez des blocs (rails de produits filtrables, bannières, éditoriaux…). Chaque image passe par la médiathèque et chaque lien produit/catégorie/marque par le catalogue."
-        categories={categories.map((c) => ({ slug: c.slug, name: c.name }))}
-        brands={brands.map((b) => ({ slug: b.slug, name: b.name }))}
-      />
       <ListingSettingsPanel values={pickSettings(settings, ["home.", "storefront."])} />
     </div>
   );
