@@ -123,7 +123,7 @@ async function resolveSlug(slug: string): Promise<Resolved | null> {
      win, and they render through CategoryView like any category. */
   const alias = getNavAlias(slug);
   if (alias) {
-    return { kind: "category", slug, label: alias.label, products: alias.resolve() };
+    return { kind: "category", slug, label: alias.label, products: await alias.resolve() };
   }
 
   /* Real categories are labelled with the taxonomy's spelling when it has

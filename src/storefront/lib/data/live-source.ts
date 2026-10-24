@@ -7,8 +7,10 @@ import {
   listApiProducts,
   listComplementaryProducts as backendListComplementary,
   listNewArrivals as backendListNewArrivals,
+  listPreorderProducts as backendListPreorder,
   listProductsByCategory as backendListByCategory,
   listProductsByIds as backendListByIds,
+  listPromotions as backendListPromotions,
   listRelatedProducts as backendListRelated,
 } from "@/lib/api/products";
 import {
@@ -174,6 +176,12 @@ export const liveSource: CatalogSource = {
   },
   async listNewArrivals(limit): Promise<Product[]> {
     return mapCards(await backendListNewArrivals(limit));
+  },
+  async listPromotions(limit): Promise<Product[]> {
+    return mapCards(await backendListPromotions(limit));
+  },
+  async listPreorderProducts(limit): Promise<Product[]> {
+    return mapCards(await backendListPreorder(limit));
   },
   async listCategories(): Promise<Category[]> {
     return (await backendListCategories())

@@ -48,7 +48,7 @@ import {
 } from "@/storefront/lib/categoryNav";
 import { getCategoryBlurb } from "@/storefront/lib/categorySeo";
 import { smoothBehavior } from "@/storefront/lib/motion";
-import { getNavAlias } from "@/storefront/lib/navAliases";
+import { navAliasLabel } from "@/storefront/lib/nav-alias-labels";
 import { cn } from "@/storefront/lib/utils";
 
 /* ---- Sub-category icon mapping (first match wins; specific before broad) ---- */
@@ -90,7 +90,7 @@ function tileIcon(c: NavCrumb): LucideIcon {
 }
 /* An alias spelling wins over taxonomy ("Gift Cards", not "Gift-Cards"). */
 function navLabel(c: NavCrumb): string {
-  return getNavAlias(c.slug)?.label ?? c.label;
+  return navAliasLabel(c.slug) ?? c.label;
 }
 
 /* ---------------- Sub-category pill rail ---------------- */

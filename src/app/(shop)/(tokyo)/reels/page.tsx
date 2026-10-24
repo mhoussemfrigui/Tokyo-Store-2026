@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { getSettingsMap } from "@/modules/cms/setting/queries";
 import { firstUrlByPlatform, resolveSocialList } from "@/lib/cms/social-list";
 import { resolveReelsVideos } from "@/lib/cms/reels-content";
-import { findProductBySlug, type Product } from "@/storefront/lib/catalog";
+import { getProductBySlug } from "@/storefront/lib/api/products";
+import type { Product } from "@/storefront/types/catalog";
 import { ReelsView, type ReelCard } from "@/storefront/components/storefront/reels-view";
 
 export const metadata: Metadata = {
@@ -20,17 +21,25 @@ export default async function ReelsPage() {
   // contact » (social.links). Both degrade to empty on any failure — never invented.
   const settings = await getSettingsMap().catch(() => ({}) as Record<string, string | null>);
   const socialUrls = firstUrlByPlatform(resolveSocialList(settings));
-  const videos: ReelCard[] = resolveReelsVideos(settings).map((r) => ({
-    id: r.id,
-    title: r.title,
-    platform: r.platform,
-    topic: r.topic,
-    videoUrl: r.videoUrl,
-    posterUrl: r.posterUrl,
-    products: r.productSlugs
-      .map((slug) => findProductBySlug(slug))
-      .filter((p): p is Product => Boolean(p))
-      .map((p) => ({ slug: p.slug, title: p.title, price: p.price, image: p.image })),
-  }));
+  // Resolve each reel's tagged products LIVE from the backend (catalogSource → Postgres),
+  // not the retired bundled snapshot. A slug that no longer resolves is dropped.
+  const videos: ReelCard[] = await Promise.all(
+    resolveReelsVideos(settings).map(async (r) => {
+      const resolved = await Promise.all(
+        r.productSlugs.map((slug) => getProductBySlug(slug).catch(() => null)),
+      );
+      return {
+        id: r.id,
+        title: r.title,
+        platform: r.platform,
+        topic: r.topic,
+        videoUrl: r.videoUrl,
+        posterUrl: r.posterUrl,
+        products: resolved
+          .filter((p): p is Product => Boolean(p))
+          .map((p) => ({ slug: p.slug, title: p.title, price: p.price, image: p.image })),
+      };
+    }),
+  );
   return <ReelsView videos={videos} socialUrls={socialUrls} />;
 }

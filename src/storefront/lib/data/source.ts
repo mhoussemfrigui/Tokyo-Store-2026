@@ -18,6 +18,8 @@ export interface CatalogSource {
   listRelatedProducts(slug: string, limit?: number): Promise<Product[]>;
   listAlsoViewed(slug: string, limit?: number): Promise<Product[]>;
   listNewArrivals(limit?: number): Promise<Product[]>;
+  listPromotions(limit?: number): Promise<Product[]>;
+  listPreorderProducts(limit?: number): Promise<Product[]>;
   listCategories(): Promise<Category[]>;
   getCategoryBySlug(slug: string): Promise<Category | null>;
   getCategoryLabel(slug: string): Promise<string>;

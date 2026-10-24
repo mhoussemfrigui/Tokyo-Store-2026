@@ -1,24 +1,28 @@
-import { products } from "@/storefront/lib/catalog";
-import { productStrike } from "@/storefront/lib/productMeta";
+import "server-only";
+
+import {
+  listPreorderProducts,
+  listProductsByCategory,
+  listPromotions,
+} from "@/storefront/lib/api/products";
+import { NAV_ALIAS_LABELS } from "@/storefront/lib/nav-alias-labels";
 import type { Product } from "@/storefront/types/catalog";
 
 /**
  * Nav destinations that are NOT catalogue categories.
  *
- * The header and the mobile dropdown link to "Bons plans", "Notre sélection",
- * "Gift Cards" and "Précommande", none of which exist as a category slug — so
- * every one of them 404ed. Each is defined here as a real product set so the
- * `[slug]` route can render them through CategoryView, with its filters, grid
- * and SEO, exactly like a category. ("Nouveautés" is no longer here — it is an
- * admin-managed Vitrine collection resolved from `getCollectionPageConfig`.)
+ * The header + mobile dropdown link to "Bons plans", "Notre sélection", "Gift Cards"
+ * and "Précommande", none of which is a category slug — so each is defined here as a
+ * real product set the `[slug]` route renders through CategoryView (filters, grid, SEO),
+ * exactly like a category. ("Nouveautés" is an admin-managed Vitrine, not here.)
  *
- * These selections are derived from the static catalogue. When the backend
- * lands it will own "on sale" / "new in" / curated lists, and this table is
- * the single place to repoint.
+ * All selections are resolved LIVE from the backend (catalogSource → Postgres): promotions
+ * + pre-orders from the live engines, curated universes from live category reads. No bundled
+ * snapshot.
  */
 export type NavAlias = {
   label: string;
-  resolve: () => Product[];
+  resolve: () => Promise<Product[]>;
 };
 
 const GIFT_CARD_CATEGORIES = [
@@ -51,51 +55,39 @@ const SELECTION_CATEGORIES = [
   "casques",
 ];
 
-function inCategories(slugs: string[]): Product[] {
-  return products.filter((p) => slugs.includes(p.category));
-}
-
-/** Round-robin across the categories so the first screen shows the range. */
-function interleaveByCategory(pool: Product[]): Product[] {
-  const groups = new Map<string, Product[]>();
-  for (const p of pool) {
-    const g = groups.get(p.category);
-    if (g) g.push(p);
-    else groups.set(p.category, [p]);
-  }
-  const lists = [...groups.values()];
+/** Fetch each category LIVE, then round-robin across them (deduped) so the first
+ *  screen shows the whole range rather than one category's depth. */
+async function interleaveCategories(slugs: string[]): Promise<Product[]> {
+  const lists = await Promise.all(slugs.map((s) => listProductsByCategory(s).catch(() => [] as Product[])));
   const out: Product[] = [];
+  const seen = new Set<string>();
   const longest = Math.max(0, ...lists.map((l) => l.length));
-  for (let i = 0; i < longest; i++) for (const l of lists) if (l[i]) out.push(l[i]);
+  for (let i = 0; i < longest; i++) {
+    for (const l of lists) {
+      const p = l[i];
+      if (p && !seen.has(p.id)) {
+        seen.add(p.id);
+        out.push(p);
+      }
+    }
+  }
   return out;
 }
 
 export const NAV_ALIASES: Record<string, NavAlias> = {
-  "bons-plans": {
-    label: "Bons plans",
-    /* Everything actually carrying a reduction, deepest first — which is what
-       the promo bar's "jusqu'à -30%" is promising. */
-    resolve: () =>
-      products
-        .map((p) => ({ p, pct: productStrike(p)?.pct ?? 0 }))
-        .filter((x) => x.pct >= 10)
-        .sort((a, b) => b.pct - a.pct)
-        .map((x) => x.p),
-  },
+  // Everything actually on promotion, best discounts first (the live auto-promo engine —
+  // same pool + effective prices the /promotions vitrine + place-order use).
+  "bons-plans": { label: NAV_ALIAS_LABELS["bons-plans"], resolve: () => listPromotions(60) },
   "notre-selection": {
-    label: "Notre sélection",
-    resolve: () => interleaveByCategory(inCategories(SELECTION_CATEGORIES)),
+    label: NAV_ALIAS_LABELS["notre-selection"],
+    resolve: () => interleaveCategories(SELECTION_CATEGORIES),
   },
   "gift-cards": {
-    label: "Gift Cards",
-    resolve: () => interleaveByCategory(inCategories(GIFT_CARD_CATEGORIES)),
+    label: NAV_ALIAS_LABELS["gift-cards"],
+    resolve: () => interleaveCategories(GIFT_CARD_CATEGORIES),
   },
-  /* Products the shop already takes orders for, ahead of stock (the header's
-     "Précommande" link in Univers Tokyo). */
-  precommande: {
-    label: "Précommande",
-    resolve: () => products.filter((p) => p.availability === "backorder"),
-  },
+  // Products orderable ahead of stock (active pre-orders, soonest release first).
+  precommande: { label: NAV_ALIAS_LABELS["precommande"], resolve: () => listPreorderProducts(60) },
 };
 
 export function getNavAlias(slug: string): NavAlias | undefined {

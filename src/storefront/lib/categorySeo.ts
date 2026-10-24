@@ -1,4 +1,4 @@
-import { NAV_ALIASES } from "@/storefront/lib/navAliases";
+import { aliasSlugByLabel } from "@/storefront/lib/nav-alias-labels";
 
 export type Faq = { q: string; a: string };
 export type Intro = { lead: string; paragraphs: string[] };
@@ -194,7 +194,7 @@ const ALIAS_COPY: Record<string, ListingCopy> = {
    alias that is its own label (aliases resolve before categories in the
    [slug] route), so the label identifies the alias. */
 function aliasCopy(label: string): ListingCopy | undefined {
-  const slug = Object.keys(NAV_ALIASES).find((s) => NAV_ALIASES[s].label === label);
+  const slug = aliasSlugByLabel(label);
   return slug ? ALIAS_COPY[slug] : undefined;
 }
 

@@ -18,3 +18,5 @@ export const listRelatedProducts = (slug: string, limit?: number) =>
 export const listAlsoViewed = (slug: string, limit?: number) =>
   catalogSource.listAlsoViewed(slug, limit);
 export const listNewArrivals = (limit?: number) => catalogSource.listNewArrivals(limit);
+export const listPromotions = (limit?: number) => catalogSource.listPromotions(limit);
+export const listPreorderProducts = (limit?: number) => catalogSource.listPreorderProducts(limit);
