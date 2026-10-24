@@ -4,6 +4,7 @@ import { cache } from "react";
 
 import {
   getProductBySlug as backendGetProductBySlug,
+  getProductWithRowBySlug as backendGetProductWithRowBySlug,
   listApiProducts,
   listComplementaryProducts as backendListComplementary,
   listNewArrivals as backendListNewArrivals,
@@ -202,6 +203,19 @@ export const liveSource: CatalogSource = {
   async getProductById(id): Promise<Product | null> {
     const [p] = await backendListByIds([id]);
     return mapSingle(p ?? null);
+  },
+  async getDraftProductBySlug(slug): Promise<Product | null> {
+    // Includes UNPUBLISHED (draft) products — ADMIN PREVIEW ONLY. The page gates
+    // this on products:view before calling it; it is NEVER reached by the public
+    // resolver or by generateMetadata, so a draft can't leak to shoppers/crawlers.
+    const pair = await backendGetProductWithRowBySlug(slug);
+    if (!pair) return null;
+    const p = pair.product;
+    const priced =
+      p.id != null
+        ? await withLivePromoPricing(p, { id: p.id, price_cents: p.priceCents }).catch(() => p)
+        : p;
+    return mapSingle(priced);
   },
   async listProductsByCategory(categorySlug, limit): Promise<Product[]> {
     return mapCards(await backendListByCategory(categorySlug, limit));

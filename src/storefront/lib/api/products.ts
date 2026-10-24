@@ -10,6 +10,7 @@ import { catalogSource } from "@/storefront/lib/data";
 export const listAllProducts = () => catalogSource.listAllProducts();
 export const getProductBySlug = (slug: string) => catalogSource.getProductBySlug(slug);
 export const getProductById = (id: string) => catalogSource.getProductById(id);
+export const getDraftProductBySlug = (slug: string) => catalogSource.getDraftProductBySlug(slug);
 export const listProductsByCategory = (categorySlug: string) =>
   catalogSource.listProductsByCategory(categorySlug);
 export const listProductsByIds = (ids: string[]) => catalogSource.listProductsByIds(ids);

@@ -15,6 +15,9 @@ export interface CatalogSource {
   listAllProducts(): Promise<Product[]>;
   getProductBySlug(slug: string): Promise<Product | null>;
   getProductById(id: string): Promise<Product | null>;
+  /** A product by slug INCLUDING unpublished drafts — ADMIN PREVIEW ONLY (callers
+   *  must gate on products:view; never used by the public resolver/metadata). */
+  getDraftProductBySlug(slug: string): Promise<Product | null>;
   listProductsByCategory(categorySlug: string, limit?: number): Promise<Product[]>;
   listProductsByIds(ids: string[]): Promise<Product[]>;
   /** Batched by-slug resolution for the client cart/favorites (order preserved).

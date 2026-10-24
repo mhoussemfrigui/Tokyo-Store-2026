@@ -8,11 +8,13 @@ import { getCategoryBySlug, getCategoryLabel } from "@/storefront/lib/api/catego
 import {
   getProductBySlug,
   getBrandBySlug,
+  getDraftProductBySlug,
   listAlsoViewed,
   listProductsByBrand,
   listProductsByCategory,
   listProductsByIds,
 } from "@/storefront/lib/api/products";
+import { resolveUserPermissions, permissionSetAllows } from "@/lib/rbac/authorize";
 // Backend product facade (honours the admin's related_mode + curated manual lists —
 // the storefront snapshot heuristic ignores them). Resolved to snapshot cards below.
 import {
@@ -99,7 +101,7 @@ type CmsPageRow = {
 type Resolved =
   | { kind: "collection"; slug: CollectionSlug; config: CollectionPageConfig }
   | { kind: "category"; slug: string; label: string; products: Product[] }
-  | { kind: "product"; product: Product }
+  | { kind: "product"; product: Product; preview?: boolean }
   | { kind: "page"; slug: string; page: CmsPageRow };
 
 /**
@@ -261,9 +263,23 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return canonical ? { ...base, alternates: { ...base.alternates, canonical } } : base;
 }
 
+/** Admin draft preview: a slug that does NOT resolve publicly may be an
+ *  unpublished product the operator wants to preview (the admin "Aperçu
+ *  (brouillon)" button). Gated on products:view, so a shopper/crawler still gets
+ *  a 404 (resolveSlug + generateMetadata never see drafts). */
+async function resolveAdminDraftPreview(slug: string): Promise<Resolved | null> {
+  const user = await getCurrentUser().catch(() => null);
+  if (!user) return null;
+  const perms = await resolveUserPermissions(user.id).catch(() => null);
+  if (!perms || !permissionSetAllows(perms, "products", "view")) return null;
+  const product = await getDraftProductBySlug(slug).catch(() => null);
+  return product ? { kind: "product", product, preview: true } : null;
+}
+
 export default async function SlugPage({ params }: Params) {
   const { slug } = await params;
-  const resolved = await resolveSlug(slug);
+  let resolved = await resolveSlug(slug);
+  if (!resolved) resolved = await resolveAdminDraftPreview(slug);
   if (!resolved) notFound();
 
   if (resolved.kind === "page") {
@@ -666,7 +682,18 @@ export default async function SlugPage({ params }: Params) {
 
   return (
     <>
-      {productGraph && <JsonLd data={productGraph} />}
+      {resolved.preview ? (
+        <div className="page-container pt-4">
+          <p
+            role="status"
+            className="rounded-[14px] border border-[#f3e3bd] bg-[#fff4e0] px-4 py-2.5 text-[13px] font-semibold text-[#b45309]"
+          >
+            Mode aperçu — ce produit est un brouillon non publié, visible uniquement par les administrateurs.
+          </p>
+        </div>
+      ) : (
+        productGraph && <JsonLd data={productGraph} />
+      )}
       <ProductView
         key={p.id}
         product={p}
