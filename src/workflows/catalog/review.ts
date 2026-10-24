@@ -231,7 +231,11 @@ export const createManualReviewWorkflow = workflow<
     body: d.body,
     status: d.status,
     source: "manual",
-    verified_purchase: d.verifiedPurchase,
+    // A manual (admin-authored) review has NO purchase behind it, so it must
+    // never claim "Achat vérifié" — that would fabricate a verified purchase
+    // (owner rule: no fabricated data). Curated reviews may still be shown; they
+    // just can't pose as verified buyers. Forced regardless of the input flag.
+    verified_purchase: false,
     ...(createdAt ? { created_at: createdAt } : {}),
   });
   if (d.status === "approved") await reviewService.recomputeProduct(d.productId);

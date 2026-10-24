@@ -697,10 +697,9 @@ function ManualReviewModal({ config, onClose }: { config: ReviewConfig; onClose:
             <Field name="createdAt" label="Date (optionnel)" type="date" max={today} />
           </div>
 
-          <label className="flex items-center gap-2 text-[14px]">
-            <input type="checkbox" name="verifiedPurchase" className="h-4 w-4 accent-[var(--primary)]" />
-            Marquer « Achat vérifié »
-          </label>
+          {/* No "Achat vérifié" option for manual reviews: a curated review has no
+              purchase behind it, so it must never pose as a verified buyer (the
+              workflow forces verified_purchase=false). */}
 
           {state && !state.ok && (
             <p className="rounded-[14px] border border-destructive/40 bg-destructive/5 p-3 text-[13px] text-destructive">
