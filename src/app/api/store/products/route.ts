@@ -59,7 +59,25 @@ export async function GET(request: Request) {
       // Preserve the requested order; drop slugs that no longer resolve.
       products = resolved.filter((p): p is Product => Boolean(p));
     } else if (category) {
-      products = await catalogSource.listProductsByCategory(category).catch(() => []);
+      // One or more category slugs (comma-separated) — union, de-duped by id, order
+      // preserved. A single slug rolls up to its descendants (listProductsByCategory).
+      const slugs = category
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 40);
+      const lists = await Promise.all(
+        slugs.map((s) => catalogSource.listProductsByCategory(s).catch(() => [] as Product[])),
+      );
+      const seen = new Set<string>();
+      for (const list of lists) {
+        for (const p of list) {
+          if (!seen.has(p.id)) {
+            seen.add(p.id);
+            products.push(p);
+          }
+        }
+      }
     }
     return NextResponse.json({ products }, { headers: CACHE_HEADERS });
   } catch (err) {

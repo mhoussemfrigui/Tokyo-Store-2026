@@ -1,7 +1,7 @@
 "use client";
 
-import { products as catalog, type Product } from "@/storefront/lib/catalog";
 import { isOrderable } from "@/storefront/lib/productMeta";
+import type { Product } from "@/storefront/types/catalog";
 import { TabbedProducts, type ProductTab } from "@/storefront/components/storefront/tabbed-products";
 
 /** "iPhone 17 Pro Max 2 To - Orange cosmique" -> 17 */
@@ -13,8 +13,7 @@ function generationOf(p: Product): number | null {
 /**
  * "iPhone 18 Pro Max 256Go SIM - Noir" -> "iPhone 18 Pro Max". A generation
  * ships as a dozen storage/colour variants, so the overview tab keys on the
- * model and shows each one once — otherwise ten cards of the same two phones
- * in four colours crowd out every other generation.
+ * model and shows each one once.
  */
 function familyOf(p: Product): string {
   return p.title
@@ -34,27 +33,32 @@ function oneCardPerModel(pool: Product[]): Product[] {
   });
 }
 
+/** Newest generation first, sellable (in stock or pre-order) ahead of rupture. */
+function sortPool(pool: Product[]): Product[] {
+  return [...pool].sort((a, b) => {
+    const stock = Number(isOrderable(b)) - Number(isOrderable(a));
+    if (stock !== 0) return stock;
+    return (generationOf(b) ?? 0) - (generationOf(a) ?? 0);
+  });
+}
+
+/** iPhone generations the shop sells. A generation with no live products is dropped
+ *  automatically by TabbedProducts (it only keeps non-first tabs that fill a row). */
+const GENERATIONS = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+
+/** Tabs over ONE live category pool (the neufs / occasion category), filtered client-side
+ *  by iPhone generation. The pool is fetched live by TabbedProducts via each tab's source. */
 function buildTabs(category: string): ProductTab[] {
-  /* Newest generation first, sellable (in stock or pre-order) ahead of rupture. */
-  const pool = catalog
-    .filter((p) => p.category === category)
-    .sort((a, b) => {
-      const stock = Number(isOrderable(b)) - Number(isOrderable(a));
-      if (stock !== 0) return stock;
-      return (generationOf(b) ?? 0) - (generationOf(a) ?? 0);
-    });
-
-  /* Generations that actually have products, oldest to newest: 11, 12, 13… */
-  const generations = [
-    ...new Set(pool.map(generationOf).filter((g): g is number => g !== null)),
-  ].sort((a, b) => a - b);
-
+  const source = { categories: [category] };
   return [
-    { label: "Tout", resolve: () => oneCardPerModel(pool) },
-    ...generations.map((g) => ({
-      label: `iPhone ${g}`,
-      resolve: () => pool.filter((p) => generationOf(p) === g),
-    })),
+    { label: "Tout", source, transform: (pool) => oneCardPerModel(sortPool(pool)) },
+    ...GENERATIONS.map(
+      (g): ProductTab => ({
+        label: `iPhone ${g}`,
+        source,
+        transform: (pool) => sortPool(pool).filter((p) => generationOf(p) === g),
+      }),
+    ),
   ];
 }
 

@@ -11,17 +11,24 @@ import {
 } from "react";
 import { PackageSearch } from "lucide-react";
 
-import { products as catalog, type Product } from "@/storefront/lib/catalog";
 import { isOrderable } from "@/storefront/lib/productMeta";
+import type { Product } from "@/storefront/types/catalog";
 import { EmptyState } from "@/storefront/components/storefront/empty-state";
 import { CatalogProductCard } from "@/storefront/components/storefront/product-card";
 import { SectionHeading, ViewAllLink } from "@/storefront/components/storefront/section-heading";
 import { rhythm } from "@/storefront/components/storefront/ui-classes";
 import { cn } from "@/storefront/lib/utils";
 
+/** Which LIVE catalogue categories a tab draws from (fetched via /api/store/products,
+ *  rolled up to descendants; a tab may span several categories, e.g. gaming "Tout"). */
+export type TabSource = { categories: string[] };
+
 export type ProductTab = {
   label: string;
-  resolve: () => Product[];
+  source: TabSource;
+  /** Optional client transform on the fetched LIVE pool (e.g. the iPhone generation /
+   *  one-card-per-model filters). Applied before buildShelf. */
+  transform?: (pool: Product[]) => Product[];
   /** The listing "Voir tout" opens while this tab is active. */
   href?: string;
 };
@@ -113,14 +120,11 @@ function buildShelf(pool: Product[]): Product[] {
     : picked;
 }
 
-export function categoryTab(label: string, categories: string[] | null, href?: string): ProductTab {
+export function categoryTab(label: string, categories: string[], href?: string): ProductTab {
   return {
     label,
-    href: href ?? (categories?.length === 1 ? `/${categories[0]}` : undefined),
-    resolve: () =>
-      buildShelf(
-        categories === null ? catalog : catalog.filter((p) => categories.includes(p.category)),
-      ),
+    source: { categories },
+    href: href ?? (categories.length === 1 ? `/${categories[0]}` : undefined),
   };
 }
 
@@ -130,14 +134,9 @@ export function categoryTab(label: string, categories: string[] | null, href?: s
  * "Univers Apple / iPhones / iPhones Neufs"). Lets the home rail mirror the real
  * imported catalogue taxonomy instead of a hand-curated slug list.
  */
-export function universeTab(label: string, universe: string, href?: string): ProductTab {
-  const u = universe.trim();
-  return {
-    label,
-    href,
-    resolve: () =>
-      buildShelf(catalog.filter((p) => (p.product_type ?? "").split(" / ")[0].trim() === u)),
-  };
+export function universeTab(label: string, rootSlug: string, href?: string): ProductTab {
+  // A universe = a ROOT category; the live reader rolls it up to all descendants.
+  return { label, source: { categories: [rootSlug] }, href: href ?? `/${rootSlug}` };
 }
 
 /**
@@ -168,6 +167,64 @@ function edgeMask(start: boolean, end: boolean) {
 }
 
 /**
+ * Fetch each DISTINCT tab source's product pool LIVE (one /api/store/products request per
+ * source, de-duplicated), then apply each tab's optional transform + buildShelf. Returns the
+ * shelf's tabs (sparse ones past the first dropped, once loaded) and a `ready` flag that
+ * stays false until the first fetch lands — so the shelf can show a skeleton meanwhile.
+ * Replaces the former synchronous products.json filter.
+ */
+function useLiveShelf(tabs: ProductTab[]): { shown: { tab: ProductTab; items: Product[] }[]; ready: boolean } {
+  const key = tabs.map((t) => t.source.categories.join(",")).join("|");
+  const [pools, setPools] = useState<Map<string, Product[]>>(new Map());
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const distinct = [...new Set(key.split("|"))].filter((k) => k !== "");
+    if (distinct.length === 0) {
+      setPools(new Map());
+      setReady(true);
+      return;
+    }
+    let cancelled = false;
+    const ctrl = new AbortController();
+    setReady(false);
+    Promise.all(
+      distinct.map(async (k): Promise<readonly [string, Product[]]> => {
+        try {
+          const res = await fetch(`/api/store/products?category=${encodeURIComponent(k)}`, { signal: ctrl.signal });
+          const data = res.ok ? ((await res.json()) as { products?: Product[] }) : { products: [] };
+          return [k, data.products ?? []] as const;
+        } catch {
+          return [k, [] as Product[]] as const;
+        }
+      }),
+    ).then((entries) => {
+      if (!cancelled) {
+        setPools(new Map(entries));
+        setReady(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+      ctrl.abort();
+    };
+  }, [key]);
+
+  const shown = useMemo(() => {
+    if (!ready) return tabs.map((tab) => ({ tab, items: [] as Product[] }));
+    return tabs
+      .map((tab) => {
+        const pool = pools.get(tab.source.categories.join(",")) ?? [];
+        const transformed = tab.transform ? tab.transform(pool) : pool;
+        return { tab, items: buildShelf(transformed) };
+      })
+      .filter(({ items }, i) => i === 0 || items.length >= FULL_ROW);
+  }, [tabs, pools, ready]);
+
+  return { shown, ready };
+}
+
+/**
  * The home page's tabbed product bloc: a section heading with a "Voir tout"
  * link to the active tab's listing, a pill tab strip in the same language as
  * the top nav bar, and the catalogue cards — a peeking rail on phones (the
@@ -193,27 +250,23 @@ export function TabbedProducts({
   limit?: number;
 }) {
   const uid = useId();
-
-  /* Every tab is resolved once, up front, so the sparse ones can be dropped
-     before the strip renders: a tab short of one full row left three to five
-     cards beside empty columns at lg / 2xl. */
-  const shown = useMemo(
-    () =>
-      tabs
-        .map((tab) => ({ tab, items: tab.resolve() }))
-        .filter(({ items }, i) => i === 0 || items.length >= FULL_ROW),
-    [tabs],
-  );
-  /* The shortest tab's card count sets the shelf's rows (see fit()). */
-  const shortest = useMemo(
-    () => Math.min(...shown.map(({ items }) => Math.min(items.length, limit))),
-    [shown, limit],
-  );
+  // Tabs resolve LIVE from the backend (fetched per source, then buildShelf).
+  const { shown, ready } = useLiveShelf(tabs);
   const [active, setActive] = useState(0);
-  const { tab: activeTab, items } = shown[active];
-  const filtered = useMemo(() => items.slice(0, limit), [items, limit]);
+
+  /* `shown` always holds at least the first tab; clamp active so a later load that
+     dropped a sparse tab never reads past the array. */
+  const safeActive = shown.length ? Math.min(active, shown.length - 1) : 0;
+  const current = shown[safeActive];
+  const activeTab = current?.tab;
+  const items = current?.items ?? [];
+  /* The shortest tab's card count sets the shelf's rows (see fit()). */
+  const shortest = shown.length
+    ? Math.min(...shown.map(({ items: it }) => Math.min(it.length, limit)))
+    : 0;
+  const filtered = items.slice(0, limit);
   const n = filtered.length;
-  const viewAll = activeTab.href ?? viewAllHref;
+  const viewAll = activeTab?.href ?? viewAllHref;
   /* A strip holding only "Tout" is noise: the grid follows the heading. */
   const tabbed = shown.length > 1;
   const panelProps = tabbed
@@ -335,7 +388,21 @@ export function TabbedProducts({
         </div>
       )}
 
-      {n > 0 ? (
+      {!ready ? (
+        /* Skeleton while the live shelf loads — keeps the layout from jumping. */
+        <div
+          {...panelProps}
+          aria-hidden
+          className={cn(
+            "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-5 lg:gap-6 2xl:grid-cols-6",
+            tabbed ? "sm:mt-5 lg:mt-6" : "mt-2 sm:mt-6 lg:mt-8",
+          )}
+        >
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="aspect-[4/5] animate-pulse rounded-2xl bg-secondary" />
+          ))}
+        </div>
+      ) : n > 0 ? (
         /* Phones: a rail bleeding to the screen edges, the gutter kept as snap
            padding, with ~a quarter of the next card peeking. py-3 is room for
            the cards' shadow and focus ring inside the scroll clip; -mb-3
@@ -346,7 +413,7 @@ export function TabbedProducts({
            those 12px — and the heading gap (20 / 24 / 32) when the grid
            follows the heading directly. */
         <div
-          key={activeTab.label}
+          key={activeTab?.label ?? "shelf"}
           {...panelProps}
           className={cn(
             "no-scrollbar mx-[calc(-1*var(--gutter))] -mb-3 flex snap-x snap-mandatory scroll-px-(--gutter) gap-3 overflow-x-auto px-(--gutter) py-3 sm:mx-0 sm:mb-0 sm:grid sm:grid-cols-3 sm:gap-5 sm:overflow-visible sm:px-0 sm:py-0 lg:grid-cols-5 lg:gap-6 2xl:grid-cols-6",

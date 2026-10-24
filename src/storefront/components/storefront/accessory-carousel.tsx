@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 
-import { products as catalog, type Product } from "@/storefront/lib/catalog";
 import { isOrderable } from "@/storefront/lib/productMeta";
+import type { Product } from "@/storefront/types/catalog";
+import { useLiveProductsByCategory } from "@/storefront/lib/use-live-products";
 import { CatalogProductCard } from "@/storefront/components/storefront/product-card";
 import { RailArrow } from "@/storefront/components/storefront/rail-arrow";
 import { SectionHeading, ViewAllLink } from "@/storefront/components/storefront/section-heading";
@@ -64,8 +65,8 @@ const MAX_ITEMS = 14;
  * The export carries no date field, so "latest" falls back to catalogue order —
  * the newest rows the shop exported come first within each brand.
  */
-function pickAccessories(): Product[] {
-  const pool = catalog.filter((p) => ACCESSORY_CATEGORIES.includes(p.category) && isOrderable(p));
+function pickAccessories(rawPool: Product[]): Product[] {
+  const pool = rawPool.filter(isOrderable);
 
   const byBrand = new Map<string, Product[]>();
   for (const p of pool) {
@@ -92,9 +93,12 @@ function pickAccessories(): Product[] {
   return out;
 }
 
-const accessories = pickAccessories();
-
 export function AccessoryCarousel() {
+  // Fetch the accessory categories LIVE (one request, comma-joined slugs), then run the
+  // brand-tier line-up on the live pool. Renders nothing until products resolve.
+  const { products: pool } = useLiveProductsByCategory(ACCESSORY_CATEGORIES.join(","));
+  const accessories = useMemo(() => pickAccessories(pool), [pool]);
+
   const [emblaRef, emblaApi] = useEmblaCarousel({ align: "start", containScroll: "trimSnaps" });
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);

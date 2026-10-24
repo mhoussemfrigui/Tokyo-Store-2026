@@ -1,53 +1,83 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import {
   TabbedProducts,
-  categoryTab as tab,
   universeTab,
   type ProductTab,
 } from "@/storefront/components/storefront/tabbed-products";
-import { products, slugify } from "@/storefront/lib/catalog";
+import { SectionHeading } from "@/storefront/components/storefront/section-heading";
 
 /**
- * Home "Découvrez notre sélection" tabs — DATA-DRIVEN from the imported migration
- * catalogue, not a hand-curated list. Each tab is a real top-level category
- * (the first segment of every product's `product_type` path, e.g. "Univers Apple",
- * "Téléphonie", "Console Gaming"), ordered by how many products it holds, with
- * "Voir tout" pointing at that category's own listing (/univers-apple, …). This
- * follows the owner's rule: take the categories from the migration data and use
- * them, rather than matching the Tokyo-Store-UI demo tabs.
- *
- * Computed once at module load (the catalogue is a bundled, synchronous snapshot).
- * TabbedProducts drops any non-first tab that can't fill a row, so a thin universe
- * never renders a sparse strip.
+ * Home "Découvrez notre sélection" tabs — DATA-DRIVEN from the LIVE taxonomy
+ * (/api/store/categories → catalogSource, Postgres), not a bundled snapshot. Each tab is
+ * a real top-level (root) category, ordered by how many products it holds, with "Voir tout"
+ * pointing at that category's own listing. Each tab's products are then fetched live by
+ * TabbedProducts. A thin universe (under one row) is dropped by TabbedProducts.
  */
+type RootCategory = { slug: string; label: string; count: number };
 const MIN_FOR_TAB = 6;
 
-function buildUniverseTabs(): ProductTab[] {
-  const counts = new Map<string, number>();
-  for (const p of products) {
-    const top = (p.product_type ?? "").split(" / ")[0].trim();
-    if (top) counts.set(top, (counts.get(top) ?? 0) + 1);
-  }
-  return [...counts.entries()]
-    .filter(([, n]) => n >= MIN_FOR_TAB)
-    .sort((a, b) => b[1] - a[1])
-    .map(([name]) => universeTab(name, name, `/${slugify(name)}`));
+function Skeleton() {
+  return (
+    <div>
+      <SectionHeading eyebrow="Tokyo Store · High-tech en Tunisie" title="Découvrez notre sélection" />
+      <div
+        aria-hidden
+        className="mt-6 grid grid-cols-2 gap-3 sm:mt-6 sm:grid-cols-3 sm:gap-5 lg:grid-cols-5 lg:gap-6 2xl:grid-cols-6"
+      >
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="aspect-[4/5] animate-pulse rounded-2xl bg-secondary" />
+        ))}
+      </div>
+    </div>
+  );
 }
 
-const tabs: ProductTab[] = [tab("Tout", null), ...buildUniverseTabs()];
-
 export function CategoryTabs() {
+  const [tabs, setTabs] = useState<ProductTab[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const ctrl = new AbortController();
+    fetch("/api/store/categories", { signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : { categories: [] }))
+      .then((d: { categories?: RootCategory[] }) => {
+        if (cancelled) return;
+        setTabs(
+          (d.categories ?? [])
+            .filter((c) => c.count >= MIN_FOR_TAB)
+            .sort((a, b) => b.count - a.count)
+            .map((c) => universeTab(c.label, c.slug, `/${c.slug}`)),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setTabs([]);
+      });
+    return () => {
+      cancelled = true;
+      ctrl.abort();
+    };
+  }, []);
+
+  // No live universes resolved (empty store / transient error) → hide the section.
+  if (tabs !== null && tabs.length === 0) return null;
+
   return (
     /* 32px under the hero on phones (owner decision), then the section rhythm. */
     <section className="pt-8 sm:pt-16 lg:pt-20">
       <div className="page-container">
-        <TabbedProducts
-          eyebrow="Tokyo Store · High-tech en Tunisie"
-          title="Découvrez notre sélection"
-          tabs={tabs}
-          viewAllHref="/notre-selection"
-        />
+        {tabs === null ? (
+          <Skeleton />
+        ) : (
+          <TabbedProducts
+            eyebrow="Tokyo Store · High-tech en Tunisie"
+            title="Découvrez notre sélection"
+            tabs={tabs}
+            viewAllHref="/notre-selection"
+          />
+        )}
       </div>
     </section>
   );
