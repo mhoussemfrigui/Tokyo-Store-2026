@@ -40,4 +40,7 @@ export type ProductSearchHit = SearchHit & {
   price_cents: number;
   /** Struck-through reference price (millimes) when discounted; else null. */
   old_price_cents: number | null;
+  /** Live sell signal (`products.in_stock`) so the autocomplete dropdown can show
+   *  an accurate availability dot without a second query. */
+  in_stock: boolean;
 };

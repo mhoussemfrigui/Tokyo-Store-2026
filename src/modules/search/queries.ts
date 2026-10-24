@@ -317,6 +317,7 @@ export async function searchProducts(
     image_media_id: r.image_media_id ?? null,
     price_cents: Number(r.price_cents),
     old_price_cents: r.old_price_cents == null ? null : Number(r.old_price_cents),
+    in_stock: r.in_stock,
     score: Number(r.score),
   }));
 }

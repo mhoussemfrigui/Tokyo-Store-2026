@@ -49,7 +49,7 @@ import {
 import { ViewAllLink } from "@/storefront/components/storefront/section-heading";
 import { capsuleBar, chip, iconBtn } from "@/storefront/components/storefront/ui-classes";
 import { useCartCount } from "@/storefront/lib/cart";
-import { products, slugify, type Product } from "@/storefront/lib/catalog";
+import { useLiveSearch, type LiveProductHit } from "@/storefront/lib/use-live-search";
 import { promoIcon } from "@/lib/links/promo-icons";
 import type { LucideIcon } from "lucide-react";
 import type { NavImageAspect, NavBlockSize } from "@/lib/cms/nav-composer-model";
@@ -85,9 +85,6 @@ const popularSearches = [
   "iPad Pro M4",
   "Apple Watch Series 10",
 ];
-
-/** Title keys for the live search, computed once rather than on every keystroke. */
-const searchKeys = products.map((p) => slugify(p.title));
 
 /**
  * Only runs while `active` (the search overlay is open and empty): it used to
@@ -580,17 +577,12 @@ export function Header({
   const previewProducts = activeUniverse?.products ?? [];
   const activeBanner = activeUniverse?.banner ?? null;
 
-  // Live results from the local catalogue, shared by the desktop and mobile search.
-  const searchKey = slugify(searchQuery);
-  const hasQuery = searchKey.length >= 2;
-  const results = useMemo(() => {
-    if (searchKey.length < 2) return [];
-    const out: Product[] = [];
-    for (let i = 0; i < products.length && out.length < 6; i++) {
-      if (searchKeys[i].includes(searchKey)) out.push(products[i]);
-    }
-    return out;
-  }, [searchKey]);
+  // LIVE results via /api/store/search (Postgres FTS+trigram, promo-priced, real
+  // stock), debounced + abort-on-keystroke. Shared by the desktop and mobile search.
+  // Replaces the former bundled products.json client filter, so header suggestions
+  // reflect admin edits / new products with no re-export.
+  const hasQuery = searchQuery.trim().length >= 2;
+  const { hits: results } = useLiveSearch(searchQuery, { limit: 6 });
 
   /* ---------------------------------------------------------------------------
      Mega menu: hover opens it for a real mouse only; on touch and keyboard the
@@ -2070,7 +2062,7 @@ function SearchResults({
   className,
   rowClassName,
 }: {
-  results: Product[];
+  results: LiveProductHit[];
   onPick: () => void;
   /**
    * Desktop dropdown: rows flow into 2 (lg) / 3 (2xl) columns. A single
@@ -2095,7 +2087,7 @@ function SearchResults({
               {/* rounded-card: 32px pill (or 28px island) minus the ~8px inset.
                   The 44px thumbnail sits 6–12px inside the row: rounded-inner. */}
               <Link
-                href={`/${p.slug}`}
+                href={p.href}
                 onClick={onPick}
                 className={cn(
                   "flex min-h-14 items-center gap-3 rounded-card px-2 transition-colors duration-200 hover:bg-secondary",
@@ -2103,8 +2095,8 @@ function SearchResults({
                 )}
               >
                 <img
-                  src={p.image}
-                  srcSet={thumbSrcSet(p.image)}
+                  src={p.image ?? "/placeholder.svg"}
+                  srcSet={thumbSrcSet(p.image ?? "")}
                   sizes="44px"
                   alt=""
                   width={44}

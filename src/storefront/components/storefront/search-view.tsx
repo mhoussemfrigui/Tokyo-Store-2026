@@ -8,9 +8,10 @@ import { ArrowRight, Clock, Search as SearchIcon, TrendingUp, X } from "lucide-r
 import { ListingRegion } from "@/storefront/components/storefront/listing/listing-region";
 import { ServiceBand } from "@/storefront/components/storefront/listing/service-band";
 import { useProductListing } from "@/storefront/components/storefront/listing/use-listing";
-import { products as ALL_PRODUCTS, type Product } from "@/storefront/lib/catalog";
+import { useLiveSearch } from "@/storefront/lib/use-live-search";
 import { taxonomyLabel } from "@/storefront/lib/categoryNav";
-import { fmtPrice, stockState } from "@/storefront/lib/productMeta";
+import { fmtPrice } from "@/storefront/lib/productMeta";
+import type { Product } from "@/storefront/types/catalog";
 import { cn } from "@/storefront/lib/utils";
 
 const RECENT_KEY = "tokyo:recent-searches";
@@ -19,7 +20,6 @@ const TRENDING = ["Casque gaming", "Galaxy S26", "iPhone", "Redmi Neo", "Nintend
 /** Accent-insensitive, lowercased. */
 const norm = (t: string) =>
   t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-const tokens = (q: string) => norm(q).split(/[^a-z0-9]+/).filter(Boolean);
 
 /** Top-level category slug of a product (first of category_path, else category).
  *  `||` not `??`: an empty-string path segment must fall through, not win. */
@@ -89,17 +89,11 @@ function SearchBox({ initialQuery }: { initialQuery: string }) {
     go(q);
   };
 
-  const tks = tokens(q);
   const nq = norm(q.trim());
-  /* Live local matches (same catalogue the header searches). */
-  const matches = useMemo(() => {
-    if (tks.length === 0) return [] as Product[];
-    return ALL_PRODUCTS.filter((p) => {
-      const hay = norm(`${p.title} ${p.brand} ${p.category}`);
-      return tks.every((t) => hay.includes(t));
-    }).slice(0, 40);
-  }, [tks]);
-  const preview = matches.slice(0, 4);
+  /* LIVE autocomplete — hits Postgres via /api/store/search (promo-enriched
+   * prices + real stock), debounced, abort-on-keystroke. Replaces the former
+   * bundled products.json client filter, so suggestions reflect admin edits. */
+  const { hits: preview, loading } = useLiveSearch(q, { limit: 4 });
 
   const clearRecent = () => {
     setRecent([]);
@@ -259,15 +253,21 @@ function SearchBox({ initialQuery }: { initialQuery: string }) {
               ))}
             </div>
           </div>
-        ) : matches.length === 0 ? (
-          /* No local suggestion */
+        ) : preview.length === 0 ? (
+          /* Live search: still loading, or genuinely no product match. */
           <div className="flex items-center gap-3.5 px-4 py-5">
             <span className="grid size-10 shrink-0 place-items-center rounded-full bg-secondary text-muted-foreground">
               <SearchIcon aria-hidden className="size-[18px]" strokeWidth={2.2} />
             </span>
             <span className="text-[15px] leading-relaxed text-muted-foreground">
-              Aucune suggestion locale pour «&nbsp;<strong className="text-foreground">{q}</strong>&nbsp;».
-              Appuyez sur Entrée pour lancer la recherche.
+              {loading ? (
+                "Recherche…"
+              ) : (
+                <>
+                  Aucun produit pour «&nbsp;<strong className="text-foreground">{q}</strong>&nbsp;».
+                  Appuyez sur Entrée pour lancer la recherche complète.
+                </>
+              )}
             </span>
           </div>
         ) : (
@@ -280,16 +280,16 @@ function SearchBox({ initialQuery }: { initialQuery: string }) {
                 </span>
               </div>
               {preview.map((p) => {
-                const oos = stockState(p) === "out_of_stock";
+                const oos = !p.inStock;
                 return (
                   <Link
                     key={p.slug}
-                    href={`/${p.slug}`}
+                    href={p.href}
                     onClick={() => setOpen(false)}
                     className="flex h-[72px] items-center gap-3 rounded-[14px] py-0 pl-2 pr-2.5 text-foreground hover:bg-background"
                   >
                     <span className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-border bg-background">
-                      <img src={p.image} alt="" className="size-full object-contain p-1" loading="lazy" />
+                      <img src={p.image ?? "/placeholder.svg"} alt="" className="size-full object-contain p-1" loading="lazy" />
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col gap-1">
                       <span className="line-clamp-2 text-[14px] font-semibold leading-[18px]">

@@ -169,6 +169,11 @@ export async function GET(request: Request) {
         h.kind === "product"
           ? (h as typeof h & { old_price_cents: number | null }).old_price_cents ?? null
           : null,
+      // Live availability for the dropdown stock dot (product hits only).
+      inStock:
+        h.kind === "product"
+          ? (h as typeof h & { in_stock: boolean }).in_stock
+          : null,
     }));
 
     // Search results are the public catalogue for every viewer, so they're safe
