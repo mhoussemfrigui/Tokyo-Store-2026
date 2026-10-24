@@ -1293,6 +1293,8 @@ function ConfirmDeleteModal({
 }) {
   // In-use count — warns before deleting an asset the storefront still renders.
   const [usage, setUsage] = useState<number | null>(null);
+  // Explicit second confirmation for an in-use image (parity with BulkDeleteDialog).
+  const [ack, setAck] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -1308,6 +1310,8 @@ function ConfirmDeleteModal({
     };
   }, [media.id]);
 
+  const inUse = usage !== null && usage > 0;
+
   // Thumbnail + filename preview, plus the in-use warning — fed to the shared
   // modal's `preview` slot (mirrors BulkDeleteDialog, which renders its in-use
   // lookup the same way).
@@ -1322,11 +1326,22 @@ function ConfirmDeleteModal({
           <p className="text-[10px] text-muted-foreground">{fmtBytes(media.sizeBytes)}</p>
         </div>
       </div>
-      {usage !== null && usage > 0 && (
-        <p className="rounded-[12px] border border-[#f3e3bd] bg-[#fff4e0] px-3 py-2 text-xs font-medium text-[#b45309]">
-          ⚠ Utilisée par {usage} élément{usage > 1 ? "s" : ""} (produit, catégorie,
-          marque, bannière…). La suppression retirera l&apos;image de ces emplacements.
-        </p>
+      {inUse && (
+        <div className="space-y-2 rounded-[12px] border border-[#f3e3bd] bg-[#fff4e0] px-3 py-2 text-xs font-medium text-[#b45309]">
+          <p>
+            ⚠ Utilisée par {usage} élément{usage > 1 ? "s" : ""} (produit, catégorie,
+            marque, bannière…). La suppression retirera l&apos;image de ces emplacements.
+          </p>
+          <label className="flex items-start gap-2 pt-1 text-foreground">
+            <input
+              type="checkbox"
+              checked={ack}
+              onChange={(e) => setAck(e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-[var(--primary)]"
+            />
+            Je confirme supprimer cette image utilisée.
+          </label>
+        </div>
       )}
     </div>
   );
@@ -1338,11 +1353,19 @@ function ConfirmDeleteModal({
       preview={preview}
       onCancel={onCancel}
       onConfirm={async () => {
+        if (inUse && !ack) {
+          return "Cochez la case pour confirmer la suppression d'une image utilisée.";
+        }
         // try/catch so a thrown action (413 / network) surfaces inline instead
         // of crashing to the admin error boundary (mirrors bulk).
         try {
-          const res = await deleteMediaAction(media.id);
-          if (res && !res.ok) return res.message;
+          const res = await deleteMediaAction(media.id, inUse && ack);
+          if (res && !res.ok) {
+            // Server re-check found references the client lookup missed → reveal
+            // the ack checkbox and make the operator confirm (never delete blind).
+            if (res.inUse) setUsage(res.usage ?? 1);
+            return res.message;
+          }
           onConfirmed();
           return null;
         } catch {

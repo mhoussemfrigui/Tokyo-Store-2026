@@ -1195,8 +1195,27 @@ export async function importMediaFromUrlAction(
   return { ok: true, message: "Image importée depuis l'URL.", id: result.data.mediaId };
 }
 
-export async function deleteMediaAction(mediaId: string): Promise<ActionState> {
+export async function deleteMediaAction(
+  mediaId: string,
+  confirmInUse = false,
+): Promise<ActionState & { inUse?: boolean; usage?: number }> {
   const session = await requirePermission("media", "delete");
+  // In-use guard — PARITY with bulkDeleteMediaAction. A single delete also purges
+  // the S3 bytes, so refuse an in-use asset unless the operator explicitly
+  // confirmed (the modal's ack checkbox). Re-checked server-side so a stale/failed
+  // client lookup can't delete an in-use image blind; a failed check fails CLOSED.
+  if (confirmInUse !== true && isUuid(mediaId)) {
+    const refs = await mediaQueries.countMediaReferences(mediaId).catch(() => 1);
+    if (refs > 0) {
+      return {
+        ok: false,
+        error: "in_use",
+        inUse: true,
+        usage: refs,
+        message: `Image utilisée par ${refs} élément(s). Cochez la case pour confirmer la suppression.`,
+      };
+    }
+  }
   const result = await workflows.media.delete({ mediaId }, { actorUserId: session.user.id });
   if (!result.ok) return { ok: false, error: result.error, message: result.message };
   revalidatePath("/admin/media");
