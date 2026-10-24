@@ -7,7 +7,9 @@ import { ProductView } from "@/storefront/components/storefront/product-view";
 import { getCategoryBySlug, getCategoryLabel } from "@/storefront/lib/api/categories";
 import {
   getProductBySlug,
+  getBrandBySlug,
   listAlsoViewed,
+  listProductsByBrand,
   listProductsByCategory,
   listProductsByIds,
 } from "@/storefront/lib/api/products";
@@ -139,6 +141,15 @@ async function resolveSlug(slug: string): Promise<Resolved | null> {
 
   const product = await getProductBySlug(slug);
   if (product) return { kind: "product", product };
+
+  /* Brands (Catalogue → Marques) — a PDP links its brand name to `/{brandSlug}`,
+     so an active brand resolves to a listing of its products (rendered through
+     CategoryView like a category). After product so a product/category slug wins;
+     before the fuzzy fallback. A deactivated/missing brand falls through → 404. */
+  const brand = await getBrandBySlug(slug);
+  if (brand) {
+    return { kind: "category", slug, label: brand.name, products: await listProductsByBrand(slug) };
+  }
 
   const fuzzy = await listProductsByCategory(slug);
   if (fuzzy.length > 0) {

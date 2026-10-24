@@ -28,4 +28,9 @@ export interface CatalogSource {
   listCategories(): Promise<Category[]>;
   getCategoryBySlug(slug: string): Promise<Category | null>;
   getCategoryLabel(slug: string): Promise<string>;
+  /** A brand by slug — `null` for a missing or deactivated brand (so the brand
+   *  page 404s, matching the fail-closed brand product reader). */
+  getBrandBySlug(slug: string): Promise<{ slug: string; name: string } | null>;
+  /** Published products of a brand (empty for a deactivated/missing brand). */
+  listProductsByBrand(brandSlug: string, limit?: number): Promise<Product[]>;
 }

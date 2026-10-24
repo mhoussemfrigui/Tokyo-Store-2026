@@ -20,3 +20,6 @@ export const listAlsoViewed = (slug: string, limit?: number) =>
 export const listNewArrivals = (limit?: number) => catalogSource.listNewArrivals(limit);
 export const listPromotions = (limit?: number) => catalogSource.listPromotions(limit);
 export const listPreorderProducts = (limit?: number) => catalogSource.listPreorderProducts(limit);
+export const getBrandBySlug = (slug: string) => catalogSource.getBrandBySlug(slug);
+export const listProductsByBrand = (brandSlug: string, limit?: number) =>
+  catalogSource.listProductsByBrand(brandSlug, limit);

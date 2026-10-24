@@ -9,6 +9,7 @@ import {
   listNewArrivals as backendListNewArrivals,
   listPreorderProducts as backendListPreorder,
   listProductsByCategory as backendListByCategory,
+  listProductsByBrand as backendListByBrand,
   listProductsByIds as backendListByIds,
   listProductsBySlugs as backendListBySlugs,
   listPromotions as backendListPromotions,
@@ -19,6 +20,7 @@ import {
   listCategories as backendListCategories,
 } from "@/lib/api/categories";
 import { categoryService } from "@/modules/catalog/category/service";
+import { brandQueries } from "@/modules/catalog/brand";
 import { productCategoryLinks } from "@/associations/catalog.service";
 import { resolveCareConfig } from "@/lib/care/config";
 import { resolveOfferedCareForLines } from "@/lib/care/resolve-server";
@@ -245,5 +247,14 @@ export const liveSource: CatalogSource = {
   async getCategoryLabel(slug): Promise<string> {
     const c = await backendGetCategoryBySlug(slug);
     return c?.name ?? slug;
+  },
+  async getBrandBySlug(slug): Promise<{ slug: string; name: string } | null> {
+    // 404 a deactivated brand (its product reader is fail-closed too), so the
+    // brand page never dangles an offline brand.
+    const b = await brandQueries.getBrandBySlug(slug);
+    return b && b.is_active ? { slug: b.slug, name: b.name } : null;
+  },
+  async listProductsByBrand(brandSlug, limit): Promise<Product[]> {
+    return mapCards(await backendListByBrand(brandSlug, limit));
   },
 };
