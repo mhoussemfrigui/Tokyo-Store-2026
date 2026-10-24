@@ -1492,6 +1492,10 @@ function ReviewsSection({
   const enabled = auth?.enabled ?? true;
 
   const [showForm, setShowForm] = useState(false);
+  // "Avis activés" OFF hides the WHOLE section (its own description: "Affiche la
+  // section avis et autorise les nouveaux avis"), matching the AggregateRating
+  // JSON-LD + headless API which already return nothing when disabled. Hooks are
+  // declared above this early return so hook order stays stable.
   const [sort, setSort] = useState<"recent" | "top" | "low">("recent");
   const [starFilter, setStarFilter] = useState(0); // 0 = all
   const [shown, setShown] = useState(REVIEWS_PAGE);
@@ -1530,6 +1534,9 @@ function ReviewsSection({
       <Star size={16} /> {showForm ? "Fermer" : "Donner mon avis"}
     </button>
   );
+
+  // Reviews disabled in admin → no section at all (hooks above already ran).
+  if (!enabled) return null;
 
   return (
     <section className="flex flex-col gap-6 px-1">
