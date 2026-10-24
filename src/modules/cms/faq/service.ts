@@ -2,7 +2,7 @@ import "server-only";
 
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 
-import { db } from "@/lib/db/client";
+import { db, type Tx } from "@/lib/db/client";
 import {
   faq_categories,
   faqs,
@@ -151,6 +151,31 @@ class FaqService {
   async insert(input: NewFaqRow) {
     const [row] = await db.insert(faqs).values(input).returning();
     return row;
+  }
+
+  /**
+   * Insert FAQs for a product inside an EXISTING transaction — no soft-delete, so
+   * it's for a FRESH product/duplicate that has none yet. Lets a workflow (e.g.
+   * duplicate-product) replicate FAQs within its own all-or-nothing tx instead of
+   * `replaceForProduct`, which opens its own transaction.
+   */
+  async insertForProductInTx(
+    tx: Tx,
+    productId: string,
+    items: Array<{ question: string; answer: string; displayOrder: number; isPublished: boolean }>,
+  ): Promise<void> {
+    if (items.length === 0) return;
+    await tx.insert(faqs).values(
+      items.map((item) => ({
+        product_id: productId,
+        category_id: null,
+        question: item.question,
+        answer: item.answer,
+        display_order: item.displayOrder,
+        is_published: item.isPublished,
+        scope: "help" as const,
+      })),
+    );
   }
 
   /**

@@ -9,6 +9,7 @@ import {
 } from "@/modules/catalog/product/queries";
 import { attributeService } from "@/modules/catalog/attribute/service";
 import { careService } from "@/modules/catalog/care/service";
+import { faqService } from "@/modules/cms/faq/service";
 import {
   productBrandLink,
   productCategoryLinks,
@@ -84,6 +85,7 @@ export const duplicateProductWorkflow = workflow<
     complementaryIds,
     sourceVariants,
     careRows,
+    faqRows,
   ] = await Promise.all([
       productMediaLink.list(source.id),
       productCategoryLinks.listForProduct(source.id),
@@ -96,6 +98,9 @@ export const duplicateProductWorkflow = workflow<
       // Tokyo Care per-product overrides (include/exclude + price). Read from the
       // SOURCE up front like the other associations; the write below goes through tx.
       careService.getProductCare(source.id),
+      // Per-product FAQ (admin = published + draft) — first-class product content
+      // the edit form loads, so the copy must carry it or it silently vanishes.
+      faqService.listForAdminProduct(source.id),
     ]);
   const valueLinks = sourceVariants.length
     ? await listVariantValueLinks(sourceVariants.map((v) => v.id))
@@ -224,6 +229,21 @@ export const duplicateProductWorkflow = workflow<
           overridePriceCents: c.override_price_cents,
         })),
         tx,
+      );
+    }
+
+    // Per-product FAQ — carried so a duplicate keeps its « Questions fréquentes »
+    // (the copy has none yet, so insert, don't replace). Threaded through tx.
+    if (faqRows.length) {
+      await faqService.insertForProductInTx(
+        tx,
+        copyRow.id,
+        faqRows.map((f) => ({
+          question: f.question,
+          answer: f.answer,
+          displayOrder: f.display_order,
+          isPublished: f.is_published,
+        })),
       );
     }
 
