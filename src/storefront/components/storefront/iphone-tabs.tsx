@@ -65,13 +65,13 @@ function buildTabs(category: string): ProductTab[] {
 const VARIANTS = {
   neufs: {
     tabs: buildTabs("iphones-neufs"),
-    eyebrow: "Apple · Neufs scellés, garantie 12 mois",
+    eyebrow: "Apple · Neufs scellés, garantie constructeur",
     title: "Trouvez votre iPhone neuf",
     viewAllHref: "/iphones-neufs",
   },
   occasion: {
     tabs: buildTabs("iphones-d-occasion"),
-    eyebrow: "Reconditionnés certifiés · Testés sur 40 points",
+    eyebrow: "Reconditionnés certifiés et testés",
     title: "Trouvez votre iPhone d'occasion",
     viewAllHref: "/iphones-d-occasion",
   },

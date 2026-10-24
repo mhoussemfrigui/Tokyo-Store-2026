@@ -29,13 +29,13 @@ export type StoreCard = { city: string; address: string; hours: string; phone: s
 const buildPromises = (freeFrom: number, stores: StoreCard[]) => [
   {
     icon: ShieldCheck,
-    title: "Garantie jusqu’à 24 mois",
+    title: "Garantie incluse",
     copy: "Sur tous les iPhone reconditionnés.",
   },
   {
     icon: RefreshCw,
     title: "Reprise immédiate",
-    copy: "Jusqu'à 2 500 TND pour votre ancien iPhone.",
+    copy: "Estimation de votre ancien iPhone en quelques minutes.",
   },
   {
     icon: Truck,
@@ -109,8 +109,8 @@ export function PromoGrid({ stores }: { stores: StoreCard[] }) {
               href="/ipad-et-mac"
               image="/assets/cat-mac.jpg"
               eyebrow="Mac · Neuf"
-              title="MacBook Air M3"
-              copy="À partir de 4 590 TND, garantie officielle Apple."
+              title="MacBook Air"
+              copy="Garantie officielle Apple."
               span="aspect-[4/3] lg:aspect-auto"
             />
             <FeatureCard
