@@ -155,6 +155,21 @@ export const editOrderItemsWorkflow = workflow<
     if (order.invoice_number || order.credit_note_number) {
       return { kind: "fail", error: fail("conflict", "Facture déjà émise — émettez un avoir avant de modifier les lignes.") };
     }
+    // Pré-commande guard. An unconverted preorder order's lines RESERVED units
+    // without decrementing stock (stock_claimed=false). This editor is
+    // preorder-blind (it decides stock moves from stock_qty alone), so removing a
+    // line would phantom-restock stock and orphan the reservation, and growing one
+    // would decrement early. Refuse until conversion claims the stock (which flips
+    // is_preorder off). Mirrors the admin UI gate.
+    if (order.is_preorder) {
+      return {
+        kind: "fail",
+        error: fail(
+          "conflict",
+          "Commande en précommande — convertissez-la (ce qui réserve puis décrémente le stock) avant de modifier ses lignes.",
+        ),
+      };
+    }
     // Refund-ledger guards. A FULL refund already restocked the unshipped units
     // (refund-order.ts) — removing/shrinking a line would restock them a SECOND
     // time (phantom stock → oversell), growing one would claim stock for an

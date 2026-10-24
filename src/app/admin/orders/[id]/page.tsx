@@ -271,7 +271,14 @@ export default async function OrderDetailPage({
   // both (edit-items / create-shipment refuse it): the refund already restocked
   // its unshipped units, so editing or shipping them would double-count stock.
   const invoiceLocked = order.invoice_number != null || order.credit_note_number != null;
-  const canEditLines = canManage && preShip && !invoiceLocked && !fullyRefunded && items.length > 0;
+  // An UNCONVERTED pré-commande order is locked for line editing: its lines
+  // reserved units without decrementing stock (stock_claimed=false), and the
+  // line editor is preorder-blind — removing a line would phantom-restock stock
+  // and orphan the reservation, growing one would decrement early. Convert the
+  // preorder (which claims the stock) first; a converted order flips is_preorder
+  // off and edits normally.
+  const canEditLines =
+    canManage && preShip && !invoiceLocked && !fullyRefunded && !order.is_preorder && items.length > 0;
   const shippable =
     !fullyRefunded &&
     (order.status === "paid" || order.status === "preparing" || order.status === "shipped");
