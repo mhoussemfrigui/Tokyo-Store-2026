@@ -129,7 +129,17 @@ export async function register() {
  *
  * Node runtime only (Edge can't reach the DB pool) and NEVER throws — an error
  * in the error handler must not cascade.
+ *
+ * FLOOD GUARD: a hot 500 (or an attacker-triggered error loop) would otherwise
+ * write one `audit_log` row PER request and bloat the Journal / disk. We throttle
+ * the DB write to at most one row per distinct error signature per window — the
+ * container log line below still records EVERY occurrence, so nothing is lost for
+ * diagnosis. In-process (per instance), like the mailing single-flight; a
+ * multi-instance deploy still bounds it to ~N_instances rows/window.
  */
+const ERROR_AUDIT_WINDOW_MS = 60_000;
+const lastErrorAuditAt = new Map<string, number>();
+
 export async function onRequestError(
   error: unknown,
   request: { path?: string; method?: string },
@@ -161,6 +171,21 @@ export async function onRequestError(
     console.error(
       `[app.error] ref=${ref} digest=${digest ?? "-"} ${context?.routeType ?? "render"} ${request?.method ?? ""} ${path ?? "?"} :: ${message}`,
     );
+
+    // Throttle the audit WRITE per error signature (the console line above already
+    // captured this occurrence). A repeating 500 collapses to one Journal row per
+    // window instead of one per request.
+    const nowMs = Date.now();
+    const lastAt = lastErrorAuditAt.get(ref) ?? 0;
+    if (nowMs - lastAt < ERROR_AUDIT_WINDOW_MS) return;
+    lastErrorAuditAt.set(ref, nowMs);
+    // Opportunistic prune so a stream of UNIQUE signatures can't grow the map
+    // unbounded (keep it to recently-seen refs).
+    if (lastErrorAuditAt.size > 1000) {
+      for (const [k, t] of lastErrorAuditAt) {
+        if (nowMs - t > ERROR_AUDIT_WINDOW_MS) lastErrorAuditAt.delete(k);
+      }
+    }
 
     const { auditService } = await import("./modules/audit/service");
     await auditService.record({

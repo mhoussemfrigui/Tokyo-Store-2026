@@ -433,6 +433,18 @@ function loadServerEnv(): ServerEnv {
           "SMTP config from the admin Mailing tab if present, otherwise sending will fail.",
       );
     }
+    // console provider in PROD = every transactional email (receipts, password
+    // resets, verification) is written to the log and NEVER sent. Non-fatal (an
+    // operator may pick a real provider in Système → Mail, which wins over this
+    // env default), but warn loudly so a fresh prod that configures neither env
+    // nor the DB doesn't silently swallow all customer email.
+    if (parsed.data.NODE_ENV === "production" && parsed.data.EMAIL_PROVIDER === "console") {
+      console.warn(
+        "[env] EMAIL_PROVIDER is \"console\" in production — transactional email is logged, " +
+          "NOT sent. Set EMAIL_PROVIDER (resend/smtp/internal) + credentials, or choose a " +
+          "provider in the admin Mailing tab (Système → Mail), or ALL customer email is dropped.",
+      );
+    }
     if (parsed.data.NODE_ENV === "production") {
       assertProductionSecrets(parsed.data);
     }
