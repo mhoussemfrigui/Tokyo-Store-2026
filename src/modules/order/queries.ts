@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, gte, inArray, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, ne, notInArray, or, sql } from "drizzle-orm";
 
 import { db, type DbOrTx } from "@/lib/db/client";
 import { normalizePhoneDigits } from "@/lib/format/phone";
@@ -571,8 +571,13 @@ export async function getNewUsersSeries(
 
 /** Open (unconverted) preorder reservation counts per product — total UNITS +
  *  distinct ORDERS — from the order lines flagged is_preorder. Drives the
- *  Précommandes queue's per-product cue. (Empty until placement wires preorders
- *  in phase 3.) */
+ *  Précommandes queue's per-product cue.
+ *
+ *  Cancel / full-refund RELEASE the reservation (reserved_qty drops) but do NOT
+ *  flip `order_items.is_preorder` back (only conversion does), so a cancelled /
+ *  refunded order's lines would otherwise keep inflating this count past the real
+ *  reserved units. Exclude those terminal statuses so the KPI tracks the open
+ *  holds. (Partial refunds don't release holds and keep a live status → counted.) */
 export async function openPreorderCountsByProduct(
   productIds: string[],
 ): Promise<Map<string, { units: number; orders: number }>> {
@@ -585,7 +590,14 @@ export async function openPreorderCountsByProduct(
       orders: sql<number>`count(distinct ${order_items.order_id})::int`,
     })
     .from(order_items)
-    .where(and(inArray(order_items.product_id, productIds), eq(order_items.is_preorder, true)))
+    .innerJoin(orders, eq(orders.id, order_items.order_id))
+    .where(
+      and(
+        inArray(order_items.product_id, productIds),
+        eq(order_items.is_preorder, true),
+        notInArray(orders.status, ["cancelled", "refunded"]),
+      ),
+    )
     .groupBy(order_items.product_id);
   for (const r of rows) out.set(r.productId, { units: r.units, orders: r.orders });
   return out;
