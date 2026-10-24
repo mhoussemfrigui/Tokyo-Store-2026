@@ -7,7 +7,8 @@ import { z } from "zod";
 import { SelectField } from "@/components/ui/select-field";
 import { placeQuickOrderAction } from "@/lib/actions/order";
 import { planById, useShippingConfig } from "@/storefront/lib/cart";
-import { careConfig, type Product } from "@/storefront/lib/catalog";
+import { useCareConfig } from "@/storefront/lib/care-config";
+import type { Product } from "@/storefront/types/catalog";
 import { smoothBehavior } from "@/storefront/lib/motion";
 import { fmtPrice } from "@/storefront/lib/productMeta";
 
@@ -107,6 +108,7 @@ export function QuickBuyForm({
   const [idemKey] = useState(() => crypto.randomUUID());
   const rootRef = useRef<HTMLDivElement>(null);
 
+  const careConfig = useCareConfig();
   const selectedCare = useMemo(() => planById(product, carePlanId), [product, carePlanId]);
   const careCharge = selectedCare
     ? careConfig.chargePerUnit

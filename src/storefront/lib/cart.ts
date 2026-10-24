@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 
 import {
   addToCartBySlugAction,
@@ -9,9 +9,10 @@ import {
   setCartItemCarePlanAction,
   setCartItemQuantityAction,
 } from "@/lib/actions/cart";
-import type { Product } from "@/storefront/lib/catalog";
-import { careConfig, carePlanInfo, findProductBySlug } from "@/storefront/lib/catalog";
+import type { Product } from "@/storefront/types/catalog";
 import { conditionLabel } from "@/storefront/lib/productMeta";
+import { useLiveProductsBySlugs } from "@/storefront/lib/use-live-products";
+import { DEFAULT_CARE, useCareConfig, type CareDisplayConfig } from "@/storefront/lib/care-config";
 
 /**
  * Cart store — the LINES *and* the per-line Tokyo Care protection PLAN are backed
@@ -185,29 +186,25 @@ export type ProtectionPlan = {
 };
 
 /**
- * The Tokyo Care plans OFFERED on a product — straight from the backend snapshot
+ * The Tokyo Care plans OFFERED on a product — straight from the LIVE backend
  * (`product.care`, resolved from the plan's category scope ∪ per-product overrides,
- * priced flat/percent with floors). The plan details (name, duration, perks) come
- * from the care-plans catalogue. Returns [] when the feature is off or none apply.
- * `total` is the per-UNIT price (dinars); the line charge is per-unit × qty or once,
- * per `careConfig.chargePerUnit` (see cartTotals). The server re-prices at checkout.
+ * priced flat/percent with floors, and carrying the plan's own name / duration /
+ * perks inline). Returns [] when the feature is off or none apply (the live source
+ * fails closed to an empty `care`). `total` is the per-UNIT price (dinars); the
+ * line charge is per-unit × qty or once, per the care config (see cartTotals). The
+ * server re-prices at checkout.
  */
 export function protectionPlans(product: Product): ProtectionPlan[] {
-  if (!careConfig.enabled) return [];
-  return (product.care ?? []).flatMap((offer) => {
-    const info = carePlanInfo(offer.id);
-    if (!info) return [];
-    const months = Math.max(1, info.durationMonths);
-    return [
-      {
-        id: offer.id,
-        label: info.name,
-        months: info.durationMonths,
-        monthly: Math.max(1, Math.round(offer.price / months)),
-        total: offer.price,
-        perks: info.perks,
-      },
-    ];
+  return (product.care ?? []).map((offer) => {
+    const months = Math.max(1, offer.durationMonths);
+    return {
+      id: offer.id,
+      label: offer.name,
+      months: offer.durationMonths,
+      monthly: Math.max(1, Math.round(offer.price / months)),
+      total: offer.price,
+      perks: offer.perks ?? [],
+    };
   });
 }
 
@@ -217,9 +214,9 @@ export function planById(product: Product, id: string | null): ProtectionPlan | 
 }
 
 /** The care charge for ONE line (dinars): per-unit price × qty, or once per line. */
-function lineCareCharge(plan: ProtectionPlan | null, qty: number): number {
+function lineCareCharge(plan: ProtectionPlan | null, qty: number, chargePerUnit: boolean): number {
   if (!plan) return 0;
-  return careConfig.chargePerUnit ? plan.total * qty : plan.total;
+  return chargePerUnit ? plan.total * qty : plan.total;
 }
 
 /* ---------------- Totaux ---------------- */
@@ -242,9 +239,20 @@ export type CartItem = {
 import { DEFAULT_SHIPPING, useShippingConfig, type ShippingConfig } from "./shipping-config";
 export { DEFAULT_SHIPPING, useShippingConfig, type ShippingConfig };
 
-export function cartItems(stateIn: CartState): CartItem[] {
-  return stateIn.lines.flatMap((line) => {
-    const product = findProductBySlug(line.id);
+/**
+ * PURE builder: turn cart lines + a slug→Product map (resolved LIVE by the caller)
+ * + the care config into display `CartItem`s. A line whose product is NOT in the
+ * map is dropped — while the live fetch is in flight the map is empty, so callers
+ * MUST gate the empty-cart state on `useCartItems().ready` (not on an empty
+ * `items`), or a full cart would flash "vide" before the products land.
+ */
+export function buildCartItems(
+  lines: CartLine[],
+  bySlug: Map<string, Product>,
+  careCfg: CareDisplayConfig,
+): CartItem[] {
+  return lines.flatMap((line) => {
+    const product = bySlug.get(line.id);
     if (!product) return [];
     const plan = planById(product, line.plan);
     return [
@@ -253,26 +261,47 @@ export function cartItems(stateIn: CartState): CartItem[] {
         product,
         plan,
         condition: conditionLabel(product.condition),
-        lineTotal: product.price * line.qty + lineCareCharge(plan, line.qty),
+        lineTotal: product.price * line.qty + lineCareCharge(plan, line.qty, careCfg.chargePerUnit),
       },
     ];
   });
+}
+
+/**
+ * The cart's display items, with each line's product resolved LIVE from the
+ * backend (`/api/store/products?slugs=` via catalogSource → Postgres) instead of a
+ * bundled snapshot — so prices, stock, titles and the offered Tokyo Care plans
+ * reflect admin edits with no re-export. `ready` is true once BOTH the backend
+ * cart has settled AND the line products have resolved; gate the empty state on it.
+ */
+export function useCartItems(): { items: CartItem[]; ready: boolean } {
+  const state = useCart();
+  const cartReady = useCartReady();
+  const careCfg = useCareConfig();
+  const { products, ready: productsReady } = useLiveProductsBySlugs(state.lines.map((l) => l.id));
+  const bySlug = useMemo(() => new Map(products.map((p) => [p.slug, p])), [products]);
+  const items = useMemo(
+    () => buildCartItems(state.lines, bySlug, careCfg),
+    [state.lines, bySlug, careCfg],
+  );
+  return { items, ready: cartReady && productsReady };
 }
 
 export function cartTotals(
   items: CartItem[],
   mode: "delivery" | "pickup" = "delivery",
   cfg: ShippingConfig = DEFAULT_SHIPPING,
+  careCfg: CareDisplayConfig = DEFAULT_CARE,
 ) {
   const products = items.reduce((s, i) => s + i.product.price * i.line.qty, 0);
   // Tokyo Care is now a REAL charge: the backend order records + bills it, so it
   // is part of the payable total (DISPLAY == CHARGE). Per-unit × qty or once per
-  // line, per `careConfig.chargePerUnit`.
-  const protection = items.reduce((s, i) => s + lineCareCharge(i.plan, i.line.qty), 0);
+  // line, per `careCfg.chargePerUnit`.
+  const protection = items.reduce((s, i) => s + lineCareCharge(i.plan, i.line.qty, careCfg.chargePerUnit), 0);
   // Free shipping is decided on the same base the backend uses: the product
   // subtotal, plus care only when `countsTowardFreeShipping` is on (matches
   // place-order's freeShipBaseCents). freeFrom === 0 ⇒ "no free-shipping offer".
-  const freeShipBase = products + (careConfig.countsTowardFreeShipping ? protection : 0);
+  const freeShipBase = products + (careCfg.countsTowardFreeShipping ? protection : 0);
   const qualifiesFree = cfg.freeFrom > 0 && freeShipBase >= cfg.freeFrom;
   const shipping = mode === "pickup" || products === 0 || qualifiesFree ? 0 : cfg.fee;
   const count = items.reduce((s, i) => s + i.line.qty, 0);

@@ -32,9 +32,7 @@ import { PendingBody } from "@/storefront/components/storefront/pending-body";
 import { PageTop } from "@/storefront/components/storefront/page-top";
 import type { Crumb } from "@/storefront/components/storefront/breadcrumb";
 import {
-  useCart,
-  useCartReady,
-  cartItems,
+  useCartItems,
   cartTotals,
   clearCart,
   addToCart,
@@ -45,6 +43,7 @@ import {
   useShippingConfig,
   type CartItem,
 } from "@/storefront/lib/cart";
+import { useCareConfig } from "@/storefront/lib/care-config";
 import { toggleFavorite } from "@/storefront/lib/favorites";
 import { placeOrderFromCartAction } from "@/lib/actions/order";
 import { createAddressAction, editAddressAction } from "@/lib/actions/customer";
@@ -135,10 +134,9 @@ export function CheckoutView({
   hasProfile?: boolean;
 }) {
   const hydrated = useHydrated();
-  const ready = useCartReady();
-  const state = useCart();
-  const items = useMemo(() => cartItems(state), [state]);
+  const { items, ready } = useCartItems();
   const shipping = useShippingConfig();
+  const careCfg = useCareConfig();
 
   const canPickup = pickups.length > 0;
   const [w, setW] = useState(1400);
@@ -187,7 +185,7 @@ export function CheckoutView({
   const selectedAddr = addressList.find((a) => a.id === addrId) ?? null;
   const usingSavedAddr = mode === "home" && addrId !== "new" && !!selectedAddr;
 
-  const totals = cartTotals(items, mode === "store" ? "pickup" : "delivery", shipping);
+  const totals = cartTotals(items, mode === "store" ? "pickup" : "delivery", shipping, careCfg);
 
   const goStep = (n: number) => {
     setStep(n);

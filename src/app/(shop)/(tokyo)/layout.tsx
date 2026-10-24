@@ -3,6 +3,7 @@ import type { Viewport } from "next";
 
 import { blogQueries } from "@/modules/blog";
 import { getStorefrontShippingConfig } from "@/lib/checkout/shipping";
+import { resolveCareConfig } from "@/lib/care/config";
 import { getThemeConfig } from "@/lib/theme/config";
 import { buildDarkModeInitJs } from "@/lib/theme/dark-mode-init";
 import { getAllSettingsServerOnly, getSiteLogoUrl, listFooterColumns } from "@/lib/api/cms";
@@ -18,6 +19,7 @@ import { getTokyoHeaderNav } from "@/lib/api/tokyo-header-nav";
 import { MobileBottomNav } from "@/storefront/components/storefront/mobile-bottom-nav";
 import { TrustCopyProvider } from "@/components/storefront/trust-copy-provider";
 import { ShippingConfigProvider } from "@/storefront/lib/shipping-config";
+import { CareConfigProvider } from "@/storefront/lib/care-config";
 import { SiteContactsProvider, DEFAULT_CONTACTS } from "@/storefront/lib/site-contacts";
 
 /**
@@ -46,7 +48,7 @@ export default async function TokyoShellLayout({ children }: { children: ReactNo
   // Backend-driven: shipping (seeded through the provider, like the root SEO read)
   // and the footer's identity + footer-flagged contacts, so the storefront chrome
   // reflects « Identité & contact » / the médiathèque logo — nothing hardcoded.
-  const [shipping, settings, logoUrl, blogCategories, checkoutCopy, trustBadges, headerNav, theme, footerColumns] =
+  const [shipping, settings, logoUrl, blogCategories, checkoutCopy, trustBadges, headerNav, theme, footerColumns, careConfig] =
     await Promise.all([
       getStorefrontShippingConfig(),
       getAllSettingsServerOnly().catch(() => ({}) as Record<string, string | null>),
@@ -67,6 +69,10 @@ export default async function TokyoShellLayout({ children }: { children: ReactNo
       // empty read means the operator emptied them on purpose (honour it, don't
       // resurrect the defaults).
       listFooterColumns().catch(() => undefined),
+      // Store-wide Tokyo Care charging knobs (per-unit / counts-toward-free-shipping),
+      // seeded through the provider so the cart/checkout totals match place-order.
+      // Fails closed internally; defaults here too on any error.
+      resolveCareConfig().catch(() => ({ enabled: false, chargePerUnit: true, countsTowardFreeShipping: false })),
     ]);
   // Dark-mode pre-paint: resolve the `dark` class on <html> before first paint
   // from the admin « Mode sombre » setting (off ⇒ always light ⇒ no change) +
@@ -97,6 +103,12 @@ export default async function TokyoShellLayout({ children }: { children: ReactNo
   };
   return (
     <ShippingConfigProvider value={shipping}>
+     <CareConfigProvider
+       value={{
+         chargePerUnit: careConfig.chargePerUnit,
+         countsTowardFreeShipping: careConfig.countsTowardFreeShipping,
+       }}
+     >
       {/* Dark-mode pre-paint init — sets `dark` on <html> before paint so the
           `.tokyo` palette resolves without a flash. Validated enum → safe. */}
       {/* eslint-disable-next-line react/no-danger */}
@@ -135,6 +147,7 @@ export default async function TokyoShellLayout({ children }: { children: ReactNo
           <MobileBottomNav />
         </div>
       </SiteContactsProvider>
+     </CareConfigProvider>
     </ShippingConfigProvider>
   );
 }

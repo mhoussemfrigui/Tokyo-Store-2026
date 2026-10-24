@@ -124,7 +124,13 @@ async function resolveCare(p: BackendProduct): Promise<Product["care"]> {
         categoryIds: catIds.get(p.id) ?? [],
       },
     ]);
-    return (offered[0] ?? []).map((o) => ({ id: o.plan.id, price: minorToDinars(o.unitCents) }));
+    return (offered[0] ?? []).map((o) => ({
+      id: o.plan.id,
+      price: minorToDinars(o.unitCents),
+      name: o.plan.name,
+      durationMonths: o.plan.duration_months,
+      perks: o.plan.perks ?? [],
+    }));
   } catch {
     return [];
   }

@@ -54,11 +54,12 @@ export type Product = {
   /** Full category SLUG chain root→leaf (migration tree). Lets a category page
    *  roll a product up to ANY ancestor, e.g. ["univers-apple","iphone","iphones-neufs"]. */
   category_path?: string[];
-  /** Offered Tokyo Care protection plans for THIS product, with the per-unit price
-   *  (dinars) resolved from the backend. Empty/absent = none offered. The plan
-   *  details (name, duration, perks…) come from the care-plans catalogue, keyed by
-   *  `id`. Backend-sourced snapshot — the charge is re-priced at checkout. */
-  care?: { id: string; price: number }[];
+  /** Offered Tokyo Care protection plans for THIS product, resolved LIVE from the
+   *  backend: the per-unit price (dinars) PLUS the plan's own presentational
+   *  details (name, coverage duration, perks) carried inline — so the storefront
+   *  needs no separate care-plans catalogue. Empty/absent = none offered. The
+   *  charge is always re-priced server-side at checkout. */
+  care?: { id: string; price: number; name: string; durationMonths: number; perks: string[] }[];
 
   /* ─────────────────────────────────────────────────────────────────────────
    * PDP DETAIL FIELDS (optional) — NOT in the lightweight catalogue snapshot

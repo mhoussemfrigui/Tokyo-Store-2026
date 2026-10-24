@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Lock, ShoppingBag } from "lucide-react";
@@ -16,12 +16,11 @@ import {
   PAPER,
 } from "@/storefront/components/storefront/checkout-view";
 import {
-  cartItems,
   cartTotals,
-  useCart,
-  useCartReady,
+  useCartItems,
   useShippingConfig,
 } from "@/storefront/lib/cart";
+import { useCareConfig } from "@/storefront/lib/care-config";
 import { useHydrated } from "@/storefront/lib/hydration";
 import { fmtPrice } from "@/storefront/lib/productMeta";
 import { TrustBand } from "./trust-band";
@@ -37,11 +36,10 @@ import { TrustBand } from "./trust-band";
 export function CartView() {
   const router = useRouter();
   const hydrated = useHydrated();
-  const ready = useCartReady();
-  const state = useCart();
-  const items = useMemo(() => cartItems(state), [state]);
+  const { items, ready } = useCartItems();
   const shipping = useShippingConfig();
-  const totals = cartTotals(items, "delivery", shipping);
+  const careCfg = useCareConfig();
+  const totals = cartTotals(items, "delivery", shipping, careCfg);
 
   const [w, setW] = useState(1400);
   useEffect(() => {
