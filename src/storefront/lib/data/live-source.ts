@@ -10,6 +10,7 @@ import {
   listPreorderProducts as backendListPreorder,
   listProductsByCategory as backendListByCategory,
   listProductsByIds as backendListByIds,
+  listProductsBySlugs as backendListBySlugs,
   listPromotions as backendListPromotions,
   listRelatedProducts as backendListRelated,
 } from "@/lib/api/products";
@@ -112,30 +113,48 @@ async function mapCards(ps: BackendProduct[]): Promise<Product[]> {
  *  CLOSED to `[]` (feature off, non-uuid id, or any resolve error) — identical
  *  to the export + the server charge path. */
 async function resolveCare(p: BackendProduct): Promise<Product["care"]> {
-  if (!p.id || !UUID_RE.test(p.id)) return [];
+  return (await resolveCareForProducts([p])).get(p.id ?? "") ?? [];
+}
+
+/** Offered Tokyo Care plans for MANY products in ONE batch — the config read, the
+ *  category-link lookup and the offer resolution each run ONCE for the whole set,
+ *  so the client cart/favorites resolution isn't a per-item Care round-trip. Fails
+ *  CLOSED to empty (feature off / non-uuid id / any error), like the single path. */
+async function resolveCareForProducts(
+  ps: BackendProduct[],
+): Promise<Map<string, Product["care"]>> {
+  const out = new Map<string, Product["care"]>();
+  const withId = ps.filter((p): p is BackendProduct & { id: string } => !!p.id && UUID_RE.test(p.id));
+  if (withId.length === 0) return out;
   try {
     const cfg = await resolveCareConfig();
-    if (!cfg.enabled) return [];
-    const catIds = await productCategoryLinks.categoryIdsForProducts([p.id]);
-    const offered = await resolveOfferedCareForLines([
-      {
+    if (!cfg.enabled) return out;
+    const catMap = await productCategoryLinks.categoryIdsForProducts(withId.map((p) => p.id));
+    const offered = await resolveOfferedCareForLines(
+      withId.map((p) => ({
         productId: p.id,
         productPriceCents: Math.round(p.price * 1000),
         warrantyMonths: p.warrantyMonths ?? null,
         condition: (p.condition ?? "new") as "new" | "used" | "refurbished",
-        categoryIds: catIds.get(p.id) ?? [],
-      },
-    ]);
-    return (offered[0] ?? []).map((o) => ({
-      id: o.plan.id,
-      price: minorToDinars(o.unitCents),
-      name: o.plan.name,
-      durationMonths: o.plan.duration_months,
-      perks: o.plan.perks ?? [],
-    }));
+        categoryIds: catMap.get(p.id) ?? [],
+      })),
+    );
+    withId.forEach((p, i) => {
+      out.set(
+        p.id,
+        (offered[i] ?? []).map((o) => ({
+          id: o.plan.id,
+          price: minorToDinars(o.unitCents),
+          name: o.plan.name,
+          durationMonths: o.plan.duration_months,
+          perks: o.plan.perks ?? [],
+        })),
+      );
+    });
   } catch {
-    return [];
+    return new Map();
   }
+  return out;
 }
 
 async function mapSingle(p: BackendProduct | null): Promise<Product | null> {
@@ -187,6 +206,18 @@ export const liveSource: CatalogSource = {
   },
   async listProductsByIds(ids): Promise<Product[]> {
     return mapCards(await backendListByIds(ids));
+  },
+  async listProductsBySlugs(slugs): Promise<Product[]> {
+    // ONE batched row+promo read, then ONE batched Tokyo Care resolve attached by
+    // id — replaces the former getProductBySlug-per-slug fan-out (cart/favorites).
+    const ps = await backendListBySlugs(slugs);
+    const cards = await mapCards(ps);
+    const careMap = await resolveCareForProducts(ps);
+    for (const c of cards) {
+      const care = careMap.get(c.id);
+      if (care) c.care = care;
+    }
+    return cards;
   },
   async listRelatedProducts(slug, limit): Promise<Product[]> {
     return mapCards(await backendListRelated(slug, limit));

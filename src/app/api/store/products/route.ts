@@ -67,9 +67,9 @@ export async function GET(request: Request) {
         .map((s) => s.trim())
         .filter(Boolean)
         .slice(0, MAX_SLUGS);
-      const resolved = await Promise.all(slugs.map((s) => catalogSource.getProductBySlug(s).catch(() => null)));
-      // Preserve the requested order; drop slugs that no longer resolve.
-      products = resolved.filter((p): p is Product => Boolean(p));
+      // ONE batched read (rows + promo + Tokyo Care) with the requested order kept
+      // and missing slugs dropped — not a getProductBySlug round-trip per slug.
+      products = await catalogSource.listProductsBySlugs(slugs);
     } else if (category) {
       // One or more category slugs (comma-separated) — union, de-duped by id, order
       // preserved. A single slug rolls up to its descendants (listProductsByCategory).

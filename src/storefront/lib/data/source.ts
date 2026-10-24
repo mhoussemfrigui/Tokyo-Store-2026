@@ -17,6 +17,9 @@ export interface CatalogSource {
   getProductById(id: string): Promise<Product | null>;
   listProductsByCategory(categorySlug: string, limit?: number): Promise<Product[]>;
   listProductsByIds(ids: string[]): Promise<Product[]>;
+  /** Batched by-slug resolution for the client cart/favorites (order preserved).
+   *  Promo-priced + Tokyo Care attached in ONE batch (no per-slug round-trip). */
+  listProductsBySlugs(slugs: string[]): Promise<Product[]>;
   listRelatedProducts(slug: string, limit?: number): Promise<Product[]>;
   listAlsoViewed(slug: string, limit?: number): Promise<Product[]>;
   listNewArrivals(limit?: number): Promise<Product[]>;

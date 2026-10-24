@@ -1020,6 +1020,28 @@ export async function listProductsByIds(ids: string[]): Promise<Product[]> {
 }
 
 /**
+ * Batched storefront cards for a SET of slugs (order preserved; drafts + missing
+ * dropped). The client cart/favorites resolve many slugs at once; this runs ONE
+ * row read + ONE live-promo enrichment pass instead of a `getProductBySlug` per
+ * slug (each ~8-11 queries). Promo-enriched like every list reader, so prices
+ * match the cards/PDP/charge. Tokyo Care is NOT resolved here (cards don't show
+ * it); a caller that needs it (the cart) batch-resolves it on top.
+ */
+export async function listProductsBySlugs(slugs: string[]): Promise<Product[]> {
+  if (slugs.length === 0) return [];
+  const rows = await productQueries.listProductsBySlugs(slugs);
+  const published = rows.filter((r) => r.is_published);
+  const mapped = await mapAndEnrichRows(published);
+  const bySlug = new Map(mapped.map((p) => [p.slug, p]));
+  const out: Product[] = [];
+  for (const slug of slugs) {
+    const p = bySlug.get(slug);
+    if (p) out.push(p);
+  }
+  return out;
+}
+
+/**
  * Batched row→`Product` mapper. Replaces the previous per-row `mapProductRow`
  * which fanned out 7+ queries per product (resulting in 700+ DB round-trips
  * for a single homepage render with 100 products).
